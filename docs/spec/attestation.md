@@ -31,6 +31,8 @@ An `AttestationReport` carries `platform`, `measurement`, the bound `public_key`
 
 **What is validated.** The chain-verification path is exercised against the genuine AMD Milan ARK/ASK root chain fetched from AMD KDS (`tests/fixtures/sev_snp/`). The report-signature path is exercised end to end with a synthetic VCEK and report, because a genuine report plus VCEK pair requires real SEV-SNP hardware. Producing a report (`SevSnpProvider.attest`) fails closed off hardware (`AttestationUnsupported`).
 
+**Cross-operator use.** Two operators in separate trust domains each bind their sealed-channel public key into a report and verify the counterparty's report against a pinned golden measurement. This composes into mutual attestation, confidential cross-operator delegation (seal to the attested key), and binary-swap detection (a changed measurement is rejected), validated in software as claim C6. See the [call graph](call-graph.md) and the `claim6-cross-operator-attestation` experiment.
+
 ## Fail closed
 
 Providers without a backend `detect()` to False, so they are never selected automatically, and verification fails closed when evidence is absent or invalid. This is deliberate: cA2A must not be described as attested across trust domains until a real hardware backend verifies a quote against a golden measurement. TDX and TPM backends remain Tier 3. See [LIMITATIONS.md](../../LIMITATIONS.md).
