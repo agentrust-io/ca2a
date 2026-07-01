@@ -11,15 +11,13 @@ four invariants:
 4. Anti-replay: parent_id links to the previous credential_id and every
    credential_id in the chain is unique.
 
-Canonicalization uses a deterministic JSON encoding (sorted keys, compact
-separators, UTF-8). This is the stable byte string signed and verified; it is a
-practical subset of RFC 8785 sufficient for the ASCII credential fields used
-here. Full RFC 8785 alignment with agent-manifest is tracked on the roadmap.
+Canonicalization uses RFC 8785 (JSON Canonicalization Scheme), so the signed
+byte string is identical across conforming implementations and cA2A signatures
+are cross-verifiable with agent-manifest. See ca2a_runtime.canonical.
 """
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from typing import Any
 
@@ -29,6 +27,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
     Ed25519PublicKey,
 )
 
+from ca2a_runtime.canonical import canonicalize
 from ca2a_runtime.errors import (
     BrokenDelegationLink,
     CredentialReplay,
@@ -46,10 +45,13 @@ def new_keypair() -> tuple[Ed25519PrivateKey, str]:
 
 
 def canonical_bytes(payload: dict[str, Any]) -> bytes:
-    """Deterministic byte encoding of a credential body (signature excluded)."""
-    return json.dumps(
-        payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True
-    ).encode("utf-8")
+    """RFC 8785 (JCS) canonical byte encoding of a credential body.
+
+    This is the stable byte string signed and verified; using JCS makes cA2A
+    signatures cross-verifiable with agent-manifest and any other conforming
+    implementation. See ca2a_runtime.canonical.
+    """
+    return canonicalize(payload)
 
 
 @dataclass(frozen=True)

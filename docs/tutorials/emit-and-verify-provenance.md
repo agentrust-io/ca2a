@@ -20,7 +20,7 @@ class DelegationRecord:
     parent_record_hash: str | None = None
 ```
 
-`record_hash()` is SHA-256 over the canonical body (`record_id`, `credential_id`, `subject`, sorted `scope`, `parent_record_hash`). The canonicalization is the same deterministic JSON encoding used to sign credentials, so an auditor recomputes the exact bytes.
+`record_hash()` is SHA-256 over the canonical body (`record_id`, `credential_id`, `subject`, sorted `scope`, `parent_record_hash`). The canonicalization is the same RFC 8785 (JCS) encoding used to sign credentials, so an auditor recomputes the exact bytes.
 
 ## 1. Build a signed chain
 

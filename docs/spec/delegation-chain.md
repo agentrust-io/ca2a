@@ -18,7 +18,7 @@ A `DelegationCredential` has the following signed body plus a detached signature
 
 ## Canonicalization
 
-The signed bytes are a deterministic JSON encoding of the body: sorted keys, compact separators, UTF-8, `scope` as a sorted array. This is the byte string signed and verified. It is a practical subset of RFC 8785 sufficient for the ASCII fields used here; full RFC 8785 alignment with agent-manifest is tracked on the roadmap.
+The signed bytes are the RFC 8785 (JSON Canonicalization Scheme) encoding of the body: keys sorted by UTF-16 code units, JCS minimal string escaping, non-ASCII emitted literally as UTF-8, integers in shortest decimal form, `scope` as a sorted array. This is the byte string signed and verified. Using JCS makes cA2A signatures cross-verifiable with agent-manifest and any other conforming implementation. See `ca2a_runtime.canonical`.
 
 ## Verification invariants
 
