@@ -19,8 +19,8 @@ inbound A2A task
 3. intersect scope with policy  effective_scope(chain, local_policy)   [IMPLEMENTED (decision core)]
       |  the effective grant is delegated scope AND local policy
       v
-4. seal payload to measurement  SealedChannel.seal(...)   [PENDING, Tier 2]
-      |  payload readable only inside the peer's enclave
+4. seal payload to measurement  SealedChannel(peer_pub).seal(...)   [IMPLEMENTED (crypto); attestation binding pending]
+      |  payload readable only with the peer's enclave-bound key
       v
 5. emit linked provenance       enforce_peer_call(...) -> DelegationRecord
       |  DelegationRecord chained to the parent record   [IMPLEMENTED]
@@ -37,7 +37,7 @@ If any step raises, the call is denied. Absence of evidence is denial, not a war
 | 1. Chain verification | Signature, continuity, attenuation, depth bound, anti-replay | `verify_chain` | Implemented |
 | 2. Peer attestation | Peer measurement matches an expected value | `ca2a_verify.sev_snp.verify_sev_snp_report` | SEV-SNP verifier implemented; not yet wired into the call path; report needs hardware |
 | 3. Scope intersection | Delegated scope intersected with local policy | `ca2a_runtime.peer.effective_scope`, `enforce_peer_call` | Implemented (decision core); Cedar engine binding pending (#10) |
-| 4. Payload sealing | Payload sealed to the peer measurement | `SealedChannel.seal` | Pending, Tier 2 (fails closed) |
+| 4. Payload sealing | Payload sealed to the peer's attested key | `SealedChannel.seal`, `open_sealed` | Implemented (crypto); binding to a verified report on the live path pending |
 | 5. Provenance record | A `DelegationRecord` emitted and linked to its parent | `enforce_peer_call`, `record_for`, `verify_dag` | Implemented (emitted by the decision core) |
 | Live A2A transport wiring | The decision core runs off an actual inbound A2A request | (design) | Pending, Tier 2 |
 
@@ -75,9 +75,9 @@ enforce_peer_call(chain, "read", policy=policy, record_id="rec-c")  # raises SCO
 
 A capability is granted only when it is both delegated down the chain and allowed by the local policy; a capability in one but not the other is denied with `SCOPE_NOT_PERMITTED`. The `LocalPolicy` here is a capability allow set; binding a full Cedar policy engine (as cMCP does) is tracked separately (#10). What is not yet wired is the live inbound transport: `enforce_peer_call` is the decision the runtime makes, not yet driven off an actual A2A request. See [cedar-policy.md](cedar-policy.md).
 
-## Step 4: seal the payload to the peer measurement (pending, Tier 2)
+## Step 4: seal the payload to the peer's attested key (crypto implemented)
 
-Once the peer measurement is verified (step 2), the task payload is intended to be sealed to that measurement so it decrypts only inside the peer's verified enclave. Today `SealedChannel.seal` and `SealedChannel.open` raise `SEALED_CHANNEL_ERROR` rather than send plaintext. Do not send confidential payloads across a trust boundary and assume they are protected. See [sealed-channel.md](sealed-channel.md).
+Once the peer's attested public key is known (from its report, step 2), the task payload is sealed to it so only the holder of the peer's private key can open it. The channel is implemented (`SealedChannel(peer_pub).seal(...)` and `open_sealed(...)`, an HPKE-style X25519 -> HKDF-SHA256 -> ChaCha20-Poly1305 scheme). `open_sealed` fails closed with `SEALED_CHANNEL_ERROR` on a wrong key or tampered ciphertext. The property that the payload decrypts *only inside the attested measurement* rests on the private key being enclave-bound (a hardware property from attestation), and binding the seal to a verified report on the live path is still to be wired. See [sealed-channel.md](sealed-channel.md).
 
 ## Step 5: emit a linked provenance record (implemented)
 

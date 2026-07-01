@@ -1,57 +1,33 @@
-# Experiment: Sealed-Payload Confidentiality (Fail-Closed)
+# Experiment: Sealed-Payload Confidentiality
 
-**Claim:** A task payload sealed to a peer's attested measurement decrypts only inside that peer's verified enclave (cA2A Claim 4).
+**Claim:** A task payload sealed to a peer's attested key decrypts only with the private key bound to that peer's enclave (cA2A Claim 4).
 
-**Status:** GATED on Tier 2. `SealedChannel` is a fail-closed placeholder. The enclave-sealing backend that would make the confidentiality property demonstrable is not implemented in this release (see `ROADMAP.md` / `LIMITATIONS.md`). This experiment does **not** claim confidentiality is proven. It proves the honest fallback: absent the backend, the runtime refuses to seal rather than emitting plaintext.
+**Status: validated (cryptographic layer).**
 
-**What this experiment proves today:**
+`ca2a_runtime.channel` implements an HPKE-style sealed channel: an ephemeral X25519 ECDH to the peer's public key, HKDF-SHA256 to derive a key, and ChaCha20-Poly1305 AEAD over the payload. The peer generates its channel keypair (inside the enclave, on real hardware) and vouches for the public key through its attestation report; a sender seals to that key with `SealedChannel(peer_pub).seal(payload)`, and only the holder of the private key opens it with `open_sealed(blob, private_key)`.
 
-1. `SealedChannel(peer_measurement).seal(payload)` raises `SealedChannelError`. It does not return the payload, an empty blob, or any silent plaintext.
-2. `SealedChannel(...).open(sealed)` raises `SealedChannelError` for the same reason.
-3. The error carries a `SEALED_CHANNEL_ERROR` code and a detail string that names Tier 2, so a caller can distinguish "not implemented yet" from a runtime encryption fault.
+**What it proves:**
 
-**What this experiment does NOT prove (pending Tier 2):**
+1. The sealed blob does not contain the plaintext; the transport sees ciphertext.
+2. Only the peer's private key opens the payload; another party with a different key cannot.
+3. Any tampering with the sealed blob fails closed (AEAD authentication), so a modified payload never decrypts.
 
-- That a sealed payload is confidential against the transport or the host.
-- That the payload decrypts only under the attested peer measurement and nowhere else.
-
-Those are the actual confidentiality properties. They require the measurement-bound sealing backend and a real attested peer, and are marked as a skipped placeholder in the CI test.
-
-**Why fail-closed matters for governance:**
-
-The dangerous failure mode for a confidentiality primitive is silent degradation: an unfinished channel that quietly forwards plaintext while callers believe it is sealed. cA2A's placeholder is wired so the confidentiality-dependent path cannot run at all until the backend lands. A caller that forgets to check the Tier gate gets an exception, not a leak.
+**What rests on hardware (not proven here):** the guarantee that the private key never leaves the peer's enclave, so the payload decrypts *only inside the attested measurement*. That is what attestation establishes (see the SEV-SNP verifier and [attestation.md](../../docs/spec/attestation.md)). Driving the seal off a verified report on a live inbound call is runtime wiring, tracked on the roadmap. The cryptographic confidentiality of the payload to the attested key is what this experiment validates.
 
 ## Running
 
 ```bash
-# From repo root, with the package installed editable (pip install -e .)
-.venv/Scripts/python.exe experiments/claim4-sealed-payload-confidentiality/run.py
+# From repo root, with the package installed editable (pip install -e ".[dev]")
+python experiments/claim4-sealed-payload-confidentiality/run.py
 ```
 
 ## Expected output
 
 ```
-============================================================
-Experiment: Sealed-Payload Confidentiality (Fail-Closed)
-Claim 4: payload decrypts only inside the attested peer
-Status: GATED on Tier 2 (SealedChannel is a placeholder)
-============================================================
-
-[1. seal() fails closed]
-    seal(payload) raised: SealedChannelError  OK
-    error code: SEALED_CHANNEL_ERROR  OK
-    detail names Tier 2: YES  OK
-    plaintext emitted: NO  OK
-
-[2. open() fails closed]
-    open(sealed) raised: SealedChannelError  OK
-
-============================================================
-KEY RESULT: SealedChannel fails closed. seal()/open() raise
-SEALED_CHANNEL_ERROR instead of emitting plaintext. This is
-the honest current behavior. The confidentiality claim itself
-(payload decrypts only under the attested peer measurement) is
-PENDING Tier 2 and is not demonstrated here.
+Claim 4: sealed-payload confidentiality
+  [1] plaintext hidden in sealed blob: YES  (... bytes) OK
+  [2] peer opens with its private key: OK
+  [3] other party cannot open: OK
+  [4] tampered payload fails closed: OK
+KEY RESULT: 4/4 sealed to the attested key; only the enclave-bound private key opens it; path sees ciphertext; tamper fails closed
 ```
-
-Exit code is 0: fail-closed behavior confirmed is a success, not a failure.
