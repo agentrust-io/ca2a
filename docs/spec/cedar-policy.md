@@ -6,7 +6,19 @@ When a peer accepts a delegated task, two independent trust decisions meet. The 
 effective = delegated_scope ∩ local_policy_allow
 ```
 
-**Status.** The intersection semantics are **implemented** as an enforcement decision core in `ca2a_runtime.peer` (`effective_scope`, `enforce_peer_call`) against a `ca2a_runtime.policy.LocalPolicy` capability allow set, and validated by experiment C3. Two pieces remain: binding a full **Cedar policy engine** as the local policy (this page's title; the semantics are policy-language-agnostic and the allow-set model stands in today, tracked as #10), and wiring the decision core to a **live A2A transport** rather than a direct call. See [call-graph.md](call-graph.md), [ROADMAP.md](../../ROADMAP.md), and [LIMITATIONS.md](../../LIMITATIONS.md).
+**Status.** The intersection semantics are **implemented** as an enforcement decision core in `ca2a_runtime.peer` (`effective_scope`, `enforce_peer_call`), and the local policy can be either a capability allow set (`ca2a_runtime.policy.LocalPolicy`) or a **real Cedar policy engine** (`ca2a_runtime.cedar.CedarPolicy`, backed by `cedarpy`, the same engine cMCP runs). Both satisfy the `ca2a_runtime.policy.Policy` protocol, so they are interchangeable in the peer path. Validated by experiment C3 and the Cedar unit tests. What remains is wiring the decision core to a **live A2A transport** rather than a direct call. See [call-graph.md](call-graph.md) and [ROADMAP.md](../../ROADMAP.md).
+
+## Cedar policy
+
+`CedarPolicy` evaluates each capability as a Cedar authorization request whose action id is the capability name; a capability is permitted iff Cedar returns `Allow`. The effective scope is the delegated leaf scope intersected with the capabilities Cedar permits.
+
+```python
+from ca2a_runtime.cedar import CedarPolicy
+from ca2a_runtime.peer import effective_scope
+
+policy = CedarPolicy('permit(principal, action == Action::"read", resource);')
+effective_scope(chain, policy)   # delegated leaf scope AND what Cedar allows
+```
 
 ## Why an intersection
 

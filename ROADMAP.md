@@ -22,7 +22,7 @@ Already implemented and tested elsewhere; cA2A depends on it rather than reimple
 
 ## v0.2: Runtime enforcement and sealed channel
 
-- Runtime peer-delegation enforcement: **decision core landed** (`ca2a_runtime.peer.enforce_peer_call`: verify chain, intersect delegated scope with local policy, enforce, emit provenance record; claim C3 validated). Remaining: bind a Cedar policy engine as the local policy, and wire the decision core to a live A2A transport (Tier 2)
+- Runtime peer-delegation enforcement: **decision core landed** (`ca2a_runtime.peer.enforce_peer_call`: verify chain, intersect delegated scope with local policy, enforce, emit provenance record; claim C3 validated), now with a **real Cedar policy engine** option (`ca2a_runtime.cedar.CedarPolicy`) alongside the allow-set `LocalPolicy`. Remaining: wire the decision core to a live A2A transport (Tier 2)
 - Sealed peer channel: **landed** (`ca2a_runtime.channel`: HPKE-style X25519 -> HKDF-SHA256 -> ChaCha20-Poly1305 sealing to the peer's attested key; claim C4 validated). Remaining: bind the seal to a verified attestation report on a live call, and rely on the enclave to hold the private key (hardware property)
 - Linked runtime evidence: each hop's TRACE record references the parent record hash and delegation credential id, producing a verifiable delegation DAG (Tier 2)
 

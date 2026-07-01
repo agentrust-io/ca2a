@@ -14,6 +14,20 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass
+from typing import Protocol, runtime_checkable
+
+
+@runtime_checkable
+class Policy(Protocol):
+    """A local policy the peer path intersects a delegated scope against.
+
+    Implemented by ``LocalPolicy`` (a capability allow set) and by
+    ``ca2a_runtime.cedar.CedarPolicy`` (a real Cedar policy engine).
+    """
+
+    def intersect(self, delegated: frozenset[str]) -> frozenset[str]:
+        """Return the effective scope: the delegated capabilities this policy allows."""
+        ...
 
 
 @dataclass(frozen=True)
