@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial cA2A profile draft: attested, attenuated agent-to-agent delegation on top of A2A
 - `ca2a-verify`: offline delegation-chain verification skeleton (scope attenuation, signature, depth, replay checks)
 - `ca2a-runtime`: config, error registry, and delegation credential model
+- `ca2a_runtime.provenance`: linked delegation-record DAG with tamper and reparent detection, bound to authority via `cross_check_chain`
+- `experiments/`: reproducible claim suite C1-C6. C1 (attenuation), C2 (cross-chain replay), and C5 (provenance DAG) are fully reproducible; C3, C4, C6 SKIP until their Tier 2/3 dependency lands. Each claim has a CI test.
 - Repository scaffold: governance, CI/CD, docs framework, and packaging at parity with the agentrust-io house standard
 
 ### Not yet implemented
