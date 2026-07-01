@@ -20,6 +20,16 @@ hardware_roots:
   - intel-tdx
   - tpm2
 
+# The capability actions this deployment governs. A delegated scope is honored
+# only when its capabilities appear here AND the local Cedar policy permits them
+# (effective = delegated scope INTERSECT local policy). This is the callee's
+# declared, version-controlled inventory of governable actions.
+governed_capabilities:
+  - delegate.invoke
+  - delegate.read
+  - delegate.write
+  - delegate.admin
+
 owasp_coverage:
   ASI-03: scope attenuation, a child grant cannot exceed its parent's authority
   ASI-06: linked TRACE records per hop, tamper-evident delegation DAG

@@ -59,21 +59,18 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: python -m pip install --upgrade pip setuptools && pip install -e ".[dev]" "agent-governance-toolkit>=4.1"
+        run: python -m pip install --upgrade pip setuptools && pip install -e ".[dev]" "agent-governance-toolkit[full]>=4.1"
 
       - name: Generate evidence file
         run: python scripts/gen_agt_evidence.py
 
-      # Advisory until Tier 2 (runtime peer-delegation enforcement) lands. cA2A
-      # does not yet run the ASI coverage modules, so strict verify reports
-      # INCOMPLETE. This flips to blocking (drop continue-on-error) once the
-      # runtime enforces attenuated delegation on inbound peer calls. See ROADMAP.
-      - name: AGT governance verify (advisory)
-        continue-on-error: true
+      # Blocking gate: the [full] toolkit provides the ASI coverage modules
+      # (10/10) and the evidence declares cA2A's governed capabilities, so strict
+      # verify is COMPLETE. A regression that drops coverage or governance fails CI.
+      - name: AGT governance verify (strict)
         run: agt verify --evidence agt-evidence.json
 
       - name: Save attestation JSON
-        continue-on-error: true
         run: agt --json verify --evidence agt-evidence.json > agt-attestation.json
 
       - name: Upload governance artifacts
