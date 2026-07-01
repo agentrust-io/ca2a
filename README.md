@@ -21,7 +21,7 @@
   </strong>
 </p>
 
-[![CI](https://github.com/agentrust-io/ca2a/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agentrust-io/ca2a/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![CI](https://github.com/agentrust-io/ca2a/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agentrust-io/ca2a/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/agentrust-io/ca2a/badge)](https://scorecard.dev/viewer/?uri=github.com/agentrust-io/ca2a)
 
 > **Pre-release draft.** cA2A is a profile in active design. The delegation semantics are implemented and tested in [agent-manifest](https://github.com/agentrust-io/agent-manifest); the runtime peer path and sealed channel in this repo are under construction. See [ROADMAP.md](ROADMAP.md) and [LIMITATIONS.md](LIMITATIONS.md) for exactly what is and is not built.
 

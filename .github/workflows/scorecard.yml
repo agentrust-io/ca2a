@@ -33,9 +33,9 @@ jobs:
         with:
           results_file: scorecard-results.sarif
           results_format: sarif
-          # publish_results requires a public repo; flip to true after the
-          # 2026-06-23 public launch.
-          publish_results: false
+          # The repo is public; publish results to the OpenSSF Scorecard API so
+          # the README badge resolves.
+          publish_results: true
 
       - name: Upload SARIF
         uses: github/codeql-action/upload-sarif@v4
