@@ -27,7 +27,7 @@ def record_hash(self) -> str:
     return hashlib.sha256(canonical_bytes(self.body())).hexdigest()
 ```
 
-`canonical_bytes` is the same deterministic JSON encoding used to sign delegation credentials (sorted keys, compact separators, UTF-8; see [delegation chain](delegation-chain.md)). Because the parent link is the hash of the parent's canonical body, and every other field of a record feeds that hash, any change to a record changes its `record_hash()` and therefore breaks the link in its child.
+`canonical_bytes` is the same RFC 8785 (JCS) encoding used to sign delegation credentials (see [delegation chain](delegation-chain.md)). Because the parent link is the hash of the parent's canonical body, and every other field of a record feeds that hash, any change to a record changes its `record_hash()` and therefore breaks the link in its child.
 
 ## record_for()
 

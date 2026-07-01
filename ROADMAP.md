@@ -11,7 +11,7 @@ Already implemented and tested elsewhere; cA2A depends on it rather than reimple
 - Attestation-gated SPIFFE mTLS (cmcp)
 - Audit chain with external signed evidence references (cmcp)
 - Cedar policy engine (cmcp)
-- Ed25519 + RFC 8785 canonicalization (all three repos)
+- Ed25519 + RFC 8785 canonicalization (all three repos; cA2A now ships a JCS canonicalizer in `ca2a_runtime.canonical`)
 
 ## v0.1: Profile and offline verifier
 
