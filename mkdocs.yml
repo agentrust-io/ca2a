@@ -1,0 +1,137 @@
+site_name: cA2A
+site_description: Confidential agent-to-agent delegation, attested and attenuated, as a profile on A2A
+site_url: https://ca2a.agentrust-io.com
+repo_url: https://github.com/agentrust-io/ca2a
+repo_name: agentrust-io/ca2a
+edit_uri: edit/main/
+docs_dir: .
+exclude_docs: |
+  .github/
+  node_modules/
+  benchmarks/
+  src/
+  tests/
+  schemas/
+  examples/
+  LICENSE
+  NOTICE
+  ADOPTERS.md
+  MAINTAINERS.md
+  SECURITY.md
+  CHARTER.md
+  CODE_OF_CONDUCT.md
+  pyproject.toml
+  .gitignore
+
+theme:
+  name: material
+  logo: docs/assets/icon.svg
+  favicon: docs/assets/icon.svg
+  palette:
+    - scheme: slate
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-7
+        name: Switch to light mode
+    - scheme: default
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-4
+        name: Switch to dark mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.sections
+    - navigation.top
+    - navigation.path
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.tabs.link
+    - toc.follow
+    - header.autohide
+  icon:
+    repo: fontawesome/brands/github
+  font:
+    text: Inter, system-ui, -apple-system, sans-serif
+    code: JetBrains Mono, Cascadia Code, monospace
+
+plugins:
+  - search
+  - minify:
+      minify_html: true
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          paths: [src]
+          options:
+            docstring_style: google
+            show_source: false
+            show_root_heading: true
+            show_root_full_path: false
+            show_symbol_type_heading: true
+            show_symbol_type_toc: true
+            members_order: source
+            separate_signature: true
+            show_signature_annotations: true
+            unwrap_annotated: true
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - attr_list
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/agentrust-io/ca2a
+  generator: false
+
+extra_css:
+  - docs/stylesheets/extra.css
+
+nav:
+  - Home: README.md
+  - Quick Start: docs/quickstart.md
+  - How It Works: docs/concepts.md
+  - Configuration: docs/configuration.md
+  - Tutorials:
+      - Verify a delegation chain: docs/tutorials/verify-a-delegation-chain.md
+  - Specification:
+      - Overview: docs/SPEC.md
+      - A2A Profile: docs/spec/profile.md
+      - Delegation Chain: docs/spec/delegation-chain.md
+      - Sealed Peer Channel: docs/spec/sealed-channel.md
+      - Attestation: docs/spec/attestation.md
+      - TRACE A2A Profile: docs/spec/trace-a2a-profile.md
+      - Verification Library: docs/spec/verification-library.md
+      - Threat Model: docs/spec/threat-model.md
+  - Project:
+      - Limitations: LIMITATIONS.md
+      - Changelog: CHANGELOG.md
+      - Contributing: CONTRIBUTING.md
+      - Governance: GOVERNANCE.md
+      - Roadmap: ROADMAP.md

@@ -1,0 +1,33 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+*.egg
+MANIFEST
+.eggs/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+
+# Runtime artifacts
+*.db
+audit.db
+
+# Docs build
+site/
+.docs_build/
+.mkdocs_build.yml
+
+# Generated governance/security artifacts
+agt-evidence.json
+agt-attestation.json
+sbom.spdx.json
+scorecard-results.sarif

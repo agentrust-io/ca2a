@@ -1,0 +1,24 @@
+cA2A - Confidential Agent-to-Agent
+
+Copyright 2026 Agentic AI Foundation contributors
+
+This project is licensed under the MIT License.
+
+
+Third-Party Dependencies
+------------------------
+
+cryptography
+  License: Apache 2.0
+  https://github.com/pyca/cryptography
+
+PyYAML
+  License: MIT
+  https://github.com/yaml/pyyaml
+
+agentrust-trace
+  License: Apache 2.0
+
+agent-manifest
+  License: Apache 2.0
+  https://github.com/agentrust-io/agent-manifest

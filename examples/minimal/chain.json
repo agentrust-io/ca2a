@@ -1,0 +1,40 @@
+{
+  "chain": [
+    {
+      "credential_id": "cred-0",
+      "issuer": "eda38c446da3db3eba68852ca9869260c36badd48b2cab16ec8d8faf607eb162",
+      "subject": "8da163036193764d713d5e7f77dbb1793c38e42e8b83414e7fc355f4e779306a",
+      "scope": [
+        "cap:admin",
+        "cap:read",
+        "cap:write"
+      ],
+      "depth": 0,
+      "parent_id": null,
+      "signature": "3d5e7228a9ebd67eda6e6dbc6e72dee14a75098896433573b9143113c1f4f0c5e7cfe02e57bb0f2c6139e7455da28bb51dad346e9262a0536df0157e25c8a307"
+    },
+    {
+      "credential_id": "cred-1",
+      "issuer": "8da163036193764d713d5e7f77dbb1793c38e42e8b83414e7fc355f4e779306a",
+      "subject": "daca986819ef6364ed9ee085a9b4df82a2be1805dae63beaa762cef449df9159",
+      "scope": [
+        "cap:read",
+        "cap:write"
+      ],
+      "depth": 1,
+      "parent_id": "cred-0",
+      "signature": "e60e1808ea28b790008b5124859f596a24301e40d2d24082e6b5e47213e015e32d1091127c11cc5df8e0f9ad8325f3241424b7ad29ffa59dcd53cc6cfe5c1e0b"
+    },
+    {
+      "credential_id": "cred-2",
+      "issuer": "daca986819ef6364ed9ee085a9b4df82a2be1805dae63beaa762cef449df9159",
+      "subject": "83c069abb9559e4650c91f0eec32b62b0c6f8d67440cfb0d81580a7691d6009b",
+      "scope": [
+        "cap:read"
+      ],
+      "depth": 2,
+      "parent_id": "cred-1",
+      "signature": "0270f4e15bd6a9a2364e19826dfe526c9fb18c0f4ef71f0449ecee0f990ea3b50a8df258aaed3b50d00fb55950dc08d5590ab7c2b73bd2dae9b394313b1afc02"
+    }
+  ]
+}

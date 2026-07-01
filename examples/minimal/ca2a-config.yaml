@@ -1,0 +1,6 @@
+attestation:
+  provider: auto            # auto | tpm | sev-snp | tdx | opaque | software-only
+  enforcement_mode: advisory  # enforcing | advisory | silent
+
+max_delegation_depth: 8
+listen_addr: "0.0.0.0:8443"

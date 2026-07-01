@@ -1,0 +1,95 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ca2a-runtime"
+version = "0.1.0"
+description = "Confidential agent-to-agent runtime: attested, attenuated delegation and sealed peer channels for A2A"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [
+    { name = "AgentTrust Contributors", email = "oss@agentrust.io" },
+]
+keywords = ["a2a", "agent-to-agent", "delegation", "tee", "attestation", "confidential-computing", "ai-agents"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+]
+requires-python = ">=3.11"
+dependencies = [
+    "cryptography>=42.0",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=5.0",
+    "ruff>=0.4",
+    "mypy>=1.10",
+    "types-pyyaml",
+    "bandit[toml]>=1.7",
+    "pip-audit>=2.6",
+]
+
+[project.scripts]
+ca2a = "ca2a_runtime.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/agentrust-io/ca2a"
+Repository = "https://github.com/agentrust-io/ca2a"
+Documentation = "https://github.com/agentrust-io/ca2a/tree/main/docs"
+"Bug Tracker" = "https://github.com/agentrust-io/ca2a/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ca2a_runtime", "src/ca2a_verify"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "-v --tb=short"
+pythonpath = ["src"]
+
+[tool.ruff]
+src = ["src"]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "C4", "PIE", "T20", "RET", "SIM"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/ca2a_runtime/benchmarks.py" = ["T201"]
+"src/ca2a_runtime/cli.py" = ["T201"]
+"scripts/gen_example_chain.py" = ["T201"]
+"scripts/gen_agt_evidence.py" = ["T201"]
+
+[tool.bandit]
+skips = ["B101"]
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["*/cli.py", "*/benchmarks.py"]
+
+[tool.coverage.report]
+fail_under = 70
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
+warn_return_any = false
+files = ["src/ca2a_runtime", "src/ca2a_verify"]
+
+[[tool.mypy.overrides]]
+module = ["ca2a_runtime.tee.sev_snp", "ca2a_runtime.tee.tdx", "ca2a_runtime.channel.sealed"]
+warn_unused_ignores = false

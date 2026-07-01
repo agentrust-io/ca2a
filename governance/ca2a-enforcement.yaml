@@ -1,0 +1,26 @@
+# Default-deny governance policy descriptor for the cA2A peer runtime.
+# This YAML document is consumed by `agt verify --evidence` to establish that
+# cA2A enforces deny-by-default semantics at the agent-to-agent delegation boundary.
+deny_by_default: true
+default_action: deny
+
+name: ca2a-runtime-governance
+version: "1.0"
+description: >
+  cA2A enforces attenuated delegation on inbound peer calls: a peer request is
+  accepted only when its delegation chain verifies (signatures, continuity,
+  attenuation, anti-replay) and the delegated scope intersects a local Cedar
+  policy. Any peer request that does not present a verifiable chain within the
+  granted authority is denied.
+
+enforcement_model: cedar
+enforcement_point: tee-peer-runtime
+hardware_roots:
+  - amd-sev-snp
+  - intel-tdx
+  - tpm2
+
+owasp_coverage:
+  ASI-03: scope attenuation, a child grant cannot exceed its parent's authority
+  ASI-06: linked TRACE records per hop, tamper-evident delegation DAG
+  ASI-08: verifiable provenance across A to B to C without trusting an operator
