@@ -17,7 +17,24 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+import yaml
+
 REPO_ROOT = Path(__file__).parent.parent
+
+
+def _governed_capabilities() -> list[str]:
+    """The governed-capability inventory the enforcement descriptor declares.
+
+    These are cA2A's registered actions: a delegated scope is honored only when
+    its capabilities appear here and the local Cedar policy permits them.
+    """
+    path = REPO_ROOT / "governance" / "ca2a-enforcement.yaml"
+    try:
+        doc = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    except (FileNotFoundError, yaml.YAMLError):
+        return []
+    caps = doc.get("governed_capabilities", [])
+    return [str(c) for c in caps] if isinstance(caps, list) else []
 
 
 def _pkg_version(package: str) -> str:
@@ -44,7 +61,7 @@ def generate_evidence() -> dict:
             "policy_files_loaded": [
                 "governance/ca2a-enforcement.yaml",
             ],
-            "registered_tools": [],
+            "registered_tools": _governed_capabilities(),
             "audit_sink": {
                 "enabled": True,
                 "target": "src/ca2a_runtime/delegation/credential.py",
