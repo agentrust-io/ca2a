@@ -30,6 +30,9 @@ Already implemented and tested elsewhere; cA2A depends on it rather than reimple
 
 Real hardware attestation verification (SEV-SNP VCEK chain, Intel TDX quote via QVL/PCS, TPM AK cert + checkquote). This is a dependency for any cross-operator trust claim, single-agent or multi-agent, and is shared with cmcp. At least one real hardware backend must land before cA2A is marketed as attested across trust domains, so the demo matches the claim.
 
+- **SEV-SNP verifier: landed.** Report parsing, VCEK chain verification (validated against the real AMD Milan root), ECDSA-P384 report-signature verification, and measurement/report-data binding, all fail-closed. Report generation still requires a real SEV-SNP guest. See `ca2a_verify.sev_snp` and [docs/spec/attestation.md](docs/spec/attestation.md).
+- **Pending:** Intel TDX and TPM backends; end-to-end validation of the report-signature path against real hardware vectors; then unblock claim C6 (cross-operator attestation).
+
 ## v1.0: Stable profile
 
 - Stable delegation credential and TRACE link schema with documented versioning guarantees

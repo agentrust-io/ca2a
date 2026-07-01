@@ -6,5 +6,6 @@ hardware backends are Tier 3 (see ROADMAP.md) and fail closed until implemented.
 """
 
 from ca2a_runtime.tee.base import AttestationReport, BaseProvider
+from ca2a_runtime.tee.sev_snp import SevSnpProvider, SevSnpReport
 
-__all__ = ["AttestationReport", "BaseProvider"]
+__all__ = ["AttestationReport", "BaseProvider", "SevSnpProvider", "SevSnpReport"]

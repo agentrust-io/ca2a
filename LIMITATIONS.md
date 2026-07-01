@@ -11,7 +11,7 @@ cA2A is a pre-release profile in active design. This document states plainly wha
 
 - **Runtime peer-delegation enforcement.** The runtime does not yet accept a delegation credential on a live inbound peer call, verify it in the request path, and intersect the delegated scope with a local Cedar policy. This is Tier 2 on the roadmap.
 - **Sealed peer channel.** Payloads are not yet sealed to a peer's attested measurement. Until this lands, do not send confidential task payloads across a trust boundary and assume they are protected.
-- **Real hardware attestation.** Attestation verification fails closed and the hardware signature/quote step is not implemented (SEV-SNP VCEK chain, Intel TDX quote via QVL/PCS, TPM AK cert + checkquote). Until at least one real backend lands, cA2A must not be described as attested across trust domains. This is Tier 3 and is a shared critical path with cmcp.
+- **Real hardware attestation.** The **SEV-SNP verifier is implemented**: report parsing, VCEK certificate chain verification, ECDSA-P384 report-signature verification, and measurement/report-data binding, all fail-closed. The chain path is validated against the genuine AMD Milan root chain; the report-signature path is validated with synthetic vectors, since a real report plus VCEK pair needs SEV-SNP hardware. Report generation (`SevSnpProvider.attest`) still requires a real SEV-SNP guest. **Intel TDX and TPM backends are not yet implemented (Tier 3).** Until a backend verifies a real quote end to end against a golden measurement on hardware, cA2A must not be described as fully attested across trust domains.
 
 ## Out of scope
 
