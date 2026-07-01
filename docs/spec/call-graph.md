@@ -2,7 +2,7 @@
 
 When a cA2A peer receives an inbound A2A task, it runs a fixed sequence of checks before it acts on the task and after it acts. The order is not arbitrary: cheap, offline, deterministic checks run first, and each step fails closed so a later step never runs against unverified input. This page states the full intended enforcement order and marks, for each step, what the code does today versus what is design.
 
-Steps 1 (chain verification), 3 (scope intersection), and 5 (provenance emission) are implemented as a decision core in `ca2a_runtime.peer.enforce_peer_call`. Step 2 has a SEV-SNP verifier (`ca2a_verify.sev_snp`) but is not yet wired into the call path and needs real hardware to produce a report; step 4 (sealing) is not implemented. What remains for a live deployment is wiring the decision core to an actual inbound A2A transport, plus the attestation and sealing steps. See [LIMITATIONS.md](../../LIMITATIONS.md) and [ROADMAP.md](../../ROADMAP.md).
+Steps 1 (chain verification), 3 (scope intersection), 4 (opening a sealed payload), and 5 (provenance emission) are composed into one transport-agnostic handler, `ca2a_runtime.peer.handle_peer_request`, which takes a parsed `PeerRequest` and runs the pipeline fail-closed. Step 2 has a SEV-SNP verifier (`ca2a_verify.sev_snp`), used counterparty-side to seal to a peer before sending (see the cross-operator flow), but is not part of the callee handler and needs real hardware to produce a report. What remains for a live deployment is a transport that parses actual A2A wire messages into a `PeerRequest`; cA2A leaves that to implementers by design (profile, not protocol). See [LIMITATIONS.md](../../LIMITATIONS.md) and [ROADMAP.md](../../ROADMAP.md).
 
 ## Decision flow
 
@@ -39,7 +39,8 @@ If any step raises, the call is denied. Absence of evidence is denial, not a war
 | 3. Scope intersection | Delegated scope intersected with local policy | `ca2a_runtime.peer.effective_scope`, `enforce_peer_call` | Implemented (decision core); Cedar engine binding pending (#10) |
 | 4. Payload sealing | Payload sealed to the peer's attested key | `SealedChannel.seal`, `open_sealed` | Implemented (crypto); binding to a verified report on the live path pending |
 | 5. Provenance record | A `DelegationRecord` emitted and linked to its parent | `enforce_peer_call`, `record_for`, `verify_dag` | Implemented (emitted by the decision core) |
-| Live A2A transport wiring | The decision core runs off an actual inbound A2A request | (design) | Pending, Tier 2 |
+| Inbound pipeline handler | Verify, enforce, open sealed payload, emit record off a parsed request | `handle_peer_request`, `PeerRequest` | Implemented (transport-agnostic) |
+| A2A wire parsing into a `PeerRequest` | Parse actual A2A extension fields into the handler's input | (implementer/transport) | Left to implementers by design |
 
 ## Step 1: verify the delegation chain (implemented)
 
