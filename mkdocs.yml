@@ -120,14 +120,25 @@ nav:
   - Configuration: docs/configuration.md
   - Tutorials:
       - Verify a delegation chain: docs/tutorials/verify-a-delegation-chain.md
+      - Authoring a delegation credential: docs/tutorials/authoring-a-delegation-credential.md
+      - Emit and verify provenance: docs/tutorials/emit-and-verify-provenance.md
+      - Reproducing the claims: docs/tutorials/reproducing-the-claims.md
+      - Integrating with A2A: docs/tutorials/integrating-with-a2a.md
   - Specification:
       - Overview: docs/SPEC.md
       - A2A Profile: docs/spec/profile.md
+      - Transport Binding: docs/spec/transport.md
+      - Component Model: docs/spec/component-model.md
+      - Inbound Peer-Call Decision: docs/spec/call-graph.md
       - Delegation Chain: docs/spec/delegation-chain.md
+      - Provenance DAG: docs/spec/provenance-dag.md
       - Sealed Peer Channel: docs/spec/sealed-channel.md
       - Attestation: docs/spec/attestation.md
+      - Scope-Policy Intersection: docs/spec/cedar-policy.md
       - TRACE A2A Profile: docs/spec/trace-a2a-profile.md
       - Verification Library: docs/spec/verification-library.md
+      - Error Codes: docs/spec/error-codes.md
+      - Failure Modes: docs/spec/failure-modes.md
       - Threat Model: docs/spec/threat-model.md
   - Project:
       - Limitations: LIMITATIONS.md
