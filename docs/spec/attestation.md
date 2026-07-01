@@ -16,14 +16,24 @@ An `AttestationReport` carries `platform`, `measurement`, the bound `public_key`
 | Provider | Platform | Status |
 |---|---|---|
 | `software-only` | none | Available; for development and CI. Reports `platform: software-only`, never a hardware platform string. |
+| `sev-snp` | AMD SEV-SNP | Verifier implemented (see below). Report generation requires a real SEV-SNP guest. |
 | `tpm` | TPM 2.0 / vTPM | Tier 3, not yet implemented |
-| `sev-snp` | AMD SEV-SNP | Tier 3, not yet implemented |
 | `tdx` | Intel TDX | Tier 3, not yet implemented |
 | `opaque` | OPAQUE Confidential Runtime | Tier 3, explicit opt-in, not auto-selected |
 
+## SEV-SNP verification
+
+`ca2a_verify.sev_snp.verify_sev_snp_report` appraises an AMD SEV-SNP attestation report offline, in three fail-closed steps:
+
+1. **Certificate chain.** The VCEK is verified up to a trusted AMD root (ARK) through `ARK -> ASK -> VCEK`. Each certificate must be validly issued by the next, and the root must match a trusted anchor by fingerprint.
+2. **Report signature.** The ECDSA-P384 signature (stored as little-endian `r` and `s`) is verified against the VCEK public key over the report body (`report[:0x2A0]`).
+3. **Binding.** The launch `measurement` and the `report_data` (which carries the runtime key and nonce) are checked against expected values.
+
+**What is validated.** The chain-verification path is exercised against the genuine AMD Milan ARK/ASK root chain fetched from AMD KDS (`tests/fixtures/sev_snp/`). The report-signature path is exercised end to end with a synthetic VCEK and report, because a genuine report plus VCEK pair requires real SEV-SNP hardware. Producing a report (`SevSnpProvider.attest`) fails closed off hardware (`AttestationUnsupported`).
+
 ## Fail closed
 
-Hardware providers `detect()` to False until their backend lands, so they are never selected automatically, and verification fails closed when evidence is absent. This is deliberate: cA2A must not be described as attested across trust domains until at least one real hardware backend verifies a quote. See [LIMITATIONS.md](../../LIMITATIONS.md).
+Providers without a backend `detect()` to False, so they are never selected automatically, and verification fails closed when evidence is absent or invalid. This is deliberate: cA2A must not be described as attested across trust domains until a real hardware backend verifies a quote against a golden measurement. TDX and TPM backends remain Tier 3. See [LIMITATIONS.md](../../LIMITATIONS.md).
 
 ## Why this is the critical path
 
