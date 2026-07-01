@@ -73,3 +73,11 @@ class ProvenanceLinkBroken(CA2AError):
 
     code = "PROVENANCE_LINK_BROKEN"
     http_status = 409
+
+
+class ScopeNotPermitted(CA2AError):
+    """A requested capability is not in the effective scope (the delegated
+    scope intersected with the callee's local policy)."""
+
+    code = "SCOPE_NOT_PERMITTED"
+    http_status = 403

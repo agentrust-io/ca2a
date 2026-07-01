@@ -6,7 +6,7 @@ When a peer accepts a delegated task, two independent trust decisions meet. The 
 effective = delegated_scope ∩ local_policy_allow
 ```
 
-This page describes the intended design. It is Tier 2 on the roadmap and is **not yet implemented**. There is no call-time enforcement point in the runtime today, and no binding between a verified delegated scope and a Cedar engine. See [ROADMAP.md](../../ROADMAP.md) and [LIMITATIONS.md](../../LIMITATIONS.md).
+**Status.** The intersection semantics are **implemented** as an enforcement decision core in `ca2a_runtime.peer` (`effective_scope`, `enforce_peer_call`) against a `ca2a_runtime.policy.LocalPolicy` capability allow set, and validated by experiment C3. Two pieces remain: binding a full **Cedar policy engine** as the local policy (this page's title; the semantics are policy-language-agnostic and the allow-set model stands in today, tracked as #10), and wiring the decision core to a **live A2A transport** rather than a direct call. See [call-graph.md](call-graph.md), [ROADMAP.md](../../ROADMAP.md), and [LIMITATIONS.md](../../LIMITATIONS.md).
 
 ## Why an intersection
 
