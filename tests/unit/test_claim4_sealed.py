@@ -1,55 +1,41 @@
 """Claim 4: sealed-payload confidentiality.
 
-The confidentiality property (payload decrypts only inside the attested peer
-measurement) is GATED on Tier 2 and is not implemented in this release. What we
-can and do test now is the fail-closed contract of the placeholder: seal() and
-open() raise SealedChannelError instead of silently emitting plaintext. The
-confidentiality property itself is a skipped placeholder pending Tier 2.
+A payload sealed to a peer's attested key decrypts only with the private key
+bound to that peer's enclave. Validated here at the cryptographic layer: the
+sealed blob hides the plaintext, only the peer's private key opens it, and any
+tampering fails closed. The guarantee that the private key never leaves the
+enclave is what attestation establishes on real hardware; that end-to-end
+binding on a live call remains runtime wiring (see ROADMAP.md).
 """
 
 from __future__ import annotations
 
 import pytest
+from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 
-from ca2a_runtime.channel import SealedChannel
+from ca2a_runtime.channel import SealedChannel, generate_channel_keypair, open_sealed
 from ca2a_runtime.errors import SealedChannelError
 
-PEER_MEASUREMENT = "sha256:" + "ab" * 32
 
-
-def test_seal_fails_closed() -> None:
-    channel = SealedChannel(peer_measurement=PEER_MEASUREMENT)
-    with pytest.raises(SealedChannelError):
-        channel.seal(b"confidential task payload")
-
-
-def test_open_fails_closed() -> None:
-    channel = SealedChannel(peer_measurement=PEER_MEASUREMENT)
-    with pytest.raises(SealedChannelError):
-        channel.open(b"sealed blob")
-
-
-def test_seal_error_carries_tier2_signal() -> None:
-    channel = SealedChannel(peer_measurement=PEER_MEASUREMENT)
-    with pytest.raises(SealedChannelError) as excinfo:
-        channel.seal(b"confidential task payload")
-    exc = excinfo.value
-    assert exc.code == "SEALED_CHANNEL_ERROR"
-    assert exc.detail is not None
-    assert "Tier 2" in exc.detail
-
-
-@pytest.mark.skip(
-    reason="Confidentiality property gated on Tier 2: the enclave-sealing "
-    "backend (payload decrypts only under the attested peer measurement) is "
-    "not implemented in this release. See ROADMAP.md."
-)
-def test_payload_decrypts_only_under_attested_peer_measurement() -> None:
-    channel = SealedChannel(peer_measurement=PEER_MEASUREMENT)
+def test_payload_decrypts_only_with_peer_private_key() -> None:
+    peer_priv, peer_pub = generate_channel_keypair()
     payload = b"confidential task payload"
-    sealed = channel.seal(payload)
-    assert sealed != payload
-    assert channel.open(sealed) == payload
-    wrong_peer = SealedChannel(peer_measurement="sha256:" + "cd" * 32)
+
+    sealed = SealedChannel(peer_pub).seal(payload)
+    assert payload not in sealed  # the transport sees ciphertext
+
+    # The peer (holder of the enclave-bound private key) recovers it.
+    assert open_sealed(sealed, peer_priv) == payload
+
+    # Anyone else, including another attested peer, cannot.
+    other_priv = X25519PrivateKey.generate()
     with pytest.raises(SealedChannelError):
-        wrong_peer.open(sealed)
+        open_sealed(sealed, other_priv)
+
+
+def test_tampered_sealed_payload_fails_closed() -> None:
+    peer_priv, peer_pub = generate_channel_keypair()
+    sealed = bytearray(SealedChannel(peer_pub).seal(b"confidential task payload"))
+    sealed[-1] ^= 0xFF
+    with pytest.raises(SealedChannelError):
+        open_sealed(bytes(sealed), peer_priv)

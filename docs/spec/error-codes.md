@@ -15,18 +15,17 @@ An error also carries a human-readable message and an optional `detail`. The mes
 | `BrokenDelegationLink` | `BROKEN_DELEGATION_LINK` | 409 | A hop does not chain to its stated parent, or continuity is broken: empty chain, a root credential that names a parent or has nonzero depth, a hop whose parent link or subject does not match the previous hop, or a hop depth that is not previous + 1. |
 | `DelegationDepthExceeded` | `DELEGATION_DEPTH_EXCEEDED` | 403 | A chain is longer than the configured `max_delegation_depth`. Raised by `verify_chain`. |
 | `CredentialReplay` | `CREDENTIAL_REPLAY` | 409 | A `credential_id` appears more than once in a single chain. Raised by `verify_chain`. |
-| `AttestationUnsupported` | `ATTESTATION_UNSUPPORTED` | 500 | An attestation provider was requested that the host cannot supply. Reserved for the Tier 3 hardware backends; see [Peer Attestation](attestation.md). |
-| `AttestationFailed` | `ATTESTATION_FAILED` | 412 | Attestation evidence was present but did not verify against the expected measurement. Reserved for the Tier 3 hardware backends; see [Peer Attestation](attestation.md). |
-| `SealedChannelError` | `SEALED_CHANNEL_ERROR` | 500 | The measurement-bound peer channel could not seal or open a payload. Today the sealed channel is a Tier 2 placeholder that fails closed: `seal` and `open` always raise this. See [Sealed Channel](sealed-channel.md). |
+| `AttestationUnsupported` | `ATTESTATION_UNSUPPORTED` | 500 | An attestation provider was requested that the host cannot supply. Raised by `SevSnpProvider.attest` off SEV-SNP hardware; also reserved for the TDX/TPM backends. See [Peer Attestation](attestation.md). |
+| `AttestationFailed` | `ATTESTATION_FAILED` | 412 | Attestation evidence was present but did not verify. Raised by the SEV-SNP verifier on a malformed report, an untrusted or broken certificate chain, a bad report signature, or a measurement / report-data mismatch. See [Peer Attestation](attestation.md). |
+| `SealedChannelError` | `SEALED_CHANNEL_ERROR` | 500 | The sealed peer channel could not construct or open a payload: an invalid peer public key, a malformed or unsupported sealed blob, a wrong key, or a tampered ciphertext (AEAD authentication failure). Fails closed; never returns unauthenticated plaintext. See [Sealed Channel](sealed-channel.md). |
 | `ProvenanceLinkBroken` | `PROVENANCE_LINK_BROKEN` | 409 | A `DelegationRecord` does not chain to its stated parent record, or a record was tampered with so its hash no longer matches a child's link: empty provenance chain, duplicate `record_id`, a root record that references a parent, a broken parent hash link, or a record whose `credential_id` or subject does not match the chain. Raised by `verify_dag` and `cross_check_chain`. |
+| `ScopeNotPermitted` | `SCOPE_NOT_PERMITTED` | 403 | A requested capability is not in the effective scope (the delegated leaf scope intersected with the callee's local policy). Raised by `enforce_peer_call`. |
 
 ## Which errors are live today
 
-`ConfigError`, `InvalidCredential`, `ScopeEscalation`, `BrokenDelegationLink`, `DelegationDepthExceeded`, `CredentialReplay`, and `ProvenanceLinkBroken` are raised by shipping code paths: attenuated delegation, offline chain verification, and the provenance DAG.
+`ConfigError`, `InvalidCredential`, `ScopeEscalation`, `BrokenDelegationLink`, `DelegationDepthExceeded`, `CredentialReplay`, and `ProvenanceLinkBroken` are raised by shipping code paths: attenuated delegation, offline chain verification, and the provenance DAG. `ScopeNotPermitted` is raised by the peer-call enforcement decision core (`enforce_peer_call`), and `SealedChannelError` by the sealed channel (`SealedChannel.seal`, `open_sealed`), both of which are implemented.
 
-`SealedChannelError` exists and is raised, but only because the sealed channel is a fail-closed placeholder. Any attempt to `seal` or `open` raises it. This is deliberate: cA2A must not carry confidential payloads across a trust boundary until Tier 2 lands. See [LIMITATIONS.md](../../LIMITATIONS.md).
-
-`AttestationUnsupported` and `AttestationFailed` are defined for the attestation path but are not exercised by a real hardware backend yet. The `software-only` provider is for development and CI and does not verify a hardware quote. Real verification is Tier 3. See [Peer Attestation](attestation.md) and [ROADMAP.md](../../ROADMAP.md).
+`AttestationFailed` is raised by the SEV-SNP verifier (chain, report signature, and measurement binding), and `AttestationUnsupported` by `SevSnpProvider.attest` off hardware. Producing a real report requires a SEV-SNP guest, and the TDX/TPM backends are not yet implemented. See [Peer Attestation](attestation.md) and [ROADMAP.md](../../ROADMAP.md).
 
 ## Handling errors
 

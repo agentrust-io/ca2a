@@ -1,21 +1,10 @@
-"""Tests for the fail-closed placeholders: sealed channel and TEE base."""
+"""Tests for the TEE base types."""
 
 from __future__ import annotations
 
 import pytest
 
-from ca2a_runtime.channel import SealedChannel
-from ca2a_runtime.errors import SealedChannelError
 from ca2a_runtime.tee import AttestationReport, BaseProvider
-
-
-def test_sealed_channel_fails_closed() -> None:
-    ch = SealedChannel(peer_measurement="sha256:abc")
-    assert ch.peer_measurement == "sha256:abc"
-    with pytest.raises(SealedChannelError):
-        ch.seal(b"secret task")
-    with pytest.raises(SealedChannelError):
-        ch.open(b"sealed blob")
 
 
 def test_attestation_report_is_frozen() -> None:

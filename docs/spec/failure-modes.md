@@ -110,24 +110,24 @@ Real hardware providers (`tpm`, `sev-snp`, `tdx`, `opaque`) return `False` from 
 
 The same principle applies with force here: a peer that cannot produce a verifiable measurement is denied the task, not granted it "unless proven bad." A valid A2A Signed Agent Card is not a substitute for attestation. A card says the domain owner issued it; it says nothing about whether the code behind the card is the code that was measured.
 
-## Sealed channel (not yet implemented; fails closed)
+## Sealed channel (implemented; fails closed)
 
-The sealed peer channel binds a payload key to a peer's attested measurement so the task decrypts only inside the peer's verified enclave. It is Tier 2 and **not yet implemented**. Critically, the placeholder does not degrade to plaintext. `SealedChannel.seal` and `SealedChannel.open` raise `SealedChannelError` rather than pass a payload in the clear:
+The sealed peer channel seals a payload to the key a peer's attestation vouches for, so only the holder of that private key can open it. `open_sealed` never returns unauthenticated plaintext: a malformed blob, a wrong key, or a tampered ciphertext raises `SealedChannelError`.
 
 ```python
-from ca2a_runtime.channel.sealed import SealedChannel
+from ca2a_runtime.channel import SealedChannel, generate_channel_keypair, open_sealed
 from ca2a_runtime.errors import SealedChannelError
 
-channel = SealedChannel(peer_measurement="...")
+peer_priv, peer_pub = generate_channel_keypair()   # peer side, in the enclave on hardware
+sealed = SealedChannel(peer_pub).seal(payload)      # sender side
 try:
-    wire = channel.seal(payload)
+    opened = open_sealed(sealed, peer_priv)         # only the peer's key opens it
 except SealedChannelError as exc:
-    # code == "SEALED_CHANNEL_ERROR"
-    # No plaintext was emitted. Do not send the payload.
+    # code == "SEALED_CHANNEL_ERROR": wrong key or tampered payload. No plaintext returned.
     abort(exc)
 ```
 
-Instantiation is allowed so the runtime can be wired against the interface, but the sealing operations fail closed. Do not send confidential task payloads across a trust boundary and assume they are protected until this lands. See [sealed-channel.md](sealed-channel.md) and [LIMITATIONS.md](../../LIMITATIONS.md).
+The property that the payload decrypts *only inside the attested measurement* rests on the private key being enclave-bound (a hardware property from attestation); binding the seal to a verified report on the live path is still to be wired. See [sealed-channel.md](sealed-channel.md) and [LIMITATIONS.md](../../LIMITATIONS.md).
 
 ## What is enforced today versus pending
 
@@ -139,9 +139,11 @@ Instantiation is allowed so the runtime can be wired against the interface, but 
 | Depth exceeded | `DELEGATION_DEPTH_EXCEEDED` | Enforced today |
 | Credential replay (within chain) | `CREDENTIAL_REPLAY` | Enforced today |
 | Provenance tamper or reparent | `PROVENANCE_LINK_BROKEN` | Enforced today |
-| Runtime peer-delegation enforcement in the live request path | `SCOPE_ESCALATION` / others | Pending Tier 2 |
-| Cedar scope intersection at the peer | (design) | Pending Tier 2 |
-| Sealed channel (fails closed, never emits plaintext) | `SEALED_CHANNEL_ERROR` | Interface only, Tier 2 |
-| Missing or failed attestation | `ATTESTATION_UNSUPPORTED` / `ATTESTATION_FAILED` | Fails closed; hardware backend Tier 3 |
+| Capability not in effective scope (delegated ∩ local policy) | `SCOPE_NOT_PERMITTED` | Enforced today (decision core) |
+| Sealed payload: wrong key or tampered ciphertext | `SEALED_CHANNEL_ERROR` | Enforced today (fails closed) |
+| SEV-SNP attestation: bad chain, signature, or measurement | `ATTESTATION_FAILED` | Enforced today (verifier); report needs hardware |
+| TDX / TPM attestation | `ATTESTATION_UNSUPPORTED` / `ATTESTATION_FAILED` | Pending Tier 3 |
+| Live A2A transport wiring of the decision core | `SCOPE_NOT_PERMITTED` / others | Pending Tier 2 |
+| Cedar policy engine binding for the local policy | (allow-set stands in) | Pending Tier 2 |
 
-The failures marked "enforced today" are exercised by the offline verifiers (`verify_chain`, `verify_chain_file`, `verify_dag`, `cross_check_chain`). The Tier 2/3 rows fail closed by design: the sealed channel raises instead of sending plaintext, and hardware attestation denies instead of trusting an unmeasured peer. What is not present is the live inbound request path that would apply chain verification, Cedar intersection, and sealing to a real peer call. That is Tier 2. See [LIMITATIONS.md](../../LIMITATIONS.md) and the [roadmap](../../ROADMAP.md) for sequencing.
+The failures marked "enforced today" are exercised by the offline verifiers (`verify_chain`, `verify_chain_file`, `verify_dag`, `cross_check_chain`), the peer-call decision core (`enforce_peer_call`), the sealed channel (`open_sealed`), and the SEV-SNP verifier. What is not yet present is the live inbound A2A request path that would drive chain verification, scope intersection, attestation, and sealing off a real peer call, and the binding of the seal to a verified report on that path. That is Tier 2. See [LIMITATIONS.md](../../LIMITATIONS.md) and the [roadmap](../../ROADMAP.md) for sequencing.
