@@ -39,5 +39,5 @@ Real hardware attestation verification (SEV-SNP VCEK chain, Intel TDX quote via 
 
 - Stable delegation credential and TRACE link schema with documented versioning guarantees
 - Full RATS/EAT conformance for peer attestation evidence
-- Conformance suite for "cA2A-compatible" claims
+- Conformance suite for "cA2A-compatible" claims: **landed** (`tests/conformance/`, normative README + runnable MUST-level checks, in CI). A production run on confidential-computing hardware is the remaining step for a hardware-attested claim.
 - OWASP liaison on the multi-agent threat mapping; ITI conversation on conformance

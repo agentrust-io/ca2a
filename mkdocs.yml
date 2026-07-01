@@ -137,6 +137,7 @@ nav:
       - Scope-Policy Intersection: docs/spec/cedar-policy.md
       - TRACE A2A Profile: docs/spec/trace-a2a-profile.md
       - Verification Library: docs/spec/verification-library.md
+      - Conformance: docs/spec/conformance.md
       - Error Codes: docs/spec/error-codes.md
       - Failure Modes: docs/spec/failure-modes.md
       - Threat Model: docs/spec/threat-model.md

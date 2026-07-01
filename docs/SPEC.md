@@ -27,7 +27,7 @@ cA2A is a profile, not a transport. It does not define how tasks are moved betwe
 
 ## Conformance
 
-An implementation may claim "cA2A-compatible" for a given version when it enforces, on an inbound peer call: delegation chain verification (signature, continuity, attenuation, anti-replay), peer attestation against an expected measurement, payload sealing to that measurement, and emission of a linked TRACE record. Conformance tests are on the roadmap for v1.0.
+An implementation may claim "cA2A-compatible" for a given version when it enforces, on an inbound peer call: delegation chain verification (signature, continuity, attenuation, anti-replay), peer attestation against an expected measurement, payload sealing to that measurement, and emission of a linked TRACE record. These requirements are defined as a numbered, runnable conformance suite; see [conformance](spec/conformance.md).
 
 ## Relationship to sibling specs
 
