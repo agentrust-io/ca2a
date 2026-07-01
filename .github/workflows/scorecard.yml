@@ -13,6 +13,9 @@ permissions: read-all
 jobs:
   scorecard:
     runs-on: ubuntu-latest
+    # Scorecard requires a public repo. Skip (neutral) while private; this runs
+    # for real once the repo is made public at launch.
+    if: github.event.repository.visibility == 'public'
     permissions:
       security-events: write
       id-token: write
