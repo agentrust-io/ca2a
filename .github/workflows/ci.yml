@@ -40,7 +40,7 @@ jobs:
         run: mypy src/ca2a_runtime/ src/ca2a_verify/
 
       - name: Test
-        run: pytest tests/unit/ -v --tb=short --cov=src --cov-report=xml
+        run: pytest tests/unit/ tests/conformance/ -v --tb=short --cov=src --cov-report=xml
 
       - name: Upload coverage report
         uses: codecov/codecov-action@v7
