@@ -8,6 +8,7 @@ hardware backends are Tier 3 (see ROADMAP.md) and fail closed until implemented.
 from ca2a_runtime.tee.base import AttestationReport, BaseProvider
 from ca2a_runtime.tee.sev_snp import SevSnpProvider, SevSnpReport
 from ca2a_runtime.tee.tdx import TdxProvider, TdxQuote
+from ca2a_runtime.tee.tpm import TpmProvider, TpmQuote
 
 __all__ = [
     "AttestationReport",
@@ -16,4 +17,6 @@ __all__ = [
     "SevSnpReport",
     "TdxProvider",
     "TdxQuote",
+    "TpmProvider",
+    "TpmQuote",
 ]
