@@ -32,8 +32,9 @@ Real hardware attestation verification (SEV-SNP VCEK chain, Intel TDX quote via 
 
 - **SEV-SNP verifier: landed.** Report parsing, VCEK chain verification (validated against the real AMD Milan root), ECDSA-P384 report-signature verification, and measurement/report-data binding, all fail-closed. Report generation still requires a real SEV-SNP guest. See `ca2a_verify.sev_snp` and [docs/spec/attestation.md](docs/spec/attestation.md).
 - **TDX verifier: landed.** DCAP Quote v4 parsing, PCK chain to the genuine Intel SGX Root CA, QE report signature, attestation-key binding, quote signature, and MRTD binding, all fail-closed. Quote generation requires a real TDX guest. See `ca2a_verify.tdx`.
+- **TPM 2.0 verifier: landed.** TPMS_ATTEST parsing, AK chain to a caller-supplied vendor root, AK signature (ECDSA or RSA), magic/type checks, and qualifying-data/PCR-digest binding, all fail-closed. Quote generation requires a real TPM. See `ca2a_verify.tpm`.
 - **Cross-operator attestation (C6): validated in software.** A two-operator harness (SEV-SNP verifier + measurement pinning + sealed channel) shows independent keys, mutual attestation, confidential cross-operator delegation, and binary-swap detection. All six claims (C1-C6) are now validated experiments.
-- **Pending:** the TPM backend; end-to-end validation of the SEV-SNP and TDX signature paths against real hardware quotes on a confidential VM; and a transport that parses real A2A wire messages into a `PeerRequest`.
+- **Pending:** end-to-end validation of the SEV-SNP, TDX, and TPM signature paths against real hardware quotes on a confidential VM; and a transport that parses real A2A wire messages into a `PeerRequest`.
 
 ## v1.0: Stable profile
 

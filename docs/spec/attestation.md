@@ -18,7 +18,7 @@ An `AttestationReport` carries `platform`, `measurement`, the bound `public_key`
 | `software-only` | none | Available; for development and CI. Reports `platform: software-only`, never a hardware platform string. |
 | `sev-snp` | AMD SEV-SNP | Verifier implemented (see below). Report generation requires a real SEV-SNP guest. |
 | `tdx` | Intel TDX | Verifier implemented (see below). Quote generation requires a real TDX guest. |
-| `tpm` | TPM 2.0 / vTPM | Tier 3, not yet implemented |
+| `tpm` | TPM 2.0 / vTPM | Verifier implemented (see below). Quote generation requires a real TPM. |
 | `opaque` | OPAQUE Confidential Runtime | Tier 3, explicit opt-in, not auto-selected |
 
 ## SEV-SNP verification
@@ -39,9 +39,15 @@ An `AttestationReport` carries `platform`, `measurement`, the bound `public_key`
 
 **What is validated.** The chain-verification path accepts the genuine self-signed Intel SGX Root CA fetched from Intel (`tests/fixtures/tdx/`) and rejects an untrusted root. The multi-level signature path (PCK to QE report to attestation key to quote) is exercised end to end with a synthetic self-consistent quote, because a genuine quote requires a TDX guest. Byte offsets follow the Intel DCAP Quote v4 layout; end-to-end validation against a real hardware quote requires a TDX guest and remains open.
 
+## TPM verification
+
+`ca2a_verify.tpm.verify_tpm_quote` appraises a TPM 2.0 quote (`TPMS_ATTEST`) offline: the AK certificate chain is verified to a trusted root, the AK signature over the attest blob is verified (ECDSA-SHA256 or RSA PKCS#1 v1.5), the structure is confirmed to be a TPM-generated quote (magic and type), and the qualifying data (the verifier's nonce) and the PCR digest (the platform measurement) are checked against expected values.
+
+**What is validated.** Unlike SEV-SNP and TDX, TPM attestation keys chain to per-vendor EK roots, so there is no single published root to validate against; the caller supplies the vendor roots it trusts, and the verifier is exercised against synthetic self-consistent vectors. Producing a quote (`TpmProvider.attest`) fails closed off a real TPM.
+
 ## Fail closed
 
-Providers without a backend `detect()` to False, so they are never selected automatically, and verification fails closed when evidence is absent or invalid. This is deliberate: cA2A must not be described as attested across trust domains until a real hardware backend verifies a quote against a golden measurement on hardware. The TPM backend remains Tier 3. See [LIMITATIONS.md](../../LIMITATIONS.md).
+Providers without a backend `detect()` to False, so they are never selected automatically, and verification fails closed when evidence is absent or invalid. This is deliberate: cA2A must not be described as attested across trust domains until a backend verifies a quote against a golden measurement on real hardware. See [LIMITATIONS.md](../../LIMITATIONS.md).
 
 ## Why this is the critical path
 

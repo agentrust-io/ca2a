@@ -91,5 +91,5 @@ warn_return_any = false
 files = ["src/ca2a_runtime", "src/ca2a_verify"]
 
 [[tool.mypy.overrides]]
-module = ["ca2a_runtime.tee.sev_snp", "ca2a_runtime.tee.tdx", "ca2a_verify.tdx", "ca2a_runtime.channel.sealed"]
+module = ["ca2a_runtime.tee.sev_snp", "ca2a_runtime.tee.tdx", "ca2a_runtime.tee.tpm", "ca2a_verify.tdx", "ca2a_verify.tpm", "ca2a_runtime.channel.sealed"]
 warn_unused_ignores = false
