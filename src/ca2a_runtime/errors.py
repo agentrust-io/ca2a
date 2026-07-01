@@ -65,3 +65,11 @@ class AttestationFailed(CA2AError):
 class SealedChannelError(CA2AError):
     code = "SEALED_CHANNEL_ERROR"
     http_status = 500
+
+
+class ProvenanceLinkBroken(CA2AError):
+    """A delegation record does not chain to its stated parent record, or a
+    record has been tampered with so its hash no longer matches a child's link."""
+
+    code = "PROVENANCE_LINK_BROKEN"
+    http_status = 409
