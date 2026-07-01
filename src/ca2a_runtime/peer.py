@@ -25,12 +25,12 @@ from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 from ca2a_runtime.channel import open_sealed
 from ca2a_runtime.delegation.credential import DelegationCredential, verify_chain
 from ca2a_runtime.errors import ScopeNotPermitted, SealedChannelError
-from ca2a_runtime.policy import LocalPolicy
+from ca2a_runtime.policy import Policy
 from ca2a_runtime.provenance import DelegationRecord, record_for
 
 
 def effective_scope(
-    chain: list[DelegationCredential], policy: LocalPolicy, *, max_depth: int = 8
+    chain: list[DelegationCredential], policy: Policy, *, max_depth: int = 8
 ) -> frozenset[str]:
     """Verify the chain and return the effective scope (delegated ∩ local policy).
 
@@ -53,7 +53,7 @@ def enforce_peer_call(
     chain: list[DelegationCredential],
     requested_capability: str,
     *,
-    policy: LocalPolicy,
+    policy: Policy,
     record_id: str,
     parent_record_hash: str | None = None,
     max_depth: int = 8,
@@ -107,7 +107,7 @@ class PeerResult:
 def handle_peer_request(
     request: PeerRequest,
     *,
-    policy: LocalPolicy,
+    policy: Policy,
     enclave_private_key: X25519PrivateKey | None = None,
     max_depth: int = 8,
 ) -> PeerResult:
