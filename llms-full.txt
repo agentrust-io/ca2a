@@ -1,0 +1,467 @@
+# cA2A
+
+> The secure, confidential profile for agent-to-agent (A2A) delegation. Attested, attenuated delegation with a sealed peer channel and offline-verifiable provenance, on top of the Agent2Agent (A2A) protocol.
+
+cA2A (Confidential A2A) is the secure, confidential way to do agent-to-agent delegation on the Agent2Agent (A2A) protocol. It is a trust profile, not a competing transport: it adds attested, attenuated delegation (each hop's authority is a provable subset of its parent's), runtime attestation of the peer, a sealed peer channel that binds the task payload to the peer's attested measurement, and an offline-verifiable provenance record per hop. If you are looking for a secure version of A2A for multi-agent systems, this is the AgenTrust profile for it. Reuses the delegation semantics from agent-manifest and the TEE and policy primitives from cMCP. Developer preview.
+
+# Getting started
+
+# cA2A: Confidential Agent-to-Agent
+
+### The secure, confidential profile for agent-to-agent (A2A) delegation
+
+**[Quick Start](#quick-start) · [Architecture](#how-it-works) · [Profile](#the-cA2A-profile) · [Changelog](https://ca2a.agentrust-io.com/CHANGELOG.md)**
+
+> **Pre-release draft.** cA2A is a profile in active design. The delegation semantics are implemented and tested in [agent-manifest](https://github.com/agentrust-io/agent-manifest); the runtime peer path and sealed channel in this repo are under construction. See [ROADMAP.md](https://ca2a.agentrust-io.com/ROADMAP/index.md) and [LIMITATIONS.md](https://ca2a.agentrust-io.com/LIMITATIONS/index.md) for exactly what is and is not built.
+
+**cA2A (Confidential A2A) is the secure, confidential way to do agent-to-agent delegation on the [Agent2Agent (A2A)](https://a2a-protocol.org/) protocol.** It layers attested, attenuated delegation, a sealed peer channel, and an offline-verifiable provenance record on top of A2A, without replacing the transport. If you are looking for a secure version of A2A for multi-agent systems, this is the AgenTrust profile for it.
+
+Agent A delegates a task to Agent B. B delegates part of it to C. Who authorized what? Did B stay inside the authority A actually held? Was the task payload readable by anyone between them? If a regulator asks, can you prove the answer for every hop?
+
+______________________________________________________________________
+
+## The problem
+
+A2A won the agent-to-agent transport war. Its trust model stops at the front door.
+
+The Signed Agent Card answers exactly one question: did the domain owner issue this card. It does not answer:
+
+- **Integrity.** Is the peer running attested, unmodified, governed code, or a tampered agent wearing a valid card.
+- **Authority.** When A delegates to B, does A actually hold the authority it is passing, and is B's grant a provable subset of it.
+- **Confidentiality.** The task payload A sends B crosses a network and lands in B's memory. If B is in another trust domain, nothing seals that payload to B's attested measurement.
+- **Provenance.** Across A to B to C, there is no unbroken, offline-verifiable chain of who delegated what to whom under which policy.
+
+The runtime credential layer is explicitly left to implementers. The common answers today, mTLS and OAuth scopes, secure the pipe and assert an identity. They do not attenuate authority, attest runtime integrity, or seal payloads to a measurement. That gap is the union of identity, capability, and provenance.
+
+cA2A closes it as a **profile on top of A2A**, not a competing transport.
+
+______________________________________________________________________
+
+## The cA2A profile
+
+cA2A is a trust profile layered on A2A, the way TRACE binds to IETF RATS, EAT, and SCITT rather than reinventing them. It composes four primitives, each already partly built across the agentrust-io stack:
+
+1. **Attenuated delegation.** Each hop carries a signed delegation credential whose scope is a provable subset of its parent. Child scope cannot exceed parent; depth is bounded; replay across chains is rejected. (Implemented in [agent-manifest](https://github.com/agentrust-io/agent-manifest).)
+1. **Runtime attestation.** A peer proves it is running attested, measured code before it is trusted with a delegated task. (TEE provider abstraction shared with [cmcp](https://github.com/agentrust-io/cmcp).)
+1. **Sealed peer channel.** The task payload is sealed to the peer's attested measurement, so it decrypts only inside the verified enclave.
+1. **Provenance record.** Each hop emits a TRACE record referencing the parent record hash and delegation credential id, producing an offline-verifiable delegation DAG.
+
+______________________________________________________________________
+
+## Quick Start
+
+```
+pip install ca2a-runtime
+```
+
+> The runtime peer path is under construction (see [ROADMAP.md](https://ca2a.agentrust-io.com/ROADMAP/index.md)). Today you can build and verify delegation chains offline:
+
+```
+ca2a verify-chain --chain ./examples/minimal/chain.json
+```
+
+See [docs/quickstart.md](https://ca2a.agentrust-io.com/docs/quickstart/index.md) for the full walkthrough.
+
+______________________________________________________________________
+
+## How it works
+
+```
+Agent A --(delegation cred, scope S_A)--> Agent B --(scope S_B ⊆ S_A)--> Agent C
+   |                                          |                             |
+ TRACE record                            TRACE record                  TRACE record
+ (root)                          (parent = hash(A), cred_id)     (parent = hash(B), cred_id)
+                                          |
+                              +-- verify chain: S_B ⊆ S_A ⊆ granted authority
+                              +-- verify peer attestation measurement
+                              +-- seal task payload to peer measurement
+                              +-- intersect delegated scope with local policy (Cedar)
+```
+
+1. A holds a delegation credential granting scope `S_A`. To hand work to B, A issues a child credential with scope `S_B ⊆ S_A`, signed over the RFC 8785 canonical form of the grant.
+1. Before B accepts the task, the cA2A runtime verifies the chain (each hop's signature and attenuation), verifies B's attestation measurement, and intersects `S_B` with B's local Cedar policy.
+1. The task payload is sealed to B's attested measurement, so only B's verified enclave can read it.
+1. Each hop emits a TRACE record linking to its parent, producing a delegation DAG any verifier can check offline without trusting an operator.
+
+______________________________________________________________________
+
+## Relationship to the agentrust-io stack
+
+| Project                                                          | Role in cA2A                                                                          |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| [agent-manifest](https://github.com/agentrust-io/agent-manifest) | Signed, attenuated delegation chain (the hardest primitive, already built)            |
+| [cmcp](https://github.com/agentrust-io/cmcp)                     | TEE provider abstraction, Cedar policy engine, audit chain, sealed channel primitives |
+| [trace-spec](https://github.com/agentrust-io/trace-spec)         | TRACE record format; cA2A adds the A2A delegation-link profile                        |
+
+______________________________________________________________________
+
+## Standards alignment
+
+| Standard                      | Coverage                                                       |
+| ----------------------------- | -------------------------------------------------------------- |
+| A2A (Linux Foundation / AAIF) | cA2A is a profile bound to A2A v1.x, not a competing transport |
+| OWASP Agentic AI Top 10       | Multi-agent delegation abuse, confused-deputy, provenance gaps |
+| RATS/EAT RFC 9711             | Peer attestation evidence; TRACE record is an EAT              |
+| IETF SCITT                    | Transparency and provenance for the delegation DAG             |
+
+______________________________________________________________________
+
+## Documentation
+
+| Page                                                                                               | Description                                 |
+| -------------------------------------------------------------------------------------------------- | ------------------------------------------- |
+| [docs/quickstart.md](https://ca2a.agentrust-io.com/docs/quickstart/index.md)                       | Build and verify a delegation chain offline |
+| [docs/concepts.md](https://ca2a.agentrust-io.com/docs/concepts/index.md)                           | How the four primitives compose             |
+| [docs/SPEC.md](https://ca2a.agentrust-io.com/docs/SPEC/index.md)                                   | The cA2A profile specification              |
+| [docs/spec/delegation-chain.md](https://ca2a.agentrust-io.com/docs/spec/delegation-chain/index.md) | Attenuated delegation semantics             |
+| [docs/spec/threat-model.md](https://ca2a.agentrust-io.com/docs/spec/threat-model/index.md)         | Adversary model and residual risks          |
+
+______________________________________________________________________
+
+## Contributing
+
+[CONTRIBUTING.md](https://ca2a.agentrust-io.com/CONTRIBUTING/index.md) · [GOVERNANCE.md](https://ca2a.agentrust-io.com/GOVERNANCE/index.md) · [Discussions](https://github.com/agentrust-io/ca2a/discussions)
+
+______________________________________________________________________
+
+## License
+
+MIT - see [LICENSE](https://ca2a.agentrust-io.com/LICENSE).
+
+# Quick Start
+
+This walkthrough builds a delegation chain and verifies it offline. It needs no hardware TEE and no network. It exercises the part of cA2A that is built today: attenuated delegation and offline chain verification.
+
+## Install
+
+```
+pip install ca2a-runtime
+```
+
+## Build an example chain
+
+The repo ships a generator that produces a valid three-hop chain (`admin` narrows to `read+write` narrows to `read`):
+
+```
+python scripts/gen_example_chain.py
+# wrote examples/minimal/chain.json
+```
+
+Each hop is a signed `DelegationCredential`. The scope of each hop is a subset of its parent, continuity is preserved (each issuer is the previous subject), and each hop links to its parent by `credential_id`.
+
+## Verify it
+
+```
+ca2a verify-chain --chain examples/minimal/chain.json
+# {"verified": true, "hops": 3, "leaf_scope": ["cap:read"]}
+```
+
+Verification checks four invariants and fails on the first violation:
+
+1. **Signature** on every hop against the issuer's Ed25519 public key.
+1. **Continuity**: each hop's issuer is the previous hop's subject.
+1. **Attenuation**: each hop's scope is a subset of its parent's scope.
+1. **Anti-replay**: `parent_id` links to the previous `credential_id` and every `credential_id` is unique.
+
+## Try to break it
+
+Edit `examples/minimal/chain.json` so a child hop adds a capability its parent did not hold, then re-run:
+
+```
+ca2a verify-chain --chain examples/minimal/chain.json
+# {"verified": false, "code": "SCOPE_ESCALATION", "error": "hop 1 scope exceeds parent grant"}
+```
+
+## Build a chain in code
+
+```
+from ca2a_runtime.delegation import DelegationCredential, new_keypair, verify_chain
+
+root_priv, root_pub = new_keypair()
+mid_priv, mid_pub = new_keypair()
+_, leaf_pub = new_keypair()
+
+root = DelegationCredential("c0", root_pub, mid_pub, frozenset({"cap:a", "cap:b"}), 0).sign(root_priv)
+child = DelegationCredential("c1", mid_pub, leaf_pub, frozenset({"cap:a"}), 1, parent_id="c0").sign(mid_priv)
+
+verify_chain([root, child])  # raises on any violation
+```
+
+## What is not in this walkthrough
+
+The runtime peer path (accepting a delegation credential on a live inbound A2A call, attesting the peer, sealing the payload) is under construction. See [ROADMAP.md](https://ca2a.agentrust-io.com/ROADMAP/index.md) and [LIMITATIONS.md](https://ca2a.agentrust-io.com/LIMITATIONS/index.md).
+
+# How It Works
+
+cA2A is a trust profile layered on A2A. It does not move tasks or replace the transport. It adds the trust guarantees A2A's Signed Agent Card leaves out, by composing four primitives.
+
+## The gap cA2A closes
+
+A2A's Signed Agent Card answers one question: did the domain owner issue this card. It does not establish that a peer runs attested code, that a delegating agent actually holds the authority it passes on, that the task payload is confidential to the peer, or that there is an unbroken record of who delegated what to whom. See [the threat model](https://ca2a.agentrust-io.com/docs/spec/threat-model/index.md) for the adversary this admits.
+
+## The four primitives
+
+### 1. Attenuated delegation
+
+Each hop carries a signed delegation credential. The scope granted at a hop must be a provable subset of its parent's scope. Depth is bounded, and a credential cannot be replayed into another chain. This is the hardest primitive to get right, and it is already implemented and tested in [agent-manifest](https://github.com/agentrust-io/agent-manifest); cA2A reuses those semantics. See [delegation chain](https://ca2a.agentrust-io.com/docs/spec/delegation-chain/index.md).
+
+### 2. Runtime attestation
+
+Before a peer is trusted with a delegated task, it proves it is running attested, measured code. cA2A reuses the pluggable TEE provider abstraction from cmcp: a provider produces an attestation report binding a public key to a hardware measurement. See [attestation](https://ca2a.agentrust-io.com/docs/spec/attestation/index.md).
+
+### 3. Sealed peer channel
+
+The task payload is sealed to the peer's attested measurement, so it decrypts only inside the peer's verified enclave. A connectivity provider or a peer in another trust domain sees ciphertext. See [sealed channel](https://ca2a.agentrust-io.com/docs/spec/sealed-channel/index.md).
+
+### 4. Provenance record
+
+Each hop emits a TRACE record that references its parent record's hash and the delegation credential id. Across A to B to C this produces a delegation DAG that any verifier can check offline, without trusting an operator. See [the TRACE A2A profile](https://ca2a.agentrust-io.com/docs/spec/trace-a2a-profile/index.md).
+
+## How they compose on a peer call
+
+```
+Agent A --(delegation cred, scope S_A)--> Agent B --(scope S_B ⊆ S_A)--> Agent C
+```
+
+1. A issues B a child credential with `S_B ⊆ S_A`, signed over the canonical form of the grant.
+1. Before B accepts, the cA2A runtime verifies the chain, verifies B's attestation measurement, and intersects `S_B` with B's local Cedar policy.
+1. The payload is sealed to B's measurement.
+1. B emits a TRACE record linking to A's record.
+
+## Profile, not protocol
+
+cA2A binds to A2A the way TRACE binds to IETF RATS, EAT, and SCITT: it is an overlay, not a competitor. This keeps it neutral across org, cloud, and TEE-vendor boundaries, which is the claim a vendor-anchored verifier cannot make.
+
+# Configuration
+
+The cA2A runtime reads a YAML config. The peer runtime path is under construction; this page documents the surface it consumes, validated today by `ca2a validate-config`.
+
+## Reference
+
+```
+attestation:
+  provider: auto            # auto | tpm | sev-snp | tdx | opaque | software-only
+  enforcement_mode: enforcing  # enforcing | advisory | silent
+
+max_delegation_depth: 8     # reject chains deeper than this
+listen_addr: "0.0.0.0:8443"
+
+policy_bundle_path: policy/  # optional: Cedar bundle for local scope intersection
+```
+
+## Fields
+
+| Field                          | Default        | Description                                                                                                                                                                    |
+| ------------------------------ | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `attestation.provider`         | `auto`         | TEE provider for peer attestation. `auto` selects the strongest available hardware; `software-only` requires no hardware. `opaque` is explicit opt-in and never auto-selected. |
+| `attestation.enforcement_mode` | `enforcing`    | `enforcing` denies peer calls that fail verification; `advisory` logs and proceeds; `silent` evaluates without logging or blocking.                                            |
+| `max_delegation_depth`         | `8`            | Chains deeper than this are rejected with `DELEGATION_DEPTH_EXCEEDED`.                                                                                                         |
+| `listen_addr`                  | `0.0.0.0:8443` | Address the peer runtime listens on.                                                                                                                                           |
+| `policy_bundle_path`           | none           | Directory of Cedar policy the runtime intersects with a delegated scope.                                                                                                       |
+
+## Validate
+
+```
+ca2a validate-config --config examples/minimal/ca2a-config.yaml
+# ok: provider=auto enforcement=advisory
+```
+
+Invalid values fail fast with a `CONFIG_ERROR` and a message naming the offending field.
+# Specification
+
+# cA2A Profile Specification
+
+**Status**: draft, v0.1. This document describes the cA2A profile: a binding on A2A that makes agent-to-agent delegation attested, attenuated, confidential, and provable.
+
+## Scope of this document
+
+cA2A is a profile, not a transport. It does not define how tasks are moved between agents; A2A does that. It defines the trust envelope around a delegated task: what credential accompanies it, what a peer must prove before accepting it, how the payload is protected in transit and at rest in the peer, and what record is left behind.
+
+## Design tenets
+
+1. **Profile, not protocol.** Bind to A2A and to IETF RATS, EAT, and SCITT rather than reinvent them.
+1. **Neutral by construction.** No coupling to a single silicon vendor, cloud, or AI platform. This is the claim a vendor-anchored verifier cannot make.
+1. **Fail closed.** Absence of evidence is denial, not a warning. A missing attestation or an unverifiable chain denies the call.
+1. **Offline verifiable.** A third party can verify a delegation chain and its provenance DAG without contacting or trusting any operator.
+
+## Components
+
+| Component            | Specification                                                                                    |
+| -------------------- | ------------------------------------------------------------------------------------------------ |
+| A2A binding          | [profile.md](https://ca2a.agentrust-io.com/docs/spec/profile/index.md)                           |
+| Delegation chain     | [delegation-chain.md](https://ca2a.agentrust-io.com/docs/spec/delegation-chain/index.md)         |
+| Peer attestation     | [attestation.md](https://ca2a.agentrust-io.com/docs/spec/attestation/index.md)                   |
+| Sealed peer channel  | [sealed-channel.md](https://ca2a.agentrust-io.com/docs/spec/sealed-channel/index.md)             |
+| TRACE A2A profile    | [trace-a2a-profile.md](https://ca2a.agentrust-io.com/docs/spec/trace-a2a-profile/index.md)       |
+| Verification library | [verification-library.md](https://ca2a.agentrust-io.com/docs/spec/verification-library/index.md) |
+| Threat model         | [threat-model.md](https://ca2a.agentrust-io.com/docs/spec/threat-model/index.md)                 |
+
+## Conformance
+
+An implementation may claim "cA2A-compatible" for a given version when it enforces, on an inbound peer call: delegation chain verification (signature, continuity, attenuation, anti-replay), peer attestation against an expected measurement, payload sealing to that measurement, and emission of a linked TRACE record. These requirements are defined as a numbered, runnable conformance suite; see [conformance](https://ca2a.agentrust-io.com/docs/spec/conformance/index.md).
+
+## Relationship to sibling specs
+
+cA2A reuses the delegation semantics of [agent-manifest](https://github.com/agentrust-io/agent-manifest), the TEE and policy primitives of [cmcp](https://github.com/agentrust-io/cmcp), and the record format of [trace-spec](https://github.com/agentrust-io/trace-spec). The delegation-link fields are added to TRACE under the A2A profile.
+
+# A2A Profile Binding
+
+cA2A binds to A2A v1.x as an overlay. This page states what the profile adds and where it attaches, without modifying A2A itself.
+
+## What A2A provides
+
+A2A moves tasks and context between agents and authenticates a peer's domain via the Signed Agent Card. cA2A treats the Agent Card as the identity anchor and adds a trust envelope around each delegated task.
+
+## What cA2A adds
+
+| A2A element  | cA2A addition                                                                          |
+| ------------ | -------------------------------------------------------------------------------------- |
+| Agent Card   | An attestation measurement expectation for the peer, checked before a task is accepted |
+| Task message | A delegation credential naming issuer, subject, scope, depth, and parent link          |
+| Task payload | Sealing to the peer's attested measurement                                             |
+| (none)       | A TRACE record per hop linking to the parent, forming the delegation DAG               |
+
+## Attachment points
+
+cA2A does not change A2A wire formats. The delegation credential and the sealing metadata travel in A2A extension fields, so an A2A implementation that does not understand cA2A ignores them and a cA2A-aware peer enforces them. This is what keeps the profile an overlay rather than a fork.
+
+## Stability
+
+This binding targets A2A v1.x extension points. Confirming that those extension points are stable enough to bind to is a precondition on the roadmap; see [ROADMAP.md](https://ca2a.agentrust-io.com/ROADMAP/index.md).
+
+# Delegation Chain
+
+A delegation chain is a root-to-leaf list of signed credentials. It is the primitive that lets Agent A hand a bounded slice of its authority to B, and B a still-smaller slice to C, with each grant provably within the one above it.
+
+## Credential
+
+A `DelegationCredential` has the following signed body plus a detached signature:
+
+| Field           | Type           | Meaning                                             |
+| --------------- | -------------- | --------------------------------------------------- |
+| `credential_id` | string         | Unique id of this hop                               |
+| `issuer`        | hex            | Ed25519 public key of the delegator                 |
+| `subject`       | hex            | Ed25519 public key of the delegate                  |
+| `scope`         | set of strings | Capabilities granted at this hop                    |
+| `depth`         | int            | 0 at the root, +1 per hop                           |
+| `parent_id`     | string or null | `credential_id` of the parent hop; null at the root |
+| `signature`     | hex            | Ed25519 over the canonical body, by the issuer      |
+
+## Canonicalization
+
+The signed bytes are the RFC 8785 (JSON Canonicalization Scheme) encoding of the body: keys sorted by UTF-16 code units, JCS minimal string escaping, non-ASCII emitted literally as UTF-8, integers in shortest decimal form, `scope` as a sorted array. This is the byte string signed and verified. Using JCS makes cA2A signatures cross-verifiable with agent-manifest and any other conforming implementation. See `ca2a_runtime.canonical`.
+
+## Verification invariants
+
+`verify_chain` raises the specific error for the first invariant that fails:
+
+| Invariant                                                  | Error on violation                                     |
+| ---------------------------------------------------------- | ------------------------------------------------------ |
+| Every hop's signature verifies against its issuer          | `INVALID_CREDENTIAL`                                   |
+| Root has no parent and depth 0                             | `BROKEN_DELEGATION_LINK`                               |
+| Each hop's `parent_id` equals the previous `credential_id` | `BROKEN_DELEGATION_LINK`                               |
+| Each hop's issuer equals the previous hop's subject        | `BROKEN_DELEGATION_LINK`                               |
+| Each hop's depth is previous + 1, and at most `max_depth`  | `BROKEN_DELEGATION_LINK` / `DELEGATION_DEPTH_EXCEEDED` |
+| Each hop's scope is a subset of its parent's scope         | `SCOPE_ESCALATION`                                     |
+| No `credential_id` repeats                                 | `CREDENTIAL_REPLAY`                                    |
+
+## Attenuation is the whole point
+
+Attenuation, the guarantee that a child grant cannot exceed its parent, is the confused-deputy defense. Without it, B could accept a narrow task from A and then act with authority A never granted. The subset check on `scope` at every hop is what forecloses that.
+
+## Relationship to agent-manifest
+
+These semantics mirror the signed A2A delegation chain implemented and tested in [agent-manifest](https://github.com/agentrust-io/agent-manifest), including cross-manifest replay protection and HITL approval signing. cA2A's runtime calls that verifier on inbound peer requests; this module is the runtime-side model.
+
+# Peer Attestation
+
+Before a peer is trusted with a delegated task, it proves it is running attested, measured code. cA2A reuses the pluggable TEE provider abstraction from [cmcp](https://github.com/agentrust-io/cmcp).
+
+## Provider interface
+
+A provider implements `BaseProvider`:
+
+- `detect()` returns whether the provider is available on the current host.
+- `attest(public_key, nonce)` returns an `AttestationReport` binding `public_key` to the host's hardware measurement under `nonce`.
+
+An `AttestationReport` carries `platform`, `measurement`, the bound `public_key`, and the `nonce`.
+
+## Providers
+
+| Provider        | Platform                    | Status                                                                                                  |
+| --------------- | --------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `software-only` | none                        | Available; for development and CI. Reports `platform: software-only`, never a hardware platform string. |
+| `sev-snp`       | AMD SEV-SNP                 | Verifier implemented (see below). Report generation requires a real SEV-SNP guest.                      |
+| `tdx`           | Intel TDX                   | Verifier implemented (see below). Quote generation requires a real TDX guest.                           |
+| `tpm`           | TPM 2.0 / vTPM              | Verifier implemented (see below). Quote generation requires a real TPM.                                 |
+| `opaque`        | OPAQUE Confidential Runtime | Tier 3, explicit opt-in, not auto-selected                                                              |
+
+## SEV-SNP verification
+
+`ca2a_verify.sev_snp.verify_sev_snp_report` appraises an AMD SEV-SNP attestation report offline, in three fail-closed steps:
+
+1. **Certificate chain.** The VCEK is verified up to a trusted AMD root (ARK) through `ARK -> ASK -> VCEK`. Each certificate must be validly issued by the next, and the root must match a trusted anchor by fingerprint.
+1. **Report signature.** The ECDSA-P384 signature (stored as little-endian `r` and `s`) is verified against the VCEK public key over the report body (`report[:0x2A0]`).
+1. **Binding.** The launch `measurement` and the `report_data` (which carries the runtime key and nonce) are checked against expected values.
+
+**What is validated.** The chain-verification path is exercised against the genuine AMD Milan ARK/ASK root chain fetched from AMD KDS (`tests/fixtures/sev_snp/`). The report-signature path is exercised end to end with a synthetic VCEK and report, because a genuine report plus VCEK pair requires real SEV-SNP hardware. Producing a report (`SevSnpProvider.attest`) fails closed off hardware (`AttestationUnsupported`).
+
+**Cross-operator use.** Two operators in separate trust domains each bind their sealed-channel public key into a report and verify the counterparty's report against a pinned golden measurement. This composes into mutual attestation, confidential cross-operator delegation (seal to the attested key), and binary-swap detection (a changed measurement is rejected), validated in software as claim C6. See the [call graph](https://ca2a.agentrust-io.com/docs/spec/call-graph/index.md) and the `claim6-cross-operator-attestation` experiment.
+
+## TDX verification
+
+`ca2a_verify.tdx.verify_tdx_quote` appraises an Intel TDX quote (DCAP, ECDSA-256) offline in four fail-closed steps: the PCK certificate chain is verified up to a trusted Intel root; the Quoting Enclave report is verified against the PCK; the attestation key is confirmed to be the one the QE report data commits to (SHA-256 of the key and the QE auth data); and the attestation key's signature over the quote body is verified, along with the launch measurement (MRTD) and report data.
+
+**What is validated.** The chain-verification path accepts the genuine self-signed Intel SGX Root CA fetched from Intel (`tests/fixtures/tdx/`) and rejects an untrusted root. The multi-level signature path (PCK to QE report to attestation key to quote) is exercised end to end with a synthetic self-consistent quote, because a genuine quote requires a TDX guest. Byte offsets follow the Intel DCAP Quote v4 layout; end-to-end validation against a real hardware quote requires a TDX guest and remains open.
+
+## TPM verification
+
+`ca2a_verify.tpm.verify_tpm_quote` appraises a TPM 2.0 quote (`TPMS_ATTEST`) offline: the AK certificate chain is verified to a trusted root, the AK signature over the attest blob is verified (ECDSA-SHA256 or RSA PKCS#1 v1.5), the structure is confirmed to be a TPM-generated quote (magic and type), and the qualifying data (the verifier's nonce) and the PCR digest (the platform measurement) are checked against expected values.
+
+**What is validated.** Unlike SEV-SNP and TDX, TPM attestation keys chain to per-vendor EK roots, so there is no single published root to validate against; the caller supplies the vendor roots it trusts, and the verifier is exercised against synthetic self-consistent vectors. Producing a quote (`TpmProvider.attest`) fails closed off a real TPM.
+
+## Fail closed
+
+Providers without a backend `detect()` to False, so they are never selected automatically, and verification fails closed when evidence is absent or invalid. This is deliberate: cA2A must not be described as attested across trust domains until a backend verifies a quote against a golden measurement on real hardware. See [LIMITATIONS.md](https://ca2a.agentrust-io.com/LIMITATIONS/index.md).
+
+## Why this is the critical path
+
+Real hardware attestation verification (SEV-SNP VCEK chain from AMD KDS, Intel TDX quote via QVL/PCS, TPM AK cert plus checkquote) is a dependency for any cross-operator trust claim, single-agent or multi-agent. It is shared with cmcp and sequenced first on the roadmap so the demo matches the claim.
+
+# Threat Model
+
+cA2A defends the delegation path between agents. This page states the adversary, the assets, and what is and is not in scope.
+
+## Adversary
+
+A capable adversary who may:
+
+- Operate a peer agent in a trust domain cA2A does not control.
+- Present a valid A2A Signed Agent Card while running tampered or unmeasured code.
+- Sit on the network between two agents, or operate the host a peer runs on.
+- Attempt to widen a delegated grant, replay a credential into another chain, or reparent a provenance record.
+
+Out of adversary scope: breaking the underlying cryptographic primitives (Ed25519, the hash function), or compromising TEE firmware or hardware microcode. Those are the trust anchors.
+
+## Assets
+
+| Asset                                                             | Protected by                                                                                                   |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Bounded authority (a delegate must not exceed its grant)          | Scope attenuation in the [delegation chain](https://ca2a.agentrust-io.com/docs/spec/delegation-chain/index.md) |
+| Peer integrity (only measured code is trusted)                    | Peer [attestation](https://ca2a.agentrust-io.com/docs/spec/attestation/index.md)                               |
+| Task confidentiality (payload readable only by the intended peer) | [Sealed channel](https://ca2a.agentrust-io.com/docs/spec/sealed-channel/index.md)                              |
+| Provenance (an unforgeable record of who delegated what)          | [TRACE A2A profile](https://ca2a.agentrust-io.com/docs/spec/trace-a2a-profile/index.md) delegation DAG         |
+
+## Attacks and defenses
+
+| Attack                                                 | Defense                                                                         |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------- |
+| Confused deputy: B acts with authority A never granted | Attenuation: B's scope must be a subset of A's grant, checked per hop           |
+| Tampered peer wearing a valid Agent Card               | Attestation: measurement must match an expected value before a task is accepted |
+| Operator or network reads the task payload             | Sealing to the peer's measurement; the path sees ciphertext                     |
+| Credential replayed into another workflow              | Unique `credential_id` and parent-link checks in chain verification             |
+| Reparented or forged provenance                        | Linked TRACE records; the DAG is verified offline against the chain             |
+
+## Residual risks in this release
+
+Because attestation and sealing are not yet implemented (Tier 2/3), this release defends bounded authority and provenance-of-intent (via signed chains) but does **not** yet defend peer integrity or task confidentiality at runtime. Do not rely on cA2A for confidentiality across a trust boundary until the sealed channel and a real attestation backend land. See [LIMITATIONS.md](https://ca2a.agentrust-io.com/LIMITATIONS/index.md).

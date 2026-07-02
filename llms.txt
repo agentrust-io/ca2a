@@ -1,0 +1,21 @@
+# cA2A
+
+> The secure, confidential profile for agent-to-agent (A2A) delegation. Attested, attenuated delegation with a sealed peer channel and offline-verifiable provenance, on top of the Agent2Agent (A2A) protocol.
+
+cA2A (Confidential A2A) is the secure, confidential way to do agent-to-agent delegation on the Agent2Agent (A2A) protocol. It is a trust profile, not a competing transport: it adds attested, attenuated delegation (each hop's authority is a provable subset of its parent's), runtime attestation of the peer, a sealed peer channel that binds the task payload to the peer's attested measurement, and an offline-verifiable provenance record per hop. If you are looking for a secure version of A2A for multi-agent systems, this is the AgenTrust profile for it. Reuses the delegation semantics from agent-manifest and the TEE and policy primitives from cMCP. Developer preview.
+
+## Getting started
+
+- [Home](https://ca2a.agentrust-io.com/index.md)
+- [Quick Start](https://ca2a.agentrust-io.com/docs/quickstart/index.md)
+- [How It Works](https://ca2a.agentrust-io.com/docs/concepts/index.md)
+- [Configuration](https://ca2a.agentrust-io.com/docs/configuration/index.md)
+
+## Specification
+
+- [Overview](https://ca2a.agentrust-io.com/docs/SPEC/index.md)
+- [A2A Profile](https://ca2a.agentrust-io.com/docs/spec/profile/index.md)
+- [Delegation Chain](https://ca2a.agentrust-io.com/docs/spec/delegation-chain/index.md)
+- [Attestation](https://ca2a.agentrust-io.com/docs/spec/attestation/index.md)
+- [Threat Model](https://ca2a.agentrust-io.com/docs/spec/threat-model/index.md)
+
