@@ -63,7 +63,8 @@ jobs:
 
       - name: Generate build config
         run: |
-          sed 's|^docs_dir: \.$|docs_dir: .docs_build|' mkdocs.yml > .mkdocs_build.yml
+          # Strip CR before sed so the docs_dir match is robust to CRLF line endings.
+          tr -d '\r' < mkdocs.yml | sed 's|^docs_dir: \.$|docs_dir: .docs_build|' > .mkdocs_build.yml
 
       - name: Build and deploy to GitHub Pages
         run: mkdocs gh-deploy --force --clean --config-file .mkdocs_build.yml
