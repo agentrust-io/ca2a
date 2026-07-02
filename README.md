@@ -4,7 +4,7 @@
 
 # cA2A: Confidential Agent-to-Agent
 
-### Make agent-to-agent delegation verifiable and confidential, on top of A2A
+### The secure, confidential profile for agent-to-agent (A2A) delegation
 
 <p align="center">
   <a href="https://agentrust-io.github.io/ca2a">
@@ -24,6 +24,8 @@
 [![CI](https://github.com/agentrust-io/ca2a/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agentrust-io/ca2a/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/agentrust-io/ca2a/badge)](https://scorecard.dev/viewer/?uri=github.com/agentrust-io/ca2a)
 
 > **Pre-release draft.** cA2A is a profile in active design. The delegation semantics are implemented and tested in [agent-manifest](https://github.com/agentrust-io/agent-manifest); the runtime peer path and sealed channel in this repo are under construction. See [ROADMAP.md](ROADMAP.md) and [LIMITATIONS.md](LIMITATIONS.md) for exactly what is and is not built.
+
+**cA2A (Confidential A2A) is the secure, confidential way to do agent-to-agent delegation on the [Agent2Agent (A2A)](https://a2a-protocol.org/) protocol.** It layers attested, attenuated delegation, a sealed peer channel, and an offline-verifiable provenance record on top of A2A, without replacing the transport. If you are looking for a secure version of A2A for multi-agent systems, this is the AgenTrust profile for it.
 
 Agent A delegates a task to Agent B. B delegates part of it to C. Who authorized what? Did B stay inside the authority A actually held? Was the task payload readable by anyone between them? If a regulator asks, can you prove the answer for every hop?
 
