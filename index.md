@@ -35,7 +35,7 @@ cA2A is a trust profile layered on A2A, the way TRACE binds to IETF RATS, EAT, a
 
 1. **Attenuated delegation.** Each hop carries a signed delegation credential whose scope is a provable subset of its parent. Child scope cannot exceed parent; depth is bounded; replay across chains is rejected. (Implemented in [agent-manifest](https://github.com/agentrust-io/agent-manifest).)
 1. **Runtime attestation.** A peer proves it is running attested, measured code before it is trusted with a delegated task. (TEE provider abstraction shared with [cmcp](https://github.com/agentrust-io/cmcp).)
-1. **Sealed peer channel.** The task payload is sealed to the peer's attested measurement, so it decrypts only inside the verified enclave.
+1. **Sealed peer channel.** The task payload is sealed to the peer's attested measurement, so it decrypts only inside the verified enclave. *(Channel encryption is implemented; binding the seal to a **verified** attested measurement on a live call is on the roadmap. Until that lands, do not assume a payload is confined to a specific measurement — see [LIMITATIONS.md](https://ca2a.agentrust-io.com/LIMITATIONS/index.md).)*
 1. **Provenance record.** Each hop emits a TRACE record referencing the parent record hash and delegation credential id, producing an offline-verifiable delegation DAG.
 
 ______________________________________________________________________
@@ -74,6 +74,8 @@ Agent A --(delegation cred, scope S_A)--> Agent B --(scope S_B ⊆ S_A)--> Agent
 1. Before B accepts the task, the cA2A runtime verifies the chain (each hop's signature and attenuation), verifies B's attestation measurement, and intersects `S_B` with B's local Cedar policy.
 1. The task payload is sealed to B's attested measurement, so only B's verified enclave can read it.
 1. Each hop emits a TRACE record linking to its parent, producing a delegation DAG any verifier can check offline without trusting an operator.
+
+> **Status:** the delegation-chain verification and the provenance DAG (steps 1 and 4) are implemented and offline-verifiable today. The live inbound peer path (steps 2–3: verifying a peer's attestation on a real call and sealing the payload to a *verified* measurement) is under construction — see [LIMITATIONS.md](https://ca2a.agentrust-io.com/LIMITATIONS/index.md) and [ROADMAP.md](https://ca2a.agentrust-io.com/ROADMAP/index.md).
 
 ______________________________________________________________________
 
