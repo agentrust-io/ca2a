@@ -5,6 +5,8 @@ implementation is expected to satisfy the same behaviors.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import pytest
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
@@ -15,6 +17,7 @@ from ca2a_runtime.errors import (
     AttestationFailed,
     AttestationUnsupported,
     BrokenDelegationLink,
+    CA2AError,
     CredentialReplay,
     DelegationDepthExceeded,
     InvalidCredential,
@@ -25,13 +28,28 @@ from ca2a_runtime.errors import (
 )
 from ca2a_runtime.peer import PeerRequest, effective_scope, handle_peer_request
 from ca2a_runtime.policy import LocalPolicy
-from ca2a_runtime.provenance import cross_check_chain, record_for, verify_dag
+from ca2a_runtime.provenance import DelegationRecord, cross_check_chain, record_for, verify_dag
 from ca2a_runtime.tee.sev_snp import SevSnpProvider
 from ca2a_runtime.tee.tdx import TdxProvider
+from ca2a_verify import verify_delegation_chain
 from ca2a_verify.sev_snp import verify_sev_snp_report
 from ca2a_verify.tdx import verify_tdx_quote
 from tests.unit.conftest import build_chain, make_ec_cert, make_sev_snp_report
 from tests.unit.test_tdx import build_quote
+
+
+@dataclass(frozen=True)
+class _ActionEvidence:
+    trace_record_hash: str
+    credential_id: str
+    requested_capability: str
+    controller_decision: str = "accepted"
+
+
+@dataclass(frozen=True)
+class _ActionEvidenceResult:
+    classification: str
+    code: str
 
 
 def _narrowing():
@@ -49,6 +67,67 @@ def _records(chain):
         recs.append(rec)
         ph = rec.record_hash()
     return recs
+
+
+def _action_chain() -> list[DelegationCredential]:
+    return build_chain([
+        frozenset({"robot.move", "robot.inspect", "robot.stop"}),
+        frozenset({"robot.move", "robot.inspect"}),
+    ])
+
+
+def _action_evidence(
+    records: list[DelegationRecord],
+    *,
+    requested_capability: str = "robot.move",
+    controller_decision: str = "accepted",
+    credential_id: str | None = None,
+    trace_record_hash: str | None = None,
+) -> _ActionEvidence:
+    leaf = records[-1]
+    return _ActionEvidence(
+        trace_record_hash=trace_record_hash or leaf.record_hash(),
+        credential_id=credential_id or leaf.credential_id,
+        requested_capability=requested_capability,
+        controller_decision=controller_decision,
+    )
+
+
+def _verify_action_evidence(
+    chain: list[DelegationCredential],
+    records: list[DelegationRecord],
+    evidence: _ActionEvidence,
+    policy: LocalPolicy,
+) -> _ActionEvidenceResult:
+    try:
+        verify_delegation_chain(chain)
+        verify_dag(records)
+        cross_check_chain(records, chain)
+    except CA2AError as exc:
+        return _ActionEvidenceResult("provenance_invalid", exc.code)
+
+    leaf = records[-1]
+    if evidence.trace_record_hash != leaf.record_hash():
+        return _ActionEvidenceResult("provenance_invalid", ProvenanceLinkBroken.code)
+    if evidence.credential_id != leaf.credential_id:
+        return _ActionEvidenceResult("provenance_invalid", ProvenanceLinkBroken.code)
+
+    try:
+        handle_peer_request(
+            PeerRequest(
+                chain=chain,
+                requested_capability=evidence.requested_capability,
+                record_id="action-attempt",
+                parent_record_hash=leaf.record_hash(),
+            ),
+            policy=policy,
+        )
+    except ScopeNotPermitted as exc:
+        return _ActionEvidenceResult("authorization_invalid", exc.code)
+
+    if evidence.controller_decision == "rejected":
+        return _ActionEvidenceResult("valid_negative_outcome", "CONTROLLER_REJECTED")
+    return _ActionEvidenceResult("verified", "ACCEPTED")
 
 
 # --- Group 1: Delegation ---
@@ -232,3 +311,96 @@ def test_pipe_003_invalid_chain_rejected_first() -> None:
     req = PeerRequest(chain=bad, requested_capability="read", record_id="r0")
     with pytest.raises(ScopeEscalation):
         handle_peer_request(req, policy=LocalPolicy.of(["read", "write"]))
+
+
+# --- Group 7: Delegation-linked action evidence ---
+
+def test_action_001_valid_delegated_action_evidence() -> None:
+    chain = _action_chain()
+    records = _records(chain)
+    result = _verify_action_evidence(
+        chain,
+        records,
+        _action_evidence(records),
+        LocalPolicy.of(["robot.move", "robot.inspect"]),
+    )
+    assert result == _ActionEvidenceResult("verified", "ACCEPTED")
+
+
+def test_action_002_parent_trace_hash_mismatch_is_provenance_invalid() -> None:
+    chain = _action_chain()
+    records = _records(chain)
+    records[1] = DelegationRecord(
+        records[1].record_id,
+        records[1].credential_id,
+        records[1].subject,
+        records[1].scope,
+        parent_record_hash="sha256:wrong-parent",
+    )
+    result = _verify_action_evidence(
+        chain,
+        records,
+        _action_evidence(records),
+        LocalPolicy.of(["robot.move"]),
+    )
+    assert result == _ActionEvidenceResult("provenance_invalid", "PROVENANCE_LINK_BROKEN")
+
+
+def test_action_003_missing_parent_trace_record_is_provenance_invalid() -> None:
+    chain = _action_chain()
+    records = _records(chain)
+    result = _verify_action_evidence(
+        chain,
+        [records[1]],
+        _action_evidence(records),
+        LocalPolicy.of(["robot.move"]),
+    )
+    assert result == _ActionEvidenceResult("provenance_invalid", "PROVENANCE_LINK_BROKEN")
+
+
+def test_action_004_unknown_delegation_credential_id_is_provenance_invalid() -> None:
+    chain = _action_chain()
+    records = _records(chain)
+    result = _verify_action_evidence(
+        chain,
+        records,
+        _action_evidence(records, credential_id="unknown-credential"),
+        LocalPolicy.of(["robot.move"]),
+    )
+    assert result == _ActionEvidenceResult("provenance_invalid", "PROVENANCE_LINK_BROKEN")
+
+
+def test_action_005_action_outside_delegated_scope_is_authorization_invalid() -> None:
+    chain = _action_chain()
+    records = _records(chain)
+    result = _verify_action_evidence(
+        chain,
+        records,
+        _action_evidence(records, requested_capability="robot.stop"),
+        LocalPolicy.of(["robot.move", "robot.stop"]),
+    )
+    assert result == _ActionEvidenceResult("authorization_invalid", "SCOPE_NOT_PERMITTED")
+
+
+def test_action_006_local_policy_denial_is_authorization_invalid() -> None:
+    chain = _action_chain()
+    records = _records(chain)
+    result = _verify_action_evidence(
+        chain,
+        records,
+        _action_evidence(records, requested_capability="robot.inspect"),
+        LocalPolicy.of(["robot.move"]),
+    )
+    assert result == _ActionEvidenceResult("authorization_invalid", "SCOPE_NOT_PERMITTED")
+
+
+def test_action_007_controller_rejection_is_valid_negative_outcome() -> None:
+    chain = _action_chain()
+    records = _records(chain)
+    result = _verify_action_evidence(
+        chain,
+        records,
+        _action_evidence(records, controller_decision="rejected"),
+        LocalPolicy.of(["robot.move"]),
+    )
+    assert result == _ActionEvidenceResult("valid_negative_outcome", "CONTROLLER_REJECTED")

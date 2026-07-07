@@ -87,3 +87,17 @@ Spec: [call-graph.md](../../docs/spec/call-graph.md)
 | PIPE-001 | MUST | The handler grants only a capability in the effective scope and emits a linked provenance record. | Accepted call returns a verifiable record. |
 | PIPE-002 | MUST | A sealed payload with no enclave key available fails closed. | `SEALED_CHANNEL_ERROR`; no payload returned. |
 | PIPE-003 | MUST | An invalid delegation chain is rejected before any authorization or payload step. | The chain error is raised; no payload returned. |
+
+## Group 7: Delegation-linked action evidence
+
+Spec: [trace-a2a-profile.md](../../docs/spec/trace-a2a-profile.md), [provenance-dag.md](../../docs/spec/provenance-dag.md), [call-graph.md](../../docs/spec/call-graph.md)
+
+| ID | Level | Requirement | Expected outcome |
+|---|---|---|---|
+| ACTION-001 | MUST | A delegated action with a parent-linked TRACE/provenance record, matching credential id, and permitted capability verifies. | `verified`. |
+| ACTION-002 | MUST | A child action record whose parent record hash does not match the canonical parent record hash is rejected as provenance-invalid. | `PROVENANCE_LINK_BROKEN`. |
+| ACTION-003 | MUST | A non-root delegated action record without its parent record is rejected as provenance-invalid. | `PROVENANCE_LINK_BROKEN`. |
+| ACTION-004 | MUST | Action evidence naming a delegation credential id that is not the verified leaf credential is rejected as provenance-invalid. | `PROVENANCE_LINK_BROKEN`. |
+| ACTION-005 | MUST | A requested action outside the effective delegated scope is classified as authorization-invalid, not malformed provenance. | `SCOPE_NOT_PERMITTED`. |
+| ACTION-006 | MUST | A valid delegated action denied by local policy is classified as authorization-invalid, not malformed provenance. | `SCOPE_NOT_PERMITTED`. |
+| ACTION-007 | MUST | A valid delegated action whose controller outcome is negative remains valid evidence of a negative outcome. | `valid_negative_outcome`. |
