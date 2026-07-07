@@ -1,0 +1,25 @@
+{
+  "records": [
+    {
+      "record_id": "rec-0",
+      "credential_id": "cred-0",
+      "subject": "97e57072a0ee5ad5ca7886f5f8c8be313fc13e9fd1dfd38d18d019457bf15281",
+      "scope": [
+        "task:admin",
+        "task:read",
+        "task:write"
+      ],
+      "parent_record_hash": null
+    },
+    {
+      "record_id": "rec-1",
+      "credential_id": "cred-1",
+      "subject": "971c8fc1db051ad5ddf2884ce01cb1a8833b1c3eb1d1e14bb589ecbe8a9716fe",
+      "scope": [
+        "task:read",
+        "task:write"
+      ],
+      "parent_record_hash": "8eb94950658787327af0ebb91930f6f1eaa0464e53eac35cb6d116fbaf6d95cc"
+    }
+  ]
+}
