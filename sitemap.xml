@@ -2,122 +2,122 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://ca2a.agentrust-io.com/</loc>
-         <lastmod>2026-07-04</lastmod>
+         <lastmod>2026-07-07</lastmod>
     </url>
     <url>
          <loc>https://ca2a.agentrust-io.com/CHANGELOG/</loc>
-         <lastmod>2026-07-04</lastmod>
+         <lastmod>2026-07-07</lastmod>
     </url>
     <url>
          <loc>https://ca2a.agentrust-io.com/CONTRIBUTING/</loc>
-         <lastmod>2026-07-04</lastmod>
+         <lastmod>2026-07-07</lastmod>
     </url>
     <url>
          <loc>https://ca2a.agentrust-io.com/GOVERNANCE/</loc>
-         <lastmod>2026-07-04</lastmod>
+         <lastmod>2026-07-07</lastmod>
     </url>
     <url>
          <loc>https://ca2a.agentrust-io.com/LIMITATIONS/</loc>
-         <lastmod>2026-07-04</lastmod>
+         <lastmod>2026-07-07</lastmod>
     </url>
     <url>
          <loc>https://ca2a.agentrust-io.com/ROADMAP/</loc>
-         <lastmod>2026-07-04</lastmod>
+         <lastmod>2026-07-07</lastmod>
     </url>
     <url>
          <loc>https://ca2a.agentrust-io.com/docs/SPEC/</loc>
-         <lastmod>2026-07-04</lastmod>
+         <lastmod>2026-07-07</lastmod>
     </url>
     <url>
          <loc>https://ca2a.agentrust-io.com/docs/concepts/</loc>
-         <lastmod>2026-07-04</lastmod>
+         <lastmod>2026-07-07</lastmod>
     </url>
     <url>
          <loc>https://ca2a.agentrust-io.com/docs/configuration/</loc>
-         <lastmod>2026-07-04</lastmod>
+         <lastmod>2026-07-07</lastmod>
     </url>
     <url>
          <loc>https://ca2a.agentrust-io.com/docs/quickstart/</loc>
-         <lastmod>2026-07-04</lastmod>
+         <lastmod>2026-07-07</lastmod>
     </url>
     <url>
          <loc>https://ca2a.agentrust-io.com/docs/spec/attestation/</loc>
-         <lastmod>2026-07-04</lastmod>
+         <lastmod>2026-07-07</lastmod>
     </url>
     <url>
          <loc>https://ca2a.agentrust-io.com/docs/spec/call-graph/</loc>
-         <lastmod>2026-07-04</lastmod>
+         <lastmod>2026-07-07</lastmod>
     </url>
     <url>
          <loc>https://ca2a.agentrust-io.com/docs/spec/cedar-policy/</loc>
-         <lastmod>2026-07-04</lastmod>
+         <lastmod>2026-07-07</lastmod>
     </url>
     <url>
          <loc>https://ca2a.agentrust-io.com/docs/spec/component-model/</loc>
-         <lastmod>2026-07-04</lastmod>
+         <lastmod>2026-07-07</lastmod>
     </url>
     <url>
          <loc>https://ca2a.agentrust-io.com/docs/spec/conformance/</loc>
-         <lastmod>2026-07-04</lastmod>
+         <lastmod>2026-07-07</lastmod>
     </url>
     <url>
          <loc>https://ca2a.agentrust-io.com/docs/spec/delegation-chain/</loc>
-         <lastmod>2026-07-04</lastmod>
+         <lastmod>2026-07-07</lastmod>
     </url>
     <url>
          <loc>https://ca2a.agentrust-io.com/docs/spec/error-codes/</loc>
-         <lastmod>2026-07-04</lastmod>
+         <lastmod>2026-07-07</lastmod>
     </url>
     <url>
          <loc>https://ca2a.agentrust-io.com/docs/spec/failure-modes/</loc>
-         <lastmod>2026-07-04</lastmod>
+         <lastmod>2026-07-07</lastmod>
     </url>
     <url>
          <loc>https://ca2a.agentrust-io.com/docs/spec/profile/</loc>
-         <lastmod>2026-07-04</lastmod>
+         <lastmod>2026-07-07</lastmod>
     </url>
     <url>
          <loc>https://ca2a.agentrust-io.com/docs/spec/provenance-dag/</loc>
-         <lastmod>2026-07-04</lastmod>
+         <lastmod>2026-07-07</lastmod>
     </url>
     <url>
          <loc>https://ca2a.agentrust-io.com/docs/spec/sealed-channel/</loc>
-         <lastmod>2026-07-04</lastmod>
+         <lastmod>2026-07-07</lastmod>
     </url>
     <url>
          <loc>https://ca2a.agentrust-io.com/docs/spec/threat-model/</loc>
-         <lastmod>2026-07-04</lastmod>
+         <lastmod>2026-07-07</lastmod>
     </url>
     <url>
          <loc>https://ca2a.agentrust-io.com/docs/spec/trace-a2a-profile/</loc>
-         <lastmod>2026-07-04</lastmod>
+         <lastmod>2026-07-07</lastmod>
     </url>
     <url>
          <loc>https://ca2a.agentrust-io.com/docs/spec/transport/</loc>
-         <lastmod>2026-07-04</lastmod>
+         <lastmod>2026-07-07</lastmod>
     </url>
     <url>
          <loc>https://ca2a.agentrust-io.com/docs/spec/verification-library/</loc>
-         <lastmod>2026-07-04</lastmod>
+         <lastmod>2026-07-07</lastmod>
     </url>
     <url>
          <loc>https://ca2a.agentrust-io.com/docs/tutorials/authoring-a-delegation-credential/</loc>
-         <lastmod>2026-07-04</lastmod>
+         <lastmod>2026-07-07</lastmod>
     </url>
     <url>
          <loc>https://ca2a.agentrust-io.com/docs/tutorials/emit-and-verify-provenance/</loc>
-         <lastmod>2026-07-04</lastmod>
+         <lastmod>2026-07-07</lastmod>
     </url>
     <url>
          <loc>https://ca2a.agentrust-io.com/docs/tutorials/integrating-with-a2a/</loc>
-         <lastmod>2026-07-04</lastmod>
+         <lastmod>2026-07-07</lastmod>
     </url>
     <url>
          <loc>https://ca2a.agentrust-io.com/docs/tutorials/reproducing-the-claims/</loc>
-         <lastmod>2026-07-04</lastmod>
+         <lastmod>2026-07-07</lastmod>
     </url>
     <url>
          <loc>https://ca2a.agentrust-io.com/docs/tutorials/verify-a-delegation-chain/</loc>
-         <lastmod>2026-07-04</lastmod>
+         <lastmod>2026-07-07</lastmod>
     </url>
 </urlset>
