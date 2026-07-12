@@ -1,0 +1,23 @@
+{
+  "jsonrpc": "2.0",
+  "id": "1",
+  "method": "SendMessage",
+  "params": {
+    "message": {
+      "messageId": "msg-fixture-1",
+      "role": "user",
+      "parts": [
+        {
+          "text": "Run the delegated capability under the cA2A profile."
+        }
+      ],
+      "metadata": {
+        "https://example.com/ext/unrelated/v1/note": "preserved by non-cA2A peers",
+        "https://agentrust.io/extensions/ca2a/v0.1/delegation_chain": [],
+        "https://agentrust.io/extensions/ca2a/v0.1/requested_capability": "read",
+        "https://agentrust.io/extensions/ca2a/v0.1/record_id": "rec-fixture",
+        "https://agentrust.io/extensions/ca2a/v0.1/parent_record_hash": null
+      }
+    }
+  }
+}
