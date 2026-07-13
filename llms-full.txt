@@ -51,10 +51,10 @@ ______________________________________________________________________
 ## Quick Start
 
 ```
-pip install ca2a-runtime
+pip install --pre ca2a-runtime
 ```
 
-> The runtime peer path is under construction (see [ROADMAP.md](https://ca2a.agentrust-io.com/ROADMAP/index.md)). Today you can build and verify delegation chains offline:
+> cA2A is in alpha; `--pre` opts into the pre-release. The runtime peer path is under construction (see [ROADMAP.md](https://ca2a.agentrust-io.com/ROADMAP/index.md)). Today you can build and verify delegation chains offline:
 
 ```
 ca2a verify-chain --chain ./examples/minimal/chain.json
@@ -137,8 +137,10 @@ This walkthrough builds a delegation chain and verifies it offline. It needs no 
 ## Install
 
 ```
-pip install ca2a-runtime
+pip install --pre ca2a-runtime
 ```
+
+cA2A is in alpha, so `--pre` is required to opt into the pre-release. Contributors working from a checkout can instead install from source: `pip install -e ".[dev]"`.
 
 ## Build an example chain
 
