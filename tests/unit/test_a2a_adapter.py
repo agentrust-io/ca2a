@@ -117,6 +117,15 @@ def test_malformed_base64_sealed_payload_fails_closed() -> None:
     assert "base64url" in str(exc.value).lower() or "sealed_payload" in str(exc.value)
 
 
+@pytest.mark.parametrize("bad", ["abcd?", "ab cd", "ab==cd", "a+b/c", "%%%%"])
+def test_sealed_payload_outside_base64url_alphabet_fails_closed(bad: str) -> None:
+    # base64.urlsafe_b64decode silently ignores stray characters, so these must
+    # be rejected explicitly rather than accepted as opaque bytes.
+    with pytest.raises(TransportError) as exc:
+        parse_peer_request({"metadata": _ca2a_meta(sealed_payload=bad, include_sealed=True)})
+    assert exc.value.code == "TRANSPORT_ERROR"
+
+
 def test_parent_record_hash_null_is_root() -> None:
     req = parse_peer_request({"metadata": _ca2a_meta(parent_record_hash=None)})
     assert req is not None

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import base64
 import copy
+import re
 from typing import Any
 
 from ca2a_runtime.delegation.credential import DelegationCredential
@@ -24,6 +25,10 @@ from ca2a_runtime.transport.constants import (
     KEY_REQUESTED_CAPABILITY,
     KEY_SEALED_PAYLOAD,
 )
+
+# Unpadded base64url alphabet only; padding is added during decode, so an
+# embedded "=" (or any other character) is rejected as malformed.
+_BASE64URL_RE = re.compile(r"[A-Za-z0-9_-]*")
 
 
 def has_ca2a_metadata(metadata: dict[str, Any] | None) -> bool:
@@ -69,7 +74,18 @@ def collect_metadata(
 
 
 def _b64url_decode(value: str) -> bytes:
-    """Decode a base64url string; raise TransportError on malformed input."""
+    """Decode a base64url string, failing closed on any non-base64url input.
+
+    ``base64.urlsafe_b64decode`` silently ignores characters outside the
+    alphabet, so a malformed value like ``"abcd?"`` would otherwise be accepted
+    as opaque bytes. We validate the URL-safe alphabet (and reject embedded
+    padding) before decoding so present-but-malformed metadata fails closed.
+    """
+    if not _BASE64URL_RE.fullmatch(value):
+        raise TransportError(
+            "sealed_payload is not valid base64url",
+            detail="value contains characters outside the base64url alphabet",
+        )
     try:
         padded = value + "=" * (-len(value) % 4)
         return base64.urlsafe_b64decode(padded.encode("ascii"))
