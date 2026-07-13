@@ -62,10 +62,10 @@ cA2A is a trust profile layered on A2A, the way TRACE binds to IETF RATS, EAT, a
 ## Quick Start
 
 ```bash
-pip install ca2a-runtime
+pip install --pre ca2a-runtime
 ```
 
-> The runtime peer path is under construction (see [ROADMAP.md](ROADMAP.md)). Today you can build and verify delegation chains offline:
+> cA2A is in alpha; `--pre` opts into the pre-release. The runtime peer path is under construction (see [ROADMAP.md](ROADMAP.md)). Today you can build and verify delegation chains offline:
 
 ```bash
 ca2a verify-chain --chain ./examples/minimal/chain.json

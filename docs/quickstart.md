@@ -5,8 +5,10 @@ This walkthrough builds a delegation chain and verifies it offline. It needs no 
 ## Install
 
 ```bash
-pip install ca2a-runtime
+pip install --pre ca2a-runtime
 ```
+
+cA2A is in alpha, so `--pre` is required to opt into the pre-release. Contributors working from a checkout can instead install from source: `pip install -e ".[dev]"`.
 
 ## Build an example chain
 
