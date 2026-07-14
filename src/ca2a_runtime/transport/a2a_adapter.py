@@ -187,20 +187,47 @@ def parse_peer_request(
     )
 
 
+def _attach_target(out: dict[str, Any]) -> dict[str, Any]:
+    """Pick the metadata map to write into, mirroring ``collect_metadata``.
+
+    For a JSON-RPC ``SendMessage`` / ``message/send`` envelope the fields are
+    attached where the parser reads them and where the message payload lives:
+    ``params.message.metadata`` (or ``params.metadata`` when there is no nested
+    message). A bare message object uses its top-level ``metadata``.
+    """
+    params = out.get("params")
+    if isinstance(params, dict):
+        msg = params.get("message")
+        if isinstance(msg, dict):
+            container: dict[str, Any] = msg
+        else:
+            container = params
+    else:
+        container = out
+
+    meta = container.setdefault("metadata", {})
+    if not isinstance(meta, dict):
+        raise TransportError("message.metadata must be a mapping when attaching cA2A fields")
+    return meta
+
+
 def attach_ca2a_metadata(
     message: dict[str, Any],
     request: PeerRequest,
 ) -> dict[str, Any]:
     """Return a deep copy of ``message`` with cA2A extension fields attached.
 
+    Accepts the same shapes as :func:`parse_peer_request`: a bare A2A message
+    object or a full JSON-RPC ``SendMessage`` / ``message/send`` envelope. The
+    fields are attached where the parser reads them, so attach then parse is a
+    round trip for every accepted shape.
+
     Existing non-cA2A metadata keys are preserved. Existing cA2A keys are
     replaced with values derived from ``request``. A2A routing fields and
     message ``parts`` / payload semantics are left untouched.
     """
     out = copy.deepcopy(message)
-    meta = out.setdefault("metadata", {})
-    if not isinstance(meta, dict):
-        raise TransportError("message.metadata must be a mapping when attaching cA2A fields")
+    meta = _attach_target(out)
 
     meta[KEY_DELEGATION_CHAIN] = [_credential_to_dict(c) for c in request.chain]
     meta[KEY_REQUESTED_CAPABILITY] = request.requested_capability

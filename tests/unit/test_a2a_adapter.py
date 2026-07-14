@@ -175,6 +175,63 @@ def test_round_trip_attach_then_parse() -> None:
     assert parsed.chain[-1].signature == original.chain[-1].signature
 
 
+def test_round_trip_full_jsonrpc_envelope() -> None:
+    chain = build_chain([frozenset({"read", "write"}), frozenset({"read"})])
+    request = PeerRequest(
+        chain=chain,
+        requested_capability="read",
+        record_id="rec-envelope",
+        sealed_payload=None,
+        parent_record_hash=None,
+    )
+    envelope = {
+        "jsonrpc": "2.0",
+        "id": "1",
+        "method": "message/send",
+        "params": {
+            "message": {
+                "messageId": "msg-1",
+                "role": "user",
+                "parts": [{"text": "task"}],
+                "metadata": {"https://example.com/ext/other/v1/note": "keep"},
+            }
+        },
+    }
+
+    attached = attach_ca2a_metadata(envelope, request)
+
+    # Fields land where the parser reads them, not at the envelope root.
+    assert "metadata" not in attached
+    msg_meta = attached["params"]["message"]["metadata"]
+    assert KEY_DELEGATION_CHAIN in msg_meta
+    assert msg_meta["https://example.com/ext/other/v1/note"] == "keep"
+    assert attached["params"]["message"]["parts"] == [{"text": "task"}]
+
+    parsed = parse_peer_request(attached)
+    assert parsed is not None
+    assert parsed.record_id == "rec-envelope"
+    assert parsed.requested_capability == "read"
+
+
+def test_round_trip_envelope_params_metadata_without_message() -> None:
+    chain = build_chain([frozenset({"read"})])
+    request = PeerRequest(
+        chain=chain,
+        requested_capability="read",
+        record_id="rec-params",
+        sealed_payload=None,
+        parent_record_hash=None,
+    )
+    envelope = {"jsonrpc": "2.0", "id": "2", "method": "message/send", "params": {}}
+
+    attached = attach_ca2a_metadata(envelope, request)
+    assert KEY_DELEGATION_CHAIN in attached["params"]["metadata"]
+
+    parsed = parse_peer_request(attached)
+    assert parsed is not None
+    assert parsed.record_id == "rec-params"
+
+
 def test_sealed_payload_is_opaque_bytes_only() -> None:
     raw = b"not-a-verified-measurement-binding"
     encoded = base64.urlsafe_b64encode(raw).decode("ascii").rstrip("=")
