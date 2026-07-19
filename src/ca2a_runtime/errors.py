@@ -81,3 +81,15 @@ class ScopeNotPermitted(CA2AError):
 
     code = "SCOPE_NOT_PERMITTED"
     http_status = 403
+
+
+class TransportError(CA2AError):
+    """cA2A A2A-extension metadata was present but malformed or incomplete.
+
+    Raised by the transport adapter when a cA2A-aware peer sees namespaced
+    metadata that cannot be parsed into a ``PeerRequest``. Absence of all
+    cA2A keys is not an error: that message is ordinary A2A input.
+    """
+
+    code = "TRANSPORT_ERROR"
+    http_status = 400

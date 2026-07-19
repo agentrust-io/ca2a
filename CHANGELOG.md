@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- A2A transport adapter (`ca2a_runtime.transport`): parse/attach cA2A extension
+  metadata on A2A `SendMessage`-shaped messages into `PeerRequest` (and the
+  reverse). Extension URI `https://agentrust.io/extensions/ca2a/v0.1`. Fail closed
+  on malformed cA2A metadata; absence of all cA2A keys returns `None` (ordinary
+  A2A). Does not add HTTP serving, `ca2a start`, or seal-to-verified-measurement
+  binding. New error `TRANSPORT_ERROR`. See issue #47.
+
 ## [0.1.0a1] - 2026-07-09
 
 First public alpha. Everything in this release is verifiable offline or in
