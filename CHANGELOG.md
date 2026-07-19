@@ -9,12 +9,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Live A2A JSON-RPC peer listener (`ca2a start` / `ca2a_runtime.server`): serves
+  `message/send`, runs `parse_peer_request` → `handle_peer_request` end to end
+  (verify chain, intersect local/Cedar policy, open sealed payload with a
+  configured key, emit provenance). Ordinary A2A (no cA2A keys) returns
+  `ca2a: null`. Fail-closed on malformed metadata and denials. Optional
+  `local_policy` / `enclave_private_key_hex` config fields; install with
+  `pip install 'ca2a-runtime[serve]'`. Does **not** add attestation handshake
+  or seal-to-verified-measurement binding. See issue #47.
 - A2A transport adapter (`ca2a_runtime.transport`): parse/attach cA2A extension
   metadata on A2A `SendMessage`-shaped messages into `PeerRequest` (and the
   reverse). Extension URI `https://agentrust.io/extensions/ca2a/v0.1`. Fail closed
   on malformed cA2A metadata; absence of all cA2A keys returns `None` (ordinary
-  A2A). Does not add HTTP serving, `ca2a start`, or seal-to-verified-measurement
-  binding. New error `TRANSPORT_ERROR`. See issue #47.
+  A2A). New error `TRANSPORT_ERROR`. See issue #47.
 
 ## [0.1.0a1] - 2026-07-09
 

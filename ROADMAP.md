@@ -22,7 +22,7 @@ Already implemented and tested elsewhere; cA2A depends on it rather than reimple
 
 ## v0.2: Runtime enforcement and sealed channel
 
-- Runtime peer-delegation enforcement: **decision core landed** (`ca2a_runtime.peer.enforce_peer_call`: verify chain, intersect delegated scope with local policy, enforce, emit provenance record; claim C3 validated), now with a **real Cedar policy engine** option (`ca2a_runtime.cedar.CedarPolicy`) alongside the allow-set `LocalPolicy`. Remaining: wire the decision core to a live A2A transport (Tier 2)
+- Runtime peer-delegation enforcement: **decision core landed** (`ca2a_runtime.peer.enforce_peer_call`: verify chain, intersect delegated scope with local policy, enforce, emit provenance record; claim C3 validated), now with a **real Cedar policy engine** option (`ca2a_runtime.cedar.CedarPolicy`) alongside the allow-set `LocalPolicy`. **Live A2A serving landed** (`ca2a start` / `ca2a_runtime.server`: JSON-RPC `message/send` → parse → `handle_peer_request`). Remaining: attestation handshake on the live call, and seal bound to a verified measurement (Tier 2/3)
 - Sealed peer channel: **landed** (`ca2a_runtime.channel`: HPKE-style X25519 -> HKDF-SHA256 -> ChaCha20-Poly1305 sealing to the peer's attested key; claim C4 validated). Remaining: bind the seal to a verified attestation report on a live call, and rely on the enclave to hold the private key (hardware property)
 - Linked runtime evidence: each hop's TRACE record references the parent record hash and delegation credential id, producing a verifiable delegation DAG (Tier 2)
 
@@ -34,7 +34,7 @@ Real hardware attestation verification (SEV-SNP VCEK chain, Intel TDX quote via 
 - **TDX verifier: landed.** DCAP Quote v4 parsing, PCK chain to the genuine Intel SGX Root CA, QE report signature, attestation-key binding, quote signature, and MRTD binding, all fail-closed. Quote generation requires a real TDX guest. See `ca2a_verify.tdx`.
 - **TPM 2.0 verifier: landed.** TPMS_ATTEST parsing, AK chain to a caller-supplied vendor root, AK signature (ECDSA or RSA), magic/type checks, and qualifying-data/PCR-digest binding, all fail-closed. Quote generation requires a real TPM. See `ca2a_verify.tpm`.
 - **Cross-operator attestation (C6): validated in software.** A two-operator harness (SEV-SNP verifier + measurement pinning + sealed channel) shows independent keys, mutual attestation, confidential cross-operator delegation, and binary-swap detection. All six claims (C1-C6) are now validated experiments.
-- **Pending:** end-to-end validation of the SEV-SNP, TDX, and TPM signature paths against real hardware quotes on a confidential VM; and a transport that parses real A2A wire messages into a `PeerRequest`.
+- **Pending:** end-to-end validation of the SEV-SNP, TDX, and TPM signature paths against real hardware quotes on a confidential VM; live attestation handshake and seal-to-verified-measurement binding on the inbound call.
 
 ## v1.0: Stable profile
 
