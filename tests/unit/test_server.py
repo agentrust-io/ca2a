@@ -100,6 +100,8 @@ def test_parse_listen_addr_rejects_bad() -> None:
         parse_listen_addr("no-port")
     with pytest.raises(ConfigError):
         parse_listen_addr("host:abc")
+    with pytest.raises(ConfigError):
+        parse_listen_addr(":8443")
 
 
 def test_live_inbound_grants_and_emits_record() -> None:

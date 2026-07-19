@@ -211,7 +211,10 @@ def parse_listen_addr(listen_addr: str) -> tuple[str, int]:
     if not (1 <= port <= 65535):
         raise ConfigError(f"listen_addr port out of range: {port}")
     if not host:
-        host = "0.0.0.0"
+        raise ConfigError(
+            f"listen_addr must include an explicit host (e.g. 127.0.0.1:{port}), "
+            f"got {listen_addr!r}",
+        )
     return host, port
 
 
