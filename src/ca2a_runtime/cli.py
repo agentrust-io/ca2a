@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any
@@ -11,7 +12,7 @@ from typing import Any
 from ca2a_runtime import __version__
 from ca2a_runtime.config import Ca2aConfig
 from ca2a_runtime.delegation import DelegationCredential, verify_chain
-from ca2a_runtime.errors import CA2AError, InvalidCredential, ProvenanceLinkBroken
+from ca2a_runtime.errors import CA2AError, ConfigError, InvalidCredential, ProvenanceLinkBroken
 from ca2a_runtime.provenance import DelegationRecord, cross_check_chain, verify_dag
 from ca2a_verify import verify_chain_file
 
@@ -107,6 +108,58 @@ def _cmd_verify_dag(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_start(args: argparse.Namespace) -> int:
+    """Start the live A2A JSON-RPC peer listener (``ca2a start``)."""
+    try:
+        import uvicorn
+    except ImportError:
+        print(
+            "ca2a start requires the 'serve' extra: pip install 'ca2a-runtime[serve]'",
+            file=sys.stderr,
+        )
+        return 1
+
+    from ca2a_runtime.policy_loader import load_policy
+    from ca2a_runtime.server import (
+        PeerRuntime,
+        create_app,
+        load_enclave_private_key,
+        parse_listen_addr,
+    )
+
+    try:
+        cfg = Ca2aConfig.load(args.config)
+        config_path = Path(args.config).resolve()
+        policy = load_policy(cfg, config_dir=config_path.parent)
+        key_hex = (
+            args.enclave_key_hex
+            or os.environ.get("CA2A_ENCLAVE_PRIVATE_KEY_HEX")
+            or cfg.enclave_private_key_hex
+        )
+        enclave_key = load_enclave_private_key(key_hex)
+        host, port = parse_listen_addr(cfg.listen_addr)
+    except ConfigError as exc:
+        print(f"invalid config: {exc}", file=sys.stderr)
+        return 1
+
+    if cfg.enforcement_mode != "enforcing":
+        print(
+            f"note: enforcement_mode={cfg.enforcement_mode!r} is accepted in config, "
+            "but the live listener always fails closed on cA2A denials",
+            file=sys.stderr,
+        )
+
+    runtime = PeerRuntime(config=cfg, policy=policy, enclave_private_key=enclave_key)
+    app = create_app(runtime)
+    print(
+        f"ca2a starting: listen={cfg.listen_addr} provider={cfg.provider} "
+        f"enforcement={cfg.enforcement_mode} "
+        f"(live serving only; no attestation handshake / seal-to-measurement binding)"
+    )
+    uvicorn.run(app, host=host, port=port)
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="ca2a", description="Confidential agent-to-agent")
     parser.add_argument("--version", action="version", version=f"ca2a {__version__}")
@@ -129,6 +182,18 @@ def build_parser() -> argparse.ArgumentParser:
     )
     vd.add_argument("--max-depth", type=int, default=8)
     vd.set_defaults(func=_cmd_verify_dag)
+
+    st = sub.add_parser(
+        "start",
+        help="Start the live A2A JSON-RPC peer listener",
+    )
+    st.add_argument("--config", required=True, help="Path to ca2a-config.yaml")
+    st.add_argument(
+        "--enclave-key-hex",
+        default=None,
+        help="X25519 private key as 32-byte hex (overrides config / CA2A_ENCLAVE_PRIVATE_KEY_HEX)",
+    )
+    st.set_defaults(func=_cmd_start)
 
     return parser
 

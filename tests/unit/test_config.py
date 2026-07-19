@@ -57,3 +57,20 @@ def test_load_invalid_yaml(tmp_path: Path) -> None:
     p.write_text("attestation: [unclosed\n")
     with pytest.raises(ConfigError):
         Ca2aConfig.load(p)
+
+
+def test_local_policy_from_dict() -> None:
+    cfg = Ca2aConfig.from_dict({"local_policy": ["read", "write"]})
+    assert cfg.local_policy == frozenset({"read", "write"})
+
+
+def test_bad_local_policy_rejected() -> None:
+    with pytest.raises(ConfigError):
+        Ca2aConfig.from_dict({"local_policy": "read"})
+    with pytest.raises(ConfigError):
+        Ca2aConfig.from_dict({"local_policy": [""]})
+
+
+def test_enclave_key_hex_from_dict() -> None:
+    cfg = Ca2aConfig.from_dict({"enclave_private_key_hex": "ab" * 32})
+    assert cfg.enclave_private_key_hex == "ab" * 32

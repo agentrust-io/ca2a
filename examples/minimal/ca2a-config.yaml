@@ -1,6 +1,7 @@
 attestation:
-  provider: auto            # auto | tpm | sev-snp | tdx | opaque | software-only
-  enforcement_mode: advisory  # enforcing | advisory | silent
+  provider: software-only   # auto | tpm | sev-snp | tdx | opaque | software-only
+  enforcement_mode: enforcing  # live listener always fails closed today
 
 max_delegation_depth: 8
-listen_addr: "0.0.0.0:8443"
+listen_addr: "127.0.0.1:8443"
+local_policy: ["read", "write"]

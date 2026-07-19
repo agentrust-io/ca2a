@@ -7,13 +7,13 @@ cA2A is a profile on A2A, not a competing transport. A2A moves tasks and context
 | Piece | Status |
 |---|---|
 | Extension URI + namespaced metadata keys (below) | Specified |
-| `ca2a_runtime.transport` adapter: A2A metadata ↔ `PeerRequest` | Implemented (parse/attach only) |
-| Hand-off into `handle_peer_request` once a `PeerRequest` exists | Implemented in-process; callers invoke it after parsing |
-| HTTP/JSON-RPC serving / `ca2a start` | Not yet — separate Tier 2 checkbox |
+| `ca2a_runtime.transport` adapter: A2A metadata ↔ `PeerRequest` | Implemented (parse/attach) |
+| Hand-off into `handle_peer_request` once a `PeerRequest` exists | Implemented |
+| HTTP/JSON-RPC serving / `ca2a start` | Implemented (live serving only) |
 | Live attestation handshake on an inbound call | Not yet — separate Tier 2/3 checkbox |
 | Seal bound to a **verified** attestation measurement on a live call | Not yet — separate Tier 2/3 checkbox |
 
-Parsing real A2A extension metadata is progress on Tier 2 transport wiring. It is **not** evidence that cA2A is attested across trust domains. See [LIMITATIONS.md](../../LIMITATIONS.md) and [ROADMAP.md](../../ROADMAP.md).
+Live serving wires parse → `handle_peer_request` end to end on `message/send`. It is **not** evidence that cA2A is attested across trust domains: there is still no attestation handshake on the call, and sealed open uses a configured software/enclave key rather than a key bound to a verified measurement. See [LIMITATIONS.md](../../LIMITATIONS.md) and [ROADMAP.md](../../ROADMAP.md).
 
 ## Overlay, not fork
 
@@ -88,26 +88,44 @@ Once a `PeerRequest` has been parsed, the intended inbound order is:
 4. Open any sealed payload with the enclave-held key. Crypto implemented; live seal-to-verified-measurement binding is not. See [the sealed channel](sealed-channel.md).
 5. Emit a linked provenance/TRACE record referencing the parent record hash and `credential_id`. See [the TRACE A2A profile](trace-a2a-profile.md).
 
-Steps 1, 3, and 5 (and sealed open when a key is supplied) run today inside `handle_peer_request` after the adapter produces a `PeerRequest`. Steps 2 and the measurement-bound seal are remaining Tier 2/3 work.
+Steps 1, 3, and 5 (and sealed open when a key is supplied) run inside `handle_peer_request` after the adapter produces a `PeerRequest`, including on the live `ca2a start` listener. Steps 2 and the measurement-bound seal are remaining Tier 2/3 work.
+
+## Live listener (`ca2a start`)
+
+```bash
+pip install 'ca2a-runtime[serve]'
+ca2a start --config examples/minimal/ca2a-config.yaml
+```
+
+The listener accepts JSON-RPC `message/send` (and `SendMessage`) on `POST /` and `POST /rpc`:
+
+1. `parse_peer_request` on the envelope.
+2. If no cA2A keys: return `{"ca2a": null, ...}` (ordinary A2A; no invented trust state).
+3. If cA2A keys present: `handle_peer_request` with the configured policy and optional enclave key; map `CA2AError` to a JSON-RPC error with `data.ca2a_code`.
+
+Config for the listener needs either `local_policy` (capability allow set) or `policy_bundle_path` (Cedar). Optional `enclave_private_key_hex` (or `--enclave-key-hex` / `CA2A_ENCLAVE_PRIVATE_KEY_HEX`) opens sealed payloads. That key is software-configured for this slice; it is not proven enclave-bound or measurement-linked.
 
 ## Enforcement is a peer decision
 
-How strictly a cA2A peer acts on the extension fields is local configuration, not a transport-level flag. `Ca2aConfig.enforcement_mode` selects the behavior:
+How strictly a cA2A peer acts on the extension fields is local configuration, not a transport-level flag. `Ca2aConfig.enforcement_mode` selects the intended behavior:
 
-- `enforcing`: an unverifiable chain or a missing required credential denies the call. This is the default and the fail-closed posture the profile calls for.
+- `enforcing`: an unverifiable chain or a missing required credential denies the call. This is the default and the fail-closed posture the profile calls for. The live listener always uses this posture today.
 - `advisory`: the failure is recorded but the call proceeds.
 - `silent`: the check runs without a visible signal.
 
 ```yaml
 # ca2a config
 attestation:
-  provider: auto
+  provider: software-only
   enforcement_mode: enforcing
 max_delegation_depth: 8
-listen_addr: "0.0.0.0:8443"
+listen_addr: "127.0.0.1:8443"
+local_policy: ["read", "write"]
+# policy_bundle_path: policy.cedar   # alternative to local_policy
+# enclave_private_key_hex: "..."     # optional; for sealed_payload open
 ```
 
-`max_delegation_depth` bounds the chain length a peer will accept and is passed through to `verify_chain`. `listen_addr` is reserved for the future HTTP listener (`ca2a start`); this adapter does not open a socket. See [failure modes](failure-modes.md).
+`max_delegation_depth` bounds the chain length a peer will accept and is passed through to `verify_chain`. `listen_addr` is the HTTP bind address for `ca2a start`. See [failure modes](failure-modes.md).
 
 ## Transport stability
 
