@@ -22,8 +22,8 @@ Already implemented and tested elsewhere; cA2A depends on it rather than reimple
 
 ## v0.2: Runtime enforcement and sealed channel
 
-- Runtime peer-delegation enforcement: **decision core landed** (`ca2a_runtime.peer.enforce_peer_call`: verify chain, intersect delegated scope with local policy, enforce, emit provenance record; claim C3 validated), now with a **real Cedar policy engine** option (`ca2a_runtime.cedar.CedarPolicy`) alongside the allow-set `LocalPolicy`. Remaining: wire the decision core to a live A2A transport (Tier 2)
-- Sealed peer channel: **landed** (`ca2a_runtime.channel`: HPKE-style X25519 -> HKDF-SHA256 -> ChaCha20-Poly1305 sealing to the peer's attested key; claim C4 validated). Remaining: bind the seal to a verified attestation report on a live call, and rely on the enclave to hold the private key (hardware property)
+- Runtime peer-delegation enforcement: **decision core landed** (`ca2a_runtime.peer.enforce_peer_call`: verify chain, intersect delegated scope with local policy, enforce, emit provenance record; claim C3 validated), now with a **real Cedar policy engine** option (`ca2a_runtime.cedar.CedarPolicy`) alongside the allow-set `LocalPolicy`. Live transport **landed** (`ca2a_runtime.transport`: A2A wire binding in `transport.a2a`, a reference standard-library HTTP server and client, and `ca2a_runtime.node.PeerNode`), exercised end to end in software mode by `tests/unit/test_live_call.py`
+- Sealed peer channel: **landed** (`ca2a_runtime.channel`: HPKE-style X25519 -> HKDF-SHA256 -> ChaCha20-Poly1305 sealing to the peer's attested key; claim C4 validated). The seal is now **gated on a verified channel key** by the attestation handshake (`ca2a_runtime.attestation`: offer, verify, seal), so a payload is sealed only to an attested peer key; software mode records `assurance="none"` and hardware plugs in via a `verifier` callable. Remaining hardware property: the enclave holding the private key, established on a confidential VM
 - Linked runtime evidence: each hop's TRACE record references the parent record hash and delegation credential id, producing a verifiable delegation DAG (Tier 2)
 
 ## Critical path, sequenced first (Tier 3)
@@ -34,7 +34,7 @@ Real hardware attestation verification (SEV-SNP VCEK chain, Intel TDX quote via 
 - **TDX verifier: landed.** DCAP Quote v4 parsing, PCK chain to the genuine Intel SGX Root CA, QE report signature, attestation-key binding, quote signature, and MRTD binding, all fail-closed. Quote generation requires a real TDX guest. See `ca2a_verify.tdx`.
 - **TPM 2.0 verifier: landed.** TPMS_ATTEST parsing, AK chain to a caller-supplied vendor root, AK signature (ECDSA or RSA), magic/type checks, and qualifying-data/PCR-digest binding, all fail-closed. Quote generation requires a real TPM. See `ca2a_verify.tpm`.
 - **Cross-operator attestation (C6): validated in software.** A two-operator harness (SEV-SNP verifier + measurement pinning + sealed channel) shows independent keys, mutual attestation, confidential cross-operator delegation, and binary-swap detection. All six claims (C1-C6) are now validated experiments.
-- **Pending:** end-to-end validation of the SEV-SNP, TDX, and TPM signature paths against real hardware quotes on a confidential VM; and a transport that parses real A2A wire messages into a `PeerRequest`.
+- **Pending:** end-to-end validation of the SEV-SNP, TDX, and TPM signature paths against real hardware quotes on a confidential VM. The transport that parses A2A messages into a `PeerRequest` has **landed** (`ca2a_runtime.transport.a2a`), running in software mode; the hardware seam is the `verifier` callable in `ca2a_runtime.attestation`.
 
 ## v1.0: Stable profile
 
