@@ -1,11 +1,36 @@
-"""A2A transport binding for the cA2A peer path.
+"""Transport-side adapters that parse wire formats into PeerRequest.
 
-cA2A is a profile on A2A, not a transport. This package provides the wire
-binding (:mod:`ca2a_runtime.transport.a2a`) that parses a cA2A-profile A2A
-message into a :class:`~ca2a_runtime.peer.PeerRequest` and serializes the result
-or a structured error, plus a minimal reference HTTP server and client
-(:mod:`ca2a_runtime.transport.server`, :mod:`ca2a_runtime.transport.client`)
-that run the full inbound pipeline over the wire. The server is a reference, not
-the only transport: any A2A server can parse its wire format and call the peer
-path through :mod:`ca2a_runtime.transport.a2a`.
+The cA2A profile does not define a transport. Adapters in this package live
+outside the profile core: they map A2A (or other) wire shapes into
+``PeerRequest`` for ``handle_peer_request``.
 """
+
+from ca2a_runtime.transport.a2a_adapter import (
+    attach_ca2a_metadata,
+    collect_metadata,
+    has_ca2a_metadata,
+    parse_peer_request,
+)
+from ca2a_runtime.transport.constants import (
+    CA2A_METADATA_KEYS,
+    EXTENSION_URI,
+    KEY_DELEGATION_CHAIN,
+    KEY_PARENT_RECORD_HASH,
+    KEY_RECORD_ID,
+    KEY_REQUESTED_CAPABILITY,
+    KEY_SEALED_PAYLOAD,
+)
+
+__all__ = [
+    "CA2A_METADATA_KEYS",
+    "EXTENSION_URI",
+    "KEY_DELEGATION_CHAIN",
+    "KEY_PARENT_RECORD_HASH",
+    "KEY_RECORD_ID",
+    "KEY_REQUESTED_CAPABILITY",
+    "KEY_SEALED_PAYLOAD",
+    "attach_ca2a_metadata",
+    "collect_metadata",
+    "has_ca2a_metadata",
+    "parse_peer_request",
+]

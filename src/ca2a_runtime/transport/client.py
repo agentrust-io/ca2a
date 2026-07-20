@@ -17,7 +17,8 @@ from typing import Any
 from ca2a_runtime.attestation import VerifiedPeer, Verifier, seal_to_peer, verify_offer
 from ca2a_runtime.delegation.credential import DelegationCredential
 from ca2a_runtime.errors import CA2AError
-from ca2a_runtime.transport import a2a
+from ca2a_runtime.peer import PeerRequest
+from ca2a_runtime.transport import a2a_adapter, wire
 from ca2a_runtime.transport.server import CHANNEL_PATH, TASK_PATH
 
 _TIMEOUT = 10.0
@@ -43,7 +44,7 @@ def _post_json(url: str, body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
 def fetch_verified_peer(base_url: str, *, verifier: Verifier | None = None) -> VerifiedPeer:
     """Fetch the peer's attested channel key and verify it under a fresh nonce."""
     nonce = secrets.token_hex(16)
-    offer = a2a.parse_channel_offer(_get_json(f"{base_url}{CHANNEL_PATH}?nonce={nonce}"))
+    offer = wire.parse_channel_offer(_get_json(f"{base_url}{CHANNEL_PATH}?nonce={nonce}"))
     return verify_offer(offer, expected_nonce=nonce, verifier=verifier)
 
 
@@ -66,13 +67,14 @@ def send_task(
     if payload is not None:
         peer = fetch_verified_peer(base_url, verifier=verifier)
         sealed = seal_to_peer(peer, payload)
-    message = a2a.build_task_message(
-        chain,
-        requested_capability,
-        record_id,
+    request = PeerRequest(
+        chain=chain,
+        requested_capability=requested_capability,
+        record_id=record_id,
         sealed_payload=sealed,
         parent_record_hash=parent_record_hash,
     )
+    message = a2a_adapter.attach_ca2a_metadata({}, request)
     status, body = _post_json(f"{base_url}{TASK_PATH}", message)
     if status != 200:
         err = body.get("error", {})

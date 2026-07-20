@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- A2A transport adapter (`ca2a_runtime.transport`): parse/attach cA2A extension
+  metadata on A2A `SendMessage`-shaped messages into `PeerRequest` (and the
+  reverse). Extension URI `https://agentrust.io/extensions/ca2a/v0.1`. Fail closed
+  on malformed cA2A metadata; absence of all cA2A keys returns `None` (ordinary
+  A2A). Does not add HTTP serving, `ca2a start`, or seal-to-verified-measurement
+  binding. New error `TRANSPORT_ERROR`. See issue #47.
+
+## [0.1.0a1] - 2026-07-09
+
+First public alpha. Everything in this release is verifiable offline or in
+software today. cA2A is a profile in active design: the delegation semantics and
+the TEE verifiers are implemented and tested, but the profile is not yet attested
+across trust domains on real hardware and there is no live A2A transport. That
+milestone gates the first non-alpha release. See LIMITATIONS.md for the exact
+built/stubbed boundary.
+
+### What this release provides
+
 - Initial cA2A profile draft: attested, attenuated agent-to-agent delegation on top of A2A
 - `ca2a-verify`: offline delegation-chain verification skeleton (scope attenuation, signature, depth, replay checks)
 - `ca2a-runtime`: config, error registry, and delegation credential model
@@ -27,10 +45,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - RFC 8785 (JSON Canonicalization Scheme) canonicalization: `ca2a_runtime.canonical.canonicalize`. Credential and provenance bodies are now signed over the JCS encoding (UTF-16 key ordering, JCS string escaping, literal non-ASCII, shortest-decimal integers), so cA2A signatures are cross-verifiable with agent-manifest. ASCII credentials are byte-identical to the previous encoding, so existing signatures still verify.
 - Repository scaffold: governance, CI/CD, docs framework, and packaging at parity with the agentrust-io house standard
 
-### Not yet implemented
+### What this release does NOT yet claim
 
-- Live A2A transport wiring for the peer-enforcement decision core, including binding the seal to a verified attestation report (Tier 2)
-- Cedar policy engine binding for the local policy (Tier 2)
-- End-to-end SEV-SNP, TDX, and TPM validation against real hardware quotes on a confidential VM
+- Not attested or confidential across trust domains on real hardware: all attestation validation is software / synthetic-vector. No real SEV-SNP, TDX, or TPM quote has been verified end to end against a golden measurement on a confidential VM.
+- No live A2A transport: the peer-enforcement decision core and sealed channel run in-process. Nothing parses real A2A wire messages into a `PeerRequest` yet, and the seal is not bound to a verified attestation report on a live inbound call.
+- The sealed channel does not by itself establish the enclave-held-private-key property; that is a hardware attestation guarantee that lands with real-hardware validation.
+- Alpha schemas: the delegation credential and TRACE link schemas are not yet stable or versioned, and peer attestation evidence is not yet RATS/EAT conformant.
 
-[Unreleased]: https://github.com/agentrust-io/ca2a/commits/main
+[Unreleased]: https://github.com/agentrust-io/ca2a/compare/v0.1.0a1...main
+[0.1.0a1]: https://github.com/agentrust-io/ca2a/releases/tag/v0.1.0a1

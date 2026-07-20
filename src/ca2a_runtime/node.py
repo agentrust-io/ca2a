@@ -3,11 +3,11 @@
 A :class:`PeerNode` holds the enclave channel keypair (the private key the sealed
 channel opens against), the local policy the delegated scope is intersected with,
 and the attestation provider. :meth:`PeerNode.offer` produces an attested
-channel-key offer for the handshake; :meth:`PeerNode.handle` runs the full
-inbound pipeline for a parsed cA2A-profile A2A message (verify chain, intersect
-with policy, enforce, open the sealed payload with the enclave key, emit a linked
-provenance record). The node is transport-agnostic;
-:mod:`ca2a_runtime.transport.server` wraps it over HTTP.
+channel-key offer for the handshake; :meth:`PeerNode.handle` parses a cA2A-profile
+A2A message with :mod:`ca2a_runtime.transport.a2a_adapter` and runs the full
+inbound pipeline (verify chain, intersect with policy, enforce, open the sealed
+payload with the enclave key, emit a linked provenance record). The node is
+transport-agnostic; :mod:`ca2a_runtime.transport.server` wraps it over HTTP.
 """
 
 from __future__ import annotations
@@ -16,6 +16,7 @@ from typing import Any
 
 from ca2a_runtime.attestation import ChannelOffer, attest_channel
 from ca2a_runtime.channel import generate_channel_keypair
+from ca2a_runtime.errors import TransportError
 from ca2a_runtime.peer import PeerResult, handle_peer_request
 from ca2a_runtime.policy import Policy
 from ca2a_runtime.tee.base import BaseProvider
@@ -42,10 +43,12 @@ class PeerNode:
         return attest_channel(self.provider, self.channel_public_key, nonce)
 
     def handle(self, message: dict[str, Any]) -> PeerResult:
-        """Run the full inbound pipeline for a parsed cA2A-profile A2A message."""
-        from ca2a_runtime.transport import a2a
+        """Parse a cA2A-profile A2A message and run the full inbound pipeline."""
+        from ca2a_runtime.transport.a2a_adapter import parse_peer_request
 
-        request = a2a.parse_peer_request(message)
+        request = parse_peer_request(message)
+        if request is None:
+            raise TransportError("message carries no cA2A extension metadata")
         return handle_peer_request(
             request,
             policy=self.policy,

@@ -9,8 +9,8 @@ A minimal A2A server that runs the full inbound pipeline over the wire:
   returns the result, or a structured error at the error's own HTTP status.
 
 It is a reference, not the only transport: any A2A server can call
-:mod:`ca2a_runtime.transport.a2a` and a :class:`~ca2a_runtime.node.PeerNode` the
-same way. Standard library only, so it runs anywhere Python does, including a
+:mod:`ca2a_runtime.transport.a2a_adapter` and a :class:`~ca2a_runtime.node.PeerNode`
+the same way. Standard library only, so it runs anywhere Python does, including a
 plain container platform.
 """
 
@@ -23,7 +23,7 @@ from urllib.parse import parse_qs, urlparse
 
 from ca2a_runtime.errors import CA2AError
 from ca2a_runtime.node import PeerNode
-from ca2a_runtime.transport import a2a
+from ca2a_runtime.transport import wire
 
 CHANNEL_PATH = "/.well-known/ca2a/channel"
 TASK_PATH = "/ca2a/task"
@@ -66,7 +66,7 @@ class _PeerHandler(BaseHTTPRequestHandler):
             self._send_json(400, {"error": {"code": "BAD_REQUEST", "message": "nonce required"}})
             return
         offer = self._node().offer(nonces[0])
-        self._send_json(200, a2a.serialize_channel_offer(offer))
+        self._send_json(200, wire.serialize_channel_offer(offer))
 
     def do_POST(self) -> None:
         if urlparse(self.path).path != TASK_PATH:
@@ -87,9 +87,9 @@ class _PeerHandler(BaseHTTPRequestHandler):
         try:
             result = self._node().handle(message)
         except CA2AError as exc:
-            self._send_json(exc.http_status, a2a.serialize_error(exc))
+            self._send_json(exc.http_status, wire.serialize_error(exc))
             return
-        self._send_json(200, a2a.serialize_peer_result(result))
+        self._send_json(200, wire.serialize_peer_result(result))
 
 
 def serve(node: PeerNode, host: str = "127.0.0.1", port: int = 8443) -> PeerHTTPServer:
