@@ -11,11 +11,23 @@ import pytest
 
 from ca2a_runtime.attestation import seal_to_peer, verify_offer
 from ca2a_runtime.delegation.credential import DelegationCredential, new_keypair
-from ca2a_runtime.errors import AttestationFailed, CA2AError, ScopeNotPermitted, SealedChannelError
+from ca2a_runtime.errors import (
+    AttestationFailed,
+    CA2AError,
+    ScopeNotPermitted,
+    SealedChannelError,
+    TransportError,
+)
 from ca2a_runtime.node import PeerNode
 from ca2a_runtime.peer import PeerRequest
 from ca2a_runtime.policy import LocalPolicy
 from ca2a_runtime.transport import a2a_adapter, client, server, wire
+
+
+@pytest.mark.parametrize("url", ["file:///etc/passwd", "ftp://host/x", "gopher://host"])
+def test_client_rejects_non_http_url(url: str) -> None:
+    with pytest.raises(TransportError, match="non-HTTP"):
+        client._get_json(url)
 
 
 def _chain() -> list[DelegationCredential]:

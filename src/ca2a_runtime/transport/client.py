@@ -11,31 +11,49 @@ from __future__ import annotations
 import json
 import secrets
 import urllib.error
+import urllib.parse
 import urllib.request
 from typing import Any
 
 from ca2a_runtime.attestation import VerifiedPeer, Verifier, seal_to_peer, verify_offer
 from ca2a_runtime.delegation.credential import DelegationCredential
-from ca2a_runtime.errors import CA2AError
+from ca2a_runtime.errors import CA2AError, TransportError
 from ca2a_runtime.peer import PeerRequest
 from ca2a_runtime.transport import a2a_adapter, wire
 from ca2a_runtime.transport.server import CHANNEL_PATH, TASK_PATH
 
 _TIMEOUT = 10.0
+_ALLOWED_SCHEMES = ("http", "https")
+
+
+def _require_http_url(url: str) -> None:
+    """Reject any non-HTTP(S) URL before opening it, failing closed.
+
+    ``urllib.request.urlopen`` will open ``file:`` and custom schemes too, which
+    is what bandit B310 / ruff S310 warn about. The reference client only ever
+    talks HTTP(S) to a peer base URL, so any other scheme is a misconfiguration.
+    """
+    if urllib.parse.urlparse(url).scheme not in _ALLOWED_SCHEMES:
+        raise TransportError(
+            "refusing to open a non-HTTP(S) URL",
+            detail=f"scheme must be one of {_ALLOWED_SCHEMES}",
+        )
 
 
 def _get_json(url: str) -> dict[str, Any]:
-    with urllib.request.urlopen(url, timeout=_TIMEOUT) as resp:  # noqa: S310
+    _require_http_url(url)
+    with urllib.request.urlopen(url, timeout=_TIMEOUT) as resp:  # noqa: S310  # nosec B310
         return json.loads(resp.read())
 
 
 def _post_json(url: str, body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
+    _require_http_url(url)
     data = json.dumps(body).encode("utf-8")
     req = urllib.request.Request(
         url, data=data, headers={"Content-Type": "application/json"}, method="POST"
     )
     try:
-        with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:  # noqa: S310
+        with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:  # noqa: S310  # nosec B310
             return resp.status, json.loads(resp.read())
     except urllib.error.HTTPError as exc:
         return exc.code, json.loads(exc.read())
