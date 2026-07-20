@@ -9,11 +9,13 @@ cA2A is a profile on A2A, not a competing transport. A2A moves tasks and context
 | Extension URI + namespaced metadata keys (below) | Specified |
 | `ca2a_runtime.transport` adapter: A2A metadata ↔ `PeerRequest` | Implemented (parse/attach only) |
 | Hand-off into `handle_peer_request` once a `PeerRequest` exists | Implemented in-process; callers invoke it after parsing |
-| HTTP/JSON-RPC serving / `ca2a start` | Not yet — separate Tier 2 checkbox |
-| Live attestation handshake on an inbound call | Not yet — separate Tier 2/3 checkbox |
-| Seal bound to a **verified** attestation measurement on a live call | Not yet — separate Tier 2/3 checkbox |
+| Reference HTTP server/client (`ca2a_runtime.transport.server`/`client`) | Implemented, software mode. A **reference** transport, not part of the profile |
+| Live attestation handshake on an inbound call | Implemented in software mode (`ca2a_runtime.attestation`, `assurance="none"`) |
+| Seal gated on the appraised channel key on a live call | Implemented in software mode |
+| Seal bound to a **hardware-verified** measurement | Not yet — needs a real quote via the `verifier` seam (Tier 3) |
+| `ca2a start` CLI listener | Not yet — serving is via `transport.server.serve` |
 
-Parsing real A2A extension metadata is progress on Tier 2 transport wiring. It is **not** evidence that cA2A is attested across trust domains. See [LIMITATIONS.md](../../LIMITATIONS.md) and [ROADMAP.md](../../ROADMAP.md).
+The reference HTTP server/client run a live call end to end **in software mode** (`assurance="none"`). That is progress on Tier 2 transport wiring and a convenience for running the peer path off hardware. It is **not** evidence that cA2A is attested across trust domains: that needs the hardware `verifier` seam driven by a real quote. See [LIMITATIONS.md](../../LIMITATIONS.md) and [ROADMAP.md](../../ROADMAP.md).
 
 ## Overlay, not fork
 
@@ -22,7 +24,7 @@ cA2A does not define its own transport, message framing, or handshake. It rides 
 - The **delegation credential** (or the chain root-to-leaf), naming issuer, subject, scope, depth, and parent link. See [the delegation chain](delegation-chain.md).
 - The **sealing metadata**, carrying an opaque sealed ciphertext when the caller seals the task payload. Sealing crypto is implemented; binding that seal to a verified peer measurement on a live call is still Tier 2/3. See [the sealed channel](sealed-channel.md).
 
-Both ride in A2A extension fields. cA2A claims no new wire format and no new endpoint. Removing every cA2A field leaves a valid A2A task.
+Both ride in A2A extension fields. The **profile** claims no new wire format and no new endpoint: removing every cA2A field leaves a valid A2A task. The reference HTTP transport (`ca2a_runtime.transport.server`) does expose convenience endpoints, including an attestation-handshake path for fetching the callee's channel key, but those belong to the reference transport, not the profile. They are one way to carry the extension fields, not a requirement of the profile, and any A2A server can carry them instead.
 
 ## Extension URI and metadata keys
 
