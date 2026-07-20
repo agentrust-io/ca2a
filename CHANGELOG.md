@@ -13,8 +13,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   metadata on A2A `SendMessage`-shaped messages into `PeerRequest` (and the
   reverse). Extension URI `https://agentrust.io/extensions/ca2a/v0.1`. Fail closed
   on malformed cA2A metadata; absence of all cA2A keys returns `None` (ordinary
-  A2A). Does not add HTTP serving, `ca2a start`, or seal-to-verified-measurement
-  binding. New error `TRANSPORT_ERROR`. See issue #47.
+  A2A). The adapter itself adds no HTTP serving or seal-to-verified-measurement
+  binding; the reference transport below adds serving, and hardware measurement
+  binding is still pending. New error `TRANSPORT_ERROR`. See issue #47.
+- Reference HTTP transport and attestation handshake, software mode (Tier 2):
+  `ca2a_runtime.transport.server`/`client` (standard library only) run a live
+  inbound A2A-profile call end to end over HTTP, `ca2a_runtime.node.PeerNode`
+  composes the provider, policy, adapter, and `handle_peer_request`, and
+  `ca2a_runtime.attestation` (offer/verify/seal) gates the seal on a channel key
+  the caller appraises under a fresh nonce. `ca2a_runtime.tee.software.SoftwareProvider`
+  supplies the no-hardware provider (never auto-selected). This is a **reference**
+  transport, not part of the profile: the profile mandates no wire protocol. In
+  software mode the peer key is `assurance="none"`; binding the seal to a
+  hardware-verified measurement (the `verifier` seam wrapping `ca2a_verify`) is
+  the remaining hardware step. Exercised end to end by `tests/unit/test_live_call.py`.
 
 ## [0.1.0a1] - 2026-07-09
 
