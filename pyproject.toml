@@ -27,6 +27,11 @@ dependencies = [
     "cryptography>=42.0",
     "pyyaml>=6.0",
     "cedarpy>=4.8",
+    # TRACE record models + RFC 8785 signing, reused rather than reimplemented
+    # (see ROADMAP Tier 0). Pin a compatible minor; cross-repo skew is a known
+    # risk documented in LIMITATIONS.md.
+    "agentrust-trace>=0.3,<0.4",
+    "rfc8785>=0.1",
 ]
 
 [project.optional-dependencies]
@@ -39,6 +44,8 @@ dev = [
     "types-pyyaml",
     "bandit[toml]>=1.7",
     "pip-audit>=2.6",
+    # Conformance suite: asserts emitted records pass the TRACE Level checks.
+    "agentrust-trace-tests>=0.2,<0.3",
 ]
 
 [project.scripts]
@@ -73,6 +80,7 @@ ignore = ["E501"]
 "src/ca2a_runtime/cli.py" = ["T201"]
 "scripts/gen_example_chain.py" = ["T201"]
 "scripts/gen_agt_evidence.py" = ["T201"]
+"examples/**/*.py" = ["T201"]
 
 [tool.bandit]
 skips = ["B101"]

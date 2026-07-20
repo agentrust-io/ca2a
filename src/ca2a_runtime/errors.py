@@ -93,3 +93,15 @@ class TransportError(CA2AError):
 
     code = "TRANSPORT_ERROR"
     http_status = 400
+
+
+class TraceRecordInvalid(CA2AError):
+    """A TRACE record is structurally invalid or its signature does not verify.
+
+    Raised by the TRACE DAG verifier when a hop's record fails schema validation,
+    is signed by a key that is not trusted, or its embedded key does not match the
+    one supplied. Distinct from ProvenanceLinkBroken, which covers the parent-link
+    chaining between otherwise valid records."""
+
+    code = "TRACE_RECORD_INVALID"
+    http_status = 422
