@@ -31,3 +31,6 @@ agt-evidence.json
 agt-attestation.json
 sbom.spdx.json
 scorecard-results.sarif
+
+# Generated example output (ephemeral keys + timestamps)
+examples/trace-dag/dag.json

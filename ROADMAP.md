@@ -24,7 +24,7 @@ Already implemented and tested elsewhere; cA2A depends on it rather than reimple
 
 - Runtime peer-delegation enforcement: **decision core landed** (`ca2a_runtime.peer.enforce_peer_call`: verify chain, intersect delegated scope with local policy, enforce, emit provenance record; claim C3 validated), now with a **real Cedar policy engine** option (`ca2a_runtime.cedar.CedarPolicy`) alongside the allow-set `LocalPolicy`. Remaining: wire the decision core to a live A2A transport (Tier 2)
 - Sealed peer channel: **landed** (`ca2a_runtime.channel`: HPKE-style X25519 -> HKDF-SHA256 -> ChaCha20-Poly1305 sealing to the peer's attested key; claim C4 validated). Remaining: bind the seal to a verified attestation report on a live call, and rely on the enclave to hold the private key (hardware property)
-- Linked runtime evidence: each hop's TRACE record references the parent record hash and delegation credential id, producing a verifiable delegation DAG (Tier 2)
+- Linked runtime evidence: **landed** (`ca2a_runtime.trace_binding` emits a signed TRACE record per hop with the A2A `delegation` block; `ca2a_verify.verify_trace_dag` verifies the DAG offline, each link committing to the parent's full signed record). Built on `agentrust-trace` (Ed25519 + RFC 8785), reused not reimplemented. Software-mode records are Level 0; a hardware TEE run lifts them to Level 1. See `examples/trace-dag/`.
 
 ## Critical path, sequenced first (Tier 3)
 

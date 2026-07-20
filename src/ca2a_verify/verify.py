@@ -2,7 +2,7 @@
 
 Thin wrapper over ``ca2a_runtime.delegation.verify_chain`` that loads a chain
 from JSON and returns a structured result. The delegation DAG verifier (linking
-each hop's TRACE record to its parent) lands with the Tier 2 provenance work.
+each hop's TRACE record to its parent) lives in ``ca2a_verify.dag``.
 """
 
 from __future__ import annotations
