@@ -38,3 +38,5 @@ Agent A --(delegation cred, scope S_A)--> Agent B --(scope S_B ⊆ S_A)--> Agent
 ## Profile, not protocol
 
 cA2A binds to A2A the way TRACE binds to IETF RATS, EAT, and SCITT: it is an overlay, not a competitor. This keeps it neutral across org, cloud, and TEE-vendor boundaries, which is the claim a vendor-anchored verifier cannot make.
+
+The profile mandates no wire protocol. A reference HTTP transport ships (`ca2a_runtime.transport.server`/`client`) so the peer path is runnable off hardware, but it is a convenience, not part of the profile: any A2A server can carry the extension fields instead.
