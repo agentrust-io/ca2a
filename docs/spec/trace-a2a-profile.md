@@ -25,4 +25,4 @@ This is done offline, from signed records alone, without trusting the operators 
 
 ## Status
 
-The delegation-link field is on the trace-spec roadmap as the "A2A profile, pending A2A protocol stability." A2A is now stable at v1.x, which clears that blocker. The DAG verifier lands with the Tier 2 provenance work in this repo. See [ROADMAP.md](../../ROADMAP.md).
+The delegation-link field is on the trace-spec roadmap as the "A2A profile, pending A2A protocol stability." A2A is now stable at v1.x, which clears that blocker. The `delegation` block ships in the TRACE v0.1 schema. cA2A emits and verifies the DAG today: `ca2a_runtime.trace_binding` produces a signed TRACE record per hop with the block, and `ca2a_verify.verify_trace_dag` reconstructs and verifies the DAG offline, each `parent_record_hash` committing to the parent's full signed record. Software-mode records are TRACE Level 0 (platform `software-only`); an end-to-end run on confidential-computing hardware is what lifts them to Level 1. See [ROADMAP.md](../../ROADMAP.md) and `examples/trace-dag/`.
