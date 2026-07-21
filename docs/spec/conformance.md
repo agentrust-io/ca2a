@@ -1,6 +1,6 @@
 # Conformance
 
-An implementation may claim **cA2A-compatible** for a given version when it passes all MUST-level tests in the cA2A conformance suite for that version. This ties directly to the trademark language in [CHARTER.md](../../CHARTER.md): the mark asserts that a deployment satisfies the attestation, attenuation, sealing, and provenance requirements defined here.
+An implementation may claim cA2A-compatible for a given version when it passes all MUST-level tests in the cA2A conformance suite for that version. This ties directly to the trademark language in [CHARTER.md](../../CHARTER.md): the mark asserts that a deployment satisfies the attestation, attenuation, sealing, and provenance requirements defined here.
 
 ## The normative suite
 
@@ -24,8 +24,8 @@ pytest tests/conformance/ -v
 
 ## Levels
 
-- **MUST**: required for a cA2A-compatible claim. Partial conformance (MUST only) is sufficient.
-- **SHOULD**: recommended; indicates a higher-quality implementation.
+- MUST: required for a cA2A-compatible claim. Partial conformance (MUST only) is sufficient.
+- SHOULD: recommended; indicates a higher-quality implementation.
 
 Test IDs are stable: once assigned, an ID is never reused even if the test is removed. This lets a conformance report for one version be compared against another.
 

@@ -25,25 +25,25 @@ An `AttestationReport` carries `platform`, `measurement`, the bound `public_key`
 
 `ca2a_verify.sev_snp.verify_sev_snp_report` appraises an AMD SEV-SNP attestation report offline, in three fail-closed steps:
 
-1. **Certificate chain.** The VCEK is verified up to a trusted AMD root (ARK) through `ARK -> ASK -> VCEK`. Each certificate must be validly issued by the next, and the root must match a trusted anchor by fingerprint.
-2. **Report signature.** The ECDSA-P384 signature (stored as little-endian `r` and `s`) is verified against the VCEK public key over the report body (`report[:0x2A0]`).
-3. **Binding.** The launch `measurement` and the `report_data` (which carries the runtime key and nonce) are checked against expected values.
+1. Certificate chain: the VCEK is verified up to a trusted AMD root (ARK) through `ARK -> ASK -> VCEK`. Each certificate must be validly issued by the next, and the root must match a trusted anchor by fingerprint.
+2. Report signature: the ECDSA-P384 signature (stored as little-endian `r` and `s`) is verified against the VCEK public key over the report body (`report[:0x2A0]`).
+3. Binding: the launch `measurement` and the `report_data` (which carries the runtime key and nonce) are checked against expected values.
 
-**What is validated.** The chain-verification path is exercised against the genuine AMD Milan ARK/ASK root chain fetched from AMD KDS (`tests/fixtures/sev_snp/`). The report-signature path is exercised end to end with a synthetic VCEK and report, because a genuine report plus VCEK pair requires real SEV-SNP hardware. Producing a report (`SevSnpProvider.attest`) fails closed off hardware (`AttestationUnsupported`).
+What is validated. The chain-verification path is exercised against the genuine AMD Milan ARK/ASK root chain fetched from AMD KDS (`tests/fixtures/sev_snp/`). The report-signature path is exercised end to end with a synthetic VCEK and report, because a genuine report plus VCEK pair requires real SEV-SNP hardware. Producing a report (`SevSnpProvider.attest`) fails closed off hardware (`AttestationUnsupported`).
 
-**Cross-operator use.** Two operators in separate trust domains each bind their sealed-channel public key into a report and verify the counterparty's report against a pinned golden measurement. This composes into mutual attestation, confidential cross-operator delegation (seal to the attested key), and binary-swap detection (a changed measurement is rejected), validated in software as claim C6. See the [call graph](call-graph.md) and the `claim6-cross-operator-attestation` experiment.
+Cross-operator use. Two operators in separate trust domains each bind their sealed-channel public key into a report and verify the counterparty's report against a pinned golden measurement. This composes into mutual attestation, confidential cross-operator delegation (seal to the attested key), and binary-swap detection (a changed measurement is rejected), validated in software as claim C6. See the [call graph](call-graph.md) and the `claim6-cross-operator-attestation` experiment.
 
 ## TDX verification
 
 `ca2a_verify.tdx.verify_tdx_quote` appraises an Intel TDX quote (DCAP, ECDSA-256) offline in four fail-closed steps: the PCK certificate chain is verified up to a trusted Intel root; the Quoting Enclave report is verified against the PCK; the attestation key is confirmed to be the one the QE report data commits to (SHA-256 of the key and the QE auth data); and the attestation key's signature over the quote body is verified, along with the launch measurement (MRTD) and report data.
 
-**What is validated.** The chain-verification path accepts the genuine self-signed Intel SGX Root CA fetched from Intel (`tests/fixtures/tdx/`) and rejects an untrusted root. The multi-level signature path (PCK to QE report to attestation key to quote) is exercised end to end with a synthetic self-consistent quote, because a genuine quote requires a TDX guest. Byte offsets follow the Intel DCAP Quote v4 layout; end-to-end validation against a real hardware quote requires a TDX guest and remains open.
+What is validated. The chain-verification path accepts the genuine self-signed Intel SGX Root CA fetched from Intel (`tests/fixtures/tdx/`) and rejects an untrusted root. The multi-level signature path (PCK to QE report to attestation key to quote) is exercised end to end with a synthetic self-consistent quote, because a genuine quote requires a TDX guest. Byte offsets follow the Intel DCAP Quote v4 layout; end-to-end validation against a real hardware quote requires a TDX guest and remains open.
 
 ## TPM verification
 
 `ca2a_verify.tpm.verify_tpm_quote` appraises a TPM 2.0 quote (`TPMS_ATTEST`) offline: the AK certificate chain is verified to a trusted root, the AK signature over the attest blob is verified (ECDSA-SHA256 or RSA PKCS#1 v1.5), the structure is confirmed to be a TPM-generated quote (magic and type), and the qualifying data (the verifier's nonce) and the PCR digest (the platform measurement) are checked against expected values.
 
-**What is validated.** Unlike SEV-SNP and TDX, TPM attestation keys chain to per-vendor EK roots, so there is no single published root to validate against; the caller supplies the vendor roots it trusts, and the verifier is exercised against synthetic self-consistent vectors. Producing a quote (`TpmProvider.attest`) fails closed off a real TPM.
+What is validated. Unlike SEV-SNP and TDX, TPM attestation keys chain to per-vendor EK roots, so there is no single published root to validate against; the caller supplies the vendor roots it trusts, and the verifier is exercised against synthetic self-consistent vectors. Producing a quote (`TpmProvider.attest`) fails closed off a real TPM.
 
 ## Fail closed
 

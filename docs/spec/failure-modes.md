@@ -2,7 +2,7 @@
 
 cA2A fails closed. Every check on the delegation path either produces positive, verifiable evidence that a request is authorized, or it denies. There is no third state where a request proceeds with a warning attached. The guiding principle is this:
 
-**Absence of evidence is denial, not a warning.**
+Absence of evidence is denial, not a warning.
 
 An unsigned credential, a measurement that cannot be checked, a provenance record whose parent link does not resolve: each of these is treated as a failure, not a soft signal. This page enumerates the failure paths, the error each one raises, and which paths are enforced today versus which fail closed pending Tier 2/3 work.
 

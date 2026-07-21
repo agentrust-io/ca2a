@@ -6,7 +6,7 @@ When a peer accepts a delegated task, two independent trust decisions meet. The 
 effective = delegated_scope ∩ local_policy_allow
 ```
 
-**Status.** The intersection semantics are **implemented** as an enforcement decision core in `ca2a_runtime.peer` (`effective_scope`, `enforce_peer_call`), and the local policy can be either a capability allow set (`ca2a_runtime.policy.LocalPolicy`) or a **real Cedar policy engine** (`ca2a_runtime.cedar.CedarPolicy`, backed by `cedarpy`, the same engine cMCP runs). Both satisfy the `ca2a_runtime.policy.Policy` protocol, so they are interchangeable in the peer path. Validated by experiment C3 and the Cedar unit tests. What remains is wiring the decision core to a **live A2A transport** rather than a direct call. See [call-graph.md](call-graph.md) and [ROADMAP.md](../../ROADMAP.md).
+Status: the intersection semantics are implemented as an enforcement decision core in `ca2a_runtime.peer` (`effective_scope`, `enforce_peer_call`), and the local policy can be either a capability allow set (`ca2a_runtime.policy.LocalPolicy`) or a real Cedar policy engine (`ca2a_runtime.cedar.CedarPolicy`, backed by `cedarpy`, the same engine cMCP runs). Both satisfy the `ca2a_runtime.policy.Policy` protocol, so they are interchangeable in the peer path. Validated by experiment C3 and the Cedar unit tests. What remains is wiring the decision core to a live A2A transport rather than a direct call. See [call-graph.md](call-graph.md) and [ROADMAP.md](../../ROADMAP.md).
 
 ## Cedar policy
 
@@ -24,8 +24,8 @@ effective_scope(chain, policy)   # delegated leaf scope AND what Cedar allows
 
 Each side owns half of the decision, and neither may escalate the other.
 
-- **Delegation is authoritative on the caller's side.** A capability that is allowed by the callee's local policy but absent from the verified delegated scope is dropped. The caller was never granted it upstream, so local policy cannot manufacture it.
-- **Local policy is authoritative on the callee's side.** A capability present in the delegated scope but denied by local policy is dropped. The delegator cannot force the callee to honor something the callee's own policy forbids.
+- Delegation is authoritative on the caller's side: a capability that is allowed by the callee's local policy but absent from the verified delegated scope is dropped. The caller was never granted it upstream, so local policy cannot manufacture it.
+- Local policy is authoritative on the callee's side: a capability present in the delegated scope but denied by local policy is dropped. The delegator cannot force the callee to honor something the callee's own policy forbids.
 
 The safe combination is therefore the set intersection, not a union and not an override. The effective set is never larger than either input. This is defense in depth: an error or compromise on one side cannot widen what the other side permits.
 
@@ -69,7 +69,7 @@ Today the field is validated by `Ca2aConfig.from_dict` but has no runtime effect
 
 ## Illustrative shape
 
-The following shows the intended computation. It is **illustrative only** and is **not the Cedar engine**: it stands in a plain set intersection for what the runtime will do by mapping each capability to a Cedar authorization query. The `experiments/claim3-scope-policy-intersection/run.py` harness prints this same shape behind a SKIP banner, because the real path is gated on Tier 2.
+The following shows the intended computation. It is illustrative only and is not the Cedar engine: it stands in a plain set intersection for what the runtime will do by mapping each capability to a Cedar authorization query. The `experiments/claim3-scope-policy-intersection/run.py` harness prints this same shape behind a SKIP banner, because the real path is gated on Tier 2.
 
 ```python
 # Illustrative only. NOT the Cedar engine and NOT the runtime path.
@@ -92,7 +92,7 @@ In the wired implementation `local_policy_allow` is not a precomputed set. Each 
 
 The scope-policy intersection depends on two Tier 2 runtime pieces, neither of which is built:
 
-- **Runtime peer-delegation enforcement.** A call-time gate that accepts a delegation credential on a live inbound peer call and runs verification in the request path. `verify_chain` already checks the chain in isolation; there is no point at which it gates an actual peer-to-peer call.
-- **Cedar binding.** The wiring from a verified delegated scope to the cmcp Cedar engine, and the effective-permission computation above.
+- Runtime peer-delegation enforcement: a call-time gate that accepts a delegation credential on a live inbound peer call and runs verification in the request path. `verify_chain` already checks the chain in isolation; there is no point at which it gates an actual peer-to-peer call.
+- Cedar binding: the wiring from a verified delegated scope to the cmcp Cedar engine, and the effective-permission computation above.
 
 Until both land, do not describe cA2A as enforcing local policy on delegated calls. See [ROADMAP.md](../../ROADMAP.md).
