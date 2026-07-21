@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Certificate-chain verification now delegates to agent-manifest's shared generic verifier (`agent-manifest>=0.5`) instead of ca2a's own copy. `ca2a_verify.verify_cert_chain` (used by the SEV-SNP VCEK, TDX PCK, and TPM AK chains alike) is now a thin wrapper over `agent_manifest.verify_cert_chain`, re-raising `CertChainError` as `AttestationFailed` to preserve ca2a's contract. This removes the org's last duplicated cert-chain verifier; ca2a keeps its own report/quote parsers, per-format signature checks, appraisal shapes, trust-root pinning, and `verify_offer` semantics. Behavior unchanged (all 201 tests pass unchanged).
 - Bumped `agentrust-trace` to `>=0.4`. The previous `<0.4` cap worked around the
   published 0.3.0 lacking the TRACE A2A `delegation` block that cA2A records
   carry; 0.4.0 ships that block, so the cap is removed. cA2A still owns the
