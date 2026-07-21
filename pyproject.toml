@@ -31,6 +31,9 @@ dependencies = [
     # (see ROADMAP Tier 0). Pin a compatible minor; cross-repo skew is a known
     # risk documented in LIMITATIONS.md.
     "agentrust-trace>=0.4",
+    # Shared hardware-attestation verification (generic cert-chain verifier,
+    # SNP/TDX/TPM primitives) consumed via PyPI instead of duplicated per repo.
+    "agent-manifest>=0.5",
     "rfc8785>=0.1",
 ]
 

@@ -20,7 +20,7 @@ from cryptography import x509
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.utils import encode_dss_signature
-from cryptography.hazmat.primitives.hashes import SHA256, SHA384
+from cryptography.hazmat.primitives.hashes import SHA384
 
 from ca2a_runtime.errors import AttestationFailed
 from ca2a_runtime.tee.sev_snp import SEV_GUEST_DEVICE, SIG_ALGO_ECDSA_P384_SHA384, SevSnpReport
@@ -33,30 +33,22 @@ def verify_cert_chain(
 ) -> None:
     """Verify a leaf-to-root certificate chain against a set of trusted roots.
 
-    ``chain`` is ordered leaf first (VCEK), root last (ARK). Each certificate
-    must be directly issued by the next, and the final certificate must match a
-    trusted root by fingerprint. Raises AttestationFailed on any failure.
+    ``chain`` is ordered leaf first (VCEK), root last (ARK). Delegates to
+    agent-manifest's shared, algorithm-agnostic cert-chain verifier (one
+    implementation across the org, consumed via PyPI) and re-raises its failure
+    as AttestationFailed to preserve ca2a's error contract. Used for the SEV-SNP
+    VCEK chain, the TDX PCK chain, and the TPM AK chain alike. Raises
+    AttestationFailed on any failure.
     """
-    if not chain:
-        raise AttestationFailed("empty certificate chain")
+    from agent_manifest import CertChainError
+    from agent_manifest import verify_cert_chain as _shared_verify_cert_chain
 
-    for i in range(len(chain) - 1):
-        child, issuer = chain[i], chain[i + 1]
-        try:
-            child.verify_directly_issued_by(issuer)
-        except (ValueError, TypeError, InvalidSignature) as exc:
-            raise AttestationFailed(
-                f"certificate at position {i} is not validly issued by the next",
-                detail=str(exc),
-            ) from exc
-
-    root = chain[-1]
-    trusted = {c.fingerprint(SHA256()) for c in trusted_roots}
-    if root.fingerprint(SHA256()) not in trusted:
+    try:
+        _shared_verify_cert_chain(chain, trusted_roots)
+    except CertChainError as exc:
         raise AttestationFailed(
-            "chain root is not a trusted AMD root",
-            detail=root.subject.rfc4514_string(),
-        )
+            "certificate chain verification failed", detail=str(exc)
+        ) from exc
 
 
 def verify_sev_snp_report(
