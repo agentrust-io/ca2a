@@ -277,7 +277,7 @@ Invalid values fail fast with a `CONFIG_ERROR` and a message naming the offendin
 
 # cA2A Profile Specification
 
-**Status**: draft, v0.1. This document describes the cA2A profile: a binding on A2A that makes agent-to-agent delegation attested, attenuated, confidential, and provable.
+Status: draft, v0.1. This document describes the cA2A profile: a binding on A2A that makes agent-to-agent delegation attested, attenuated, confidential, and provable.
 
 ## Scope of this document
 
@@ -285,10 +285,10 @@ cA2A is a profile, not a transport. It does not define how tasks are moved betwe
 
 ## Design tenets
 
-1. **Profile, not protocol.** Bind to A2A and to IETF RATS, EAT, and SCITT rather than reinvent them.
-1. **Neutral by construction.** No coupling to a single silicon vendor, cloud, or AI platform. This is the claim a vendor-anchored verifier cannot make.
-1. **Fail closed.** Absence of evidence is denial, not a warning. A missing attestation or an unverifiable chain denies the call.
-1. **Offline verifiable.** A third party can verify a delegation chain and its provenance DAG without contacting or trusting any operator.
+1. Profile, not protocol: Bind to A2A and to IETF RATS, EAT, and SCITT rather than reinvent them.
+1. Neutral by construction: No coupling to a single silicon vendor, cloud, or AI platform. This is the claim a vendor-anchored verifier cannot make.
+1. Fail closed: Absence of evidence is denial, not a warning. A missing attestation or an unverifiable chain denies the call.
+1. Offline verifiable: A third party can verify a delegation chain and its provenance DAG without contacting or trusting any operator.
 
 ## Components
 
@@ -406,25 +406,25 @@ An `AttestationReport` carries `platform`, `measurement`, the bound `public_key`
 
 `ca2a_verify.sev_snp.verify_sev_snp_report` appraises an AMD SEV-SNP attestation report offline, in three fail-closed steps:
 
-1. **Certificate chain.** The VCEK is verified up to a trusted AMD root (ARK) through `ARK -> ASK -> VCEK`. Each certificate must be validly issued by the next, and the root must match a trusted anchor by fingerprint.
-1. **Report signature.** The ECDSA-P384 signature (stored as little-endian `r` and `s`) is verified against the VCEK public key over the report body (`report[:0x2A0]`).
-1. **Binding.** The launch `measurement` and the `report_data` (which carries the runtime key and nonce) are checked against expected values.
+1. Certificate chain: the VCEK is verified up to a trusted AMD root (ARK) through `ARK -> ASK -> VCEK`. Each certificate must be validly issued by the next, and the root must match a trusted anchor by fingerprint.
+1. Report signature: the ECDSA-P384 signature (stored as little-endian `r` and `s`) is verified against the VCEK public key over the report body (`report[:0x2A0]`).
+1. Binding: the launch `measurement` and the `report_data` (which carries the runtime key and nonce) are checked against expected values.
 
-**What is validated.** The chain-verification path is exercised against the genuine AMD Milan ARK/ASK root chain fetched from AMD KDS (`tests/fixtures/sev_snp/`). The report-signature path is exercised end to end with a synthetic VCEK and report, because a genuine report plus VCEK pair requires real SEV-SNP hardware. Producing a report (`SevSnpProvider.attest`) fails closed off hardware (`AttestationUnsupported`).
+What is validated. The chain-verification path is exercised against the genuine AMD Milan ARK/ASK root chain fetched from AMD KDS (`tests/fixtures/sev_snp/`). The report-signature path is exercised end to end with a synthetic VCEK and report, because a genuine report plus VCEK pair requires real SEV-SNP hardware. Producing a report (`SevSnpProvider.attest`) fails closed off hardware (`AttestationUnsupported`).
 
-**Cross-operator use.** Two operators in separate trust domains each bind their sealed-channel public key into a report and verify the counterparty's report against a pinned golden measurement. This composes into mutual attestation, confidential cross-operator delegation (seal to the attested key), and binary-swap detection (a changed measurement is rejected), validated in software as claim C6. See the [call graph](https://ca2a.agentrust-io.com/docs/spec/call-graph/index.md) and the `claim6-cross-operator-attestation` experiment.
+Cross-operator use. Two operators in separate trust domains each bind their sealed-channel public key into a report and verify the counterparty's report against a pinned golden measurement. This composes into mutual attestation, confidential cross-operator delegation (seal to the attested key), and binary-swap detection (a changed measurement is rejected), validated in software as claim C6. See the [call graph](https://ca2a.agentrust-io.com/docs/spec/call-graph/index.md) and the `claim6-cross-operator-attestation` experiment.
 
 ## TDX verification
 
 `ca2a_verify.tdx.verify_tdx_quote` appraises an Intel TDX quote (DCAP, ECDSA-256) offline in four fail-closed steps: the PCK certificate chain is verified up to a trusted Intel root; the Quoting Enclave report is verified against the PCK; the attestation key is confirmed to be the one the QE report data commits to (SHA-256 of the key and the QE auth data); and the attestation key's signature over the quote body is verified, along with the launch measurement (MRTD) and report data.
 
-**What is validated.** The chain-verification path accepts the genuine self-signed Intel SGX Root CA fetched from Intel (`tests/fixtures/tdx/`) and rejects an untrusted root. The multi-level signature path (PCK to QE report to attestation key to quote) is exercised end to end with a synthetic self-consistent quote, because a genuine quote requires a TDX guest. Byte offsets follow the Intel DCAP Quote v4 layout; end-to-end validation against a real hardware quote requires a TDX guest and remains open.
+What is validated. The chain-verification path accepts the genuine self-signed Intel SGX Root CA fetched from Intel (`tests/fixtures/tdx/`) and rejects an untrusted root. The multi-level signature path (PCK to QE report to attestation key to quote) is exercised end to end with a synthetic self-consistent quote, because a genuine quote requires a TDX guest. Byte offsets follow the Intel DCAP Quote v4 layout; end-to-end validation against a real hardware quote requires a TDX guest and remains open.
 
 ## TPM verification
 
 `ca2a_verify.tpm.verify_tpm_quote` appraises a TPM 2.0 quote (`TPMS_ATTEST`) offline: the AK certificate chain is verified to a trusted root, the AK signature over the attest blob is verified (ECDSA-SHA256 or RSA PKCS#1 v1.5), the structure is confirmed to be a TPM-generated quote (magic and type), and the qualifying data (the verifier's nonce) and the PCR digest (the platform measurement) are checked against expected values.
 
-**What is validated.** Unlike SEV-SNP and TDX, TPM attestation keys chain to per-vendor EK roots, so there is no single published root to validate against; the caller supplies the vendor roots it trusts, and the verifier is exercised against synthetic self-consistent vectors. Producing a quote (`TpmProvider.attest`) fails closed off a real TPM.
+What is validated. Unlike SEV-SNP and TDX, TPM attestation keys chain to per-vendor EK roots, so there is no single published root to validate against; the caller supplies the vendor roots it trusts, and the verifier is exercised against synthetic self-consistent vectors. Producing a quote (`TpmProvider.attest`) fails closed off a real TPM.
 
 ## Fail closed
 
@@ -470,4 +470,4 @@ Out of adversary scope: breaking the underlying cryptographic primitives (Ed2551
 
 ## Residual risks in this release
 
-Because attestation and sealing are not yet implemented (Tier 2/3), this release defends bounded authority and provenance-of-intent (via signed chains) but does **not** yet defend peer integrity or task confidentiality at runtime. Do not rely on cA2A for confidentiality across a trust boundary until the sealed channel and a real attestation backend land. See [LIMITATIONS.md](https://ca2a.agentrust-io.com/LIMITATIONS/index.md).
+Because attestation and sealing are not yet implemented (Tier 2/3), this release defends bounded authority and provenance-of-intent (via signed chains) but does not yet defend peer integrity or task confidentiality at runtime. Do not rely on cA2A for confidentiality across a trust boundary until the sealed channel and a real attestation backend land. See [LIMITATIONS.md](https://ca2a.agentrust-io.com/LIMITATIONS/index.md).
