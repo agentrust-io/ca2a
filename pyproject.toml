@@ -30,7 +30,7 @@ dependencies = [
     # TRACE record models + RFC 8785 signing, reused rather than reimplemented
     # (see ROADMAP Tier 0). Pin a compatible minor; cross-repo skew is a known
     # risk documented in LIMITATIONS.md.
-    "agentrust-trace>=0.3,<0.4",
+    "agentrust-trace>=0.4",
     "rfc8785>=0.1",
 ]
 
