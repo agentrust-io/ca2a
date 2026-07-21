@@ -9,22 +9,22 @@ cA2A is a profile on A2A, not a competing transport. A2A moves tasks and context
 | Extension URI + namespaced metadata keys (below) | Specified |
 | `ca2a_runtime.transport` adapter: A2A metadata ↔ `PeerRequest` | Implemented (parse/attach only) |
 | Hand-off into `handle_peer_request` once a `PeerRequest` exists | Implemented in-process; callers invoke it after parsing |
-| Reference HTTP server/client (`ca2a_runtime.transport.server`/`client`) | Implemented, software mode. A **reference** transport, not part of the profile |
+| Reference HTTP server/client (`ca2a_runtime.transport.server`/`client`) | Implemented, software mode. A reference transport, not part of the profile |
 | Live attestation handshake on an inbound call | Implemented in software mode (`ca2a_runtime.attestation`, `assurance="none"`) |
 | Seal gated on the appraised channel key on a live call | Implemented in software mode |
-| Seal bound to a **hardware-verified** measurement | Not yet — needs a real quote via the `verifier` seam (Tier 3) |
-| `ca2a start` CLI listener | Not yet — serving is via `transport.server.serve` |
+| Seal bound to a hardware-verified measurement | Not yet: needs a real quote via the `verifier` seam (Tier 3) |
+| `ca2a start` CLI listener | Not yet: serving is via `transport.server.serve` |
 
-The reference HTTP server/client run a live call end to end **in software mode** (`assurance="none"`). That is progress on Tier 2 transport wiring and a convenience for running the peer path off hardware. It is **not** evidence that cA2A is attested across trust domains: that needs the hardware `verifier` seam driven by a real quote. See [LIMITATIONS.md](../../LIMITATIONS.md) and [ROADMAP.md](../../ROADMAP.md).
+The reference HTTP server/client run a live call end to end in software mode (`assurance="none"`). That is progress on Tier 2 transport wiring and a convenience for running the peer path off hardware. It is not evidence that cA2A is attested across trust domains: that needs the hardware `verifier` seam driven by a real quote. See [LIMITATIONS.md](../../LIMITATIONS.md) and [ROADMAP.md](../../ROADMAP.md).
 
 ## Overlay, not fork
 
 cA2A does not define its own transport, message framing, or handshake. It rides inside A2A. Two pieces of cA2A data travel with a task:
 
-- The **delegation credential** (or the chain root-to-leaf), naming issuer, subject, scope, depth, and parent link. See [the delegation chain](delegation-chain.md).
-- The **sealing metadata**, carrying an opaque sealed ciphertext when the caller seals the task payload. Sealing crypto is implemented; binding that seal to a verified peer measurement on a live call is still Tier 2/3. See [the sealed channel](sealed-channel.md).
+- The delegation credential (or the chain root-to-leaf), naming issuer, subject, scope, depth, and parent link. See [the delegation chain](delegation-chain.md).
+- The sealing metadata, carrying an opaque sealed ciphertext when the caller seals the task payload. Sealing crypto is implemented; binding that seal to a verified peer measurement on a live call is still Tier 2/3. See [the sealed channel](sealed-channel.md).
 
-Both ride in A2A extension fields. The **profile** claims no new wire format and no new endpoint: removing every cA2A field leaves a valid A2A task. The reference HTTP transport (`ca2a_runtime.transport.server`) does expose convenience endpoints, including an attestation-handshake path for fetching the callee's channel key, but those belong to the reference transport, not the profile. They are one way to carry the extension fields, not a requirement of the profile, and any A2A server can carry them instead.
+Both ride in A2A extension fields. The profile claims no new wire format and no new endpoint: removing every cA2A field leaves a valid A2A task. The reference HTTP transport (`ca2a_runtime.transport.server`) does expose convenience endpoints, including an attestation-handshake path for fetching the callee's channel key, but those belong to the reference transport, not the profile. They are one way to carry the extension fields, not a requirement of the profile, and any A2A server can carry them instead.
 
 ## Extension URI and metadata keys
 
@@ -43,7 +43,7 @@ Namespaced keys on A2A `metadata` (message and/or params):
 | `https://agentrust.io/extensions/ca2a/v0.1/requested_capability` | string | Capability the callee must grant |
 | `https://agentrust.io/extensions/ca2a/v0.1/record_id` | string | Provenance record id for this hop |
 | `https://agentrust.io/extensions/ca2a/v0.1/parent_record_hash` | string or `null` | Parent TRACE/provenance hash; `null` for a root hop |
-| `https://agentrust.io/extensions/ca2a/v0.1/sealed_payload` | string (base64url) or omitted | Opaque sealed ciphertext only — **not** a verified measurement binding |
+| `https://agentrust.io/extensions/ca2a/v0.1/sealed_payload` | string (base64url) or omitted | Opaque sealed ciphertext only, not a verified measurement binding |
 
 Constants and helpers live in `ca2a_runtime.transport`.
 
@@ -55,9 +55,9 @@ The credential and sealing metadata are carried in A2A `metadata` maps on the ta
 
 Carrying the trust envelope in extension fields is what keeps the profile an overlay:
 
-- A **non-cA2A peer** does not understand the extension fields and ignores them. The task is handled as a plain A2A task.
-- A **cA2A-aware peer** that sees **no** cA2A keys treats the message as ordinary A2A input (`parse_peer_request` returns `None`). It must not invent a partial trust state.
-- A **cA2A-aware peer** that sees **any** cA2A key fails closed on malformed or incomplete cA2A metadata (`TransportError`), then — once parsed — runs the inbound enforcement pipeline.
+- A non-cA2A peer does not understand the extension fields and ignores them. The task is handled as a plain A2A task.
+- A cA2A-aware peer that sees no cA2A keys treats the message as ordinary A2A input (`parse_peer_request` returns `None`). It must not invent a partial trust state.
+- A cA2A-aware peer that sees any cA2A key fails closed on malformed or incomplete cA2A metadata (`TransportError`), then, once parsed, runs the inbound enforcement pipeline.
 
 ## Adapter API
 

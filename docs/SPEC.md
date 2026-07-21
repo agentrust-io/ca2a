@@ -1,6 +1,6 @@
 # cA2A Profile Specification
 
-**Status**: draft, v0.1. This document describes the cA2A profile: a binding on A2A that makes agent-to-agent delegation attested, attenuated, confidential, and provable.
+Status: draft, v0.1. This document describes the cA2A profile: a binding on A2A that makes agent-to-agent delegation attested, attenuated, confidential, and provable.
 
 ## Scope of this document
 
@@ -8,10 +8,10 @@ cA2A is a profile, not a transport. It does not define how tasks are moved betwe
 
 ## Design tenets
 
-1. **Profile, not protocol.** Bind to A2A and to IETF RATS, EAT, and SCITT rather than reinvent them.
-2. **Neutral by construction.** No coupling to a single silicon vendor, cloud, or AI platform. This is the claim a vendor-anchored verifier cannot make.
-3. **Fail closed.** Absence of evidence is denial, not a warning. A missing attestation or an unverifiable chain denies the call.
-4. **Offline verifiable.** A third party can verify a delegation chain and its provenance DAG without contacting or trusting any operator.
+1. Profile, not protocol: Bind to A2A and to IETF RATS, EAT, and SCITT rather than reinvent them.
+2. Neutral by construction: No coupling to a single silicon vendor, cloud, or AI platform. This is the claim a vendor-anchored verifier cannot make.
+3. Fail closed: Absence of evidence is denial, not a warning. A missing attestation or an unverifiable chain denies the call.
+4. Offline verifiable: A third party can verify a delegation chain and its provenance DAG without contacting or trusting any operator.
 
 ## Components
 
