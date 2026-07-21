@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Bumped `agentrust-trace` to `>=0.4`. The previous `<0.4` cap worked around the
+  published 0.3.0 lacking the TRACE A2A `delegation` block that cA2A records
+  carry; 0.4.0 ships that block, so the cap is removed. cA2A still owns the
+  delegation-block semantics natively (`trace_binding`/`ca2a_verify.dag`); no
+  code shim was needed. All tests pass against 0.4.0.
+
 ### Added
 
 - A2A transport adapter (`ca2a_runtime.transport`): parse/attach cA2A extension
