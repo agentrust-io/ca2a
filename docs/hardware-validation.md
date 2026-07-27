@@ -27,13 +27,15 @@ returned `assurance="hardware"` instead of `"none"` for the first time, and a
 payload was sealed to a channel key that a hardware-verified measurement vouches
 for. See the live-peer section below.
 
-What is still not established is a two-operator deployment on hardware. The live
-run had one attested peer; the cross-operator harness in
-`examples/cross-operator-delegation` is still software-attested with synthetic
-vectors. Quote generation also still requires the platform, so nothing running
-off a CVM is attested. Until a cross-operator run lands, "attested across trust
-domains" describes a demonstrated single-peer capability, not a demonstrated
-cross-domain deployment; see [ROADMAP.md](../ROADMAP.md).
+A cross-operator, cross-TEE-family run followed on the same day: an AMD SEV-SNP
+peer on Azure calling an Intel TDX peer on GCP, each in a different cloud under a
+different operator. See the cross-TEE section below.
+
+Quote generation still requires the platform, so nothing running off a CVM is
+attested, and the committed `examples/cross-operator-delegation` harness remains
+software-attested with synthetic vectors: the hardware runs are recorded here
+rather than shipped as fixtures, because the evidence embeds per-CPU
+identifiers.
 
 Verification is also bounded to a remote or rogue-admin adversary, not to one
 with physical access: [TEE.fail](https://tee.fail) extracts attestation keys from
@@ -107,6 +109,39 @@ kept out of the repository with the other captures.
 What it is not: a two-operator run. One peer was attested, by a caller on the
 same host. Two independently operated attested peers, ideally on different TEE
 families, is the next step and is what the cross-operator claim needs.
+
+## Cross-operator, cross-TEE: Azure SEV-SNP calling GCP TDX
+
+Run 2026-07-27. Peer A is an Azure `Standard_DC2ads_v5` SEV-SNP CVM in eastus.
+Peer B is a GCP `c3-standard-4` Intel TDX CVM (`tdx: Guest detected`,
+configfs-TSM) in us-central1-a. Different clouds, different operators, unrelated
+attestation formats: an AMD VCEK chain on one side, an Intel PCK chain on the
+other. B served over HTTP with a firewall rule admitting only A's address.
+
+Non-paravisor TDX is guest-controlled, so B binds its channel key into the quote
+directly: `REPORTDATA = sha256(channel_pub || nonce)`, with the nonce chosen by A.
+
+| Step | Result |
+|---|---|
+| A appraises B's TDX quote | 8,000 bytes, verified against the pinned Intel SGX Root CA |
+| Channel key bound to the quote | Yes, `REPORTDATA` matched the recomputed binding |
+| B's MRTD | `c1ee9c16e3afc506...` recorded by A |
+| Stale nonce | Rejected; freshness is enforced, not assumed |
+| Sealed delegated task | 107 bytes sealed by A, opened **inside B's TDX enclave** |
+| Delegated capability `tool:search` | Allowed; effective scope `[task:read, tool:search]` |
+| Over-scoped `tool:purchase` | Refused, HTTP 403 `SCOPE_NOT_PERMITTED` |
+| Denial record | Returned across the trust boundary with `decision: deny`, the requested capability, the effective scope and the reason |
+
+This is the run the cross-operator claim rested on. The four primitives held
+simultaneously across a real trust boundary: attenuated delegation (B enforced a
+scope narrowed by a chain B did not issue), peer attestation on real hardware
+(A refused to seal until B's quote appraised), payload confidentiality (the task
+was readable only inside B's measured guest), and provenance (both the allow and
+the deny produced linked records).
+
+What it still is not: both peers were driven by one operator's harness, and B's
+appraisal of A's SNP report was not exercised in this run, so the attestation was
+one-directional. Mutual simultaneous attestation is the remaining step.
 
 ## TPM 2.0, Azure Trusted Launch vTPM
 
