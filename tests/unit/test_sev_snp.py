@@ -8,6 +8,7 @@ because a genuine report + VCEK pair requires real SEV-SNP hardware.
 
 from __future__ import annotations
 
+import os
 import struct
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -157,3 +158,32 @@ def test_provider_detect_and_attest() -> None:
     assert SevSnpProvider.detect() is False  # no /dev/sev-guest in this environment
     with pytest.raises(AttestationUnsupported):
         SevSnpProvider().attest("deadbeef", "nonce")
+
+
+@pytest.mark.skipif(
+    not os.environ.get("CA2A_SNP_FIXTURE_DIR"),
+    reason="set CA2A_SNP_FIXTURE_DIR to a dir with snp_report.bin + vcek.der + "
+    "cert_chain.pem (a real SEV-SNP capture) to run the hardware test",
+)
+def test_real_snp_report_verifies_to_the_amd_root() -> None:
+    """Full-chain appraisal of a genuine SEV-SNP report.
+
+    The capture is not committed: the report's 64-byte CHIP_ID is a per-CPU
+    hardware identifier. See docs/hardware-validation.md.
+    """
+    d = Path(os.environ["CA2A_SNP_FIXTURE_DIR"])
+    report = (d / "snp_report.bin").read_bytes()
+    vcek = x509.load_der_x509_certificate((d / "vcek.der").read_bytes())
+    rest = x509.load_pem_x509_certificates((d / "cert_chain.pem").read_bytes())
+    ark = rest[-1]
+    assert ark.subject == ark.issuer, "last cert in the chain must be the self-signed ARK"
+
+    parsed = verify_sev_snp_report(report, [vcek, *rest], trusted_roots=[ark])
+    assert len(parsed.measurement) == 48
+    assert parsed.measurement != bytes(48)
+
+    # and it fails closed on a flipped bit in the signed body
+    tampered = bytearray(report)
+    tampered[0x50] ^= 0x01
+    with pytest.raises(AttestationFailed):
+        verify_sev_snp_report(bytes(tampered), [vcek, *rest], trusted_roots=[ark])

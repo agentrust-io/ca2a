@@ -9,6 +9,7 @@ synthetic self-consistent quote, because a genuine quote requires a TDX guest.
 from __future__ import annotations
 
 import hashlib
+import os
 import struct
 from pathlib import Path
 
@@ -66,9 +67,14 @@ def build_quote(mrtd: bytes, report_data: bytes, *, root_key, root_name="test-in
     qe_report_sig = _sig_rs(pck_key, bytes(qe_report))
 
     pem = pck.public_bytes(Encoding.PEM) + root.public_bytes(Encoding.PEM)
-    sig = (quote_sig + att_raw + bytes(qe_report) + qe_report_sig
-           + struct.pack("<H", len(qe_auth)) + qe_auth
-           + struct.pack("<HI", 5, len(pem)) + pem)
+    # Intel DCAP v4 nests the QE material under a type-6 certification-data header;
+    # the type-5 PCK chain sits inside it. Emitting the flat shape here is what let
+    # the six-byte-early parse pass CI while every genuine quote was rejected.
+    cert_data = (bytes(qe_report) + qe_report_sig
+                 + struct.pack("<H", len(qe_auth)) + qe_auth
+                 + struct.pack("<HI", 5, len(pem)) + pem)
+    sig = (quote_sig + att_raw
+           + struct.pack("<HI", 6, len(cert_data)) + cert_data)
     quote = signed + struct.pack("<I", len(sig)) + sig
     return quote, root
 
@@ -147,3 +153,33 @@ def test_provider_detect_and_attest() -> None:
     assert TdxProvider.detect() is False
     with pytest.raises(AttestationUnsupported):
         TdxProvider().attest("deadbeef", "nonce")
+
+
+def test_flat_signature_layout_rejected(quote_and_root) -> None:
+    """A quote without the type-6 QE wrapper is malformed, not silently misread.
+
+    The flat shape is what the parser used to assume; genuine DCAP v4 quotes nest
+    the QE material, so anything claiming the flat layout must fail closed.
+    """
+    off = 48 + 584 + 4 + 128  # header + TD report + sig_len + quote_sig + att_key
+    flat = bytearray(quote_and_root["quote"])
+    flat[off:off + 2] = struct.pack("<H", 5)  # PCK chain where the QE report belongs
+    with pytest.raises(AttestationFailed, match="certification data type"):
+        TdxQuote.parse(bytes(flat))
+
+
+@pytest.mark.skipif(
+    not os.environ.get("CA2A_TDX_QUOTE"),
+    reason="set CA2A_TDX_QUOTE to a real DCAP v4 quote file to run the hardware test",
+)
+def test_real_tdx_quote_verifies_to_the_intel_root() -> None:
+    """Full-chain appraisal of a genuine TDX quote (see docs/hardware-validation.md)."""
+    from ca2a_verify.tdx import verify_tdx_quote
+
+    intel_root = x509.load_pem_x509_certificates(FIXTURE.read_bytes())[0]
+    quote_bytes = Path(os.environ["CA2A_TDX_QUOTE"]).read_bytes()
+    quote = verify_tdx_quote(quote_bytes, trusted_roots=[intel_root])
+    assert quote.version == 4
+    assert quote.tee_type == 0x81
+    assert len(quote.measurement) == 48
+    assert quote.measurement != bytes(48)

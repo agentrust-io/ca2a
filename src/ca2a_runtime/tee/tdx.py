@@ -7,10 +7,11 @@ PCK signature, and the PCK certificate chain). Verification lives in
 :mod:`ca2a_verify.tdx`.
 
 Producing a quote requires a real TDX guest, so :meth:`TdxProvider.attest` fails
-closed off hardware. Byte offsets follow the Intel DCAP Quote v4 layout; the
-verifier is exercised against synthetic self-consistent vectors plus the real
-Intel SGX Root CA in the test suite. End-to-end validation against a real
-hardware quote requires a TDX guest and remains open.
+closed off hardware. Byte offsets follow the Intel DCAP Quote v4 layout, including
+the nested type-6 QE certification data that wraps the QE report and the PCK
+chain. The verifier is exercised against synthetic self-consistent vectors plus
+the real Intel SGX Root CA in the test suite, and against a genuine GCP C3 quote
+when ``CA2A_TDX_QUOTE`` points at one; see ``docs/hardware-validation.md``.
 """
 
 from __future__ import annotations
@@ -38,7 +39,10 @@ QE_REPORT_LEN = 384
 QE_REPORT_DATA_OFFSET = 320  # within the QE SGX report
 
 TEE_TYPE_TDX = 0x81
+# Intel DCAP certification-data types, each preceded by a uint16 type + uint32 size.
 CERT_TYPE_PCK_CHAIN = 5
+CERT_TYPE_QE_REPORT = 6
+CERT_DATA_HEADER_LEN = 6
 TDX_GUEST_DEVICE = "/dev/tdx_guest"
 
 
@@ -79,17 +83,34 @@ class TdxQuote:
         pos += QUOTE_SIG_LEN
         att_key = blob[pos : pos + ATT_KEY_LEN]
         pos += ATT_KEY_LEN
-        qe_report = blob[pos : pos + QE_REPORT_LEN]
-        pos += QE_REPORT_LEN
-        qe_report_sig = blob[pos : pos + QUOTE_SIG_LEN]
-        pos += QUOTE_SIG_LEN
-        (qe_auth_len,) = struct.unpack_from("<H", blob, pos)
-        pos += 2
-        qe_auth = blob[pos : pos + qe_auth_len]
-        pos += qe_auth_len
-        cert_type, cert_len = struct.unpack_from("<HI", blob, pos)
-        pos += 6
-        cert_bytes = blob[pos : pos + cert_len]
+
+        # The QE material is nested, not flat: what follows the attestation key is a
+        # certification-data header of type 6 wrapping the QE report, its PCK
+        # signature, the auth data and the type-5 PCK chain. Reading the QE report
+        # here directly lands six bytes early and rejects every genuine quote.
+        outer_type, outer_len = struct.unpack_from("<HI", blob, pos)
+        pos += CERT_DATA_HEADER_LEN
+        if outer_type != CERT_TYPE_QE_REPORT:
+            raise AttestationFailed(
+                "unsupported certification data type",
+                detail=f"type={outer_type}, expected {CERT_TYPE_QE_REPORT} (QE report)",
+            )
+        cert_data = blob[pos : pos + outer_len]
+        if len(cert_data) < QE_REPORT_LEN + QUOTE_SIG_LEN + 2 + CERT_DATA_HEADER_LEN:
+            raise AttestationFailed("QE certification data is truncated")
+
+        inner = 0
+        qe_report = cert_data[inner : inner + QE_REPORT_LEN]
+        inner += QE_REPORT_LEN
+        qe_report_sig = cert_data[inner : inner + QUOTE_SIG_LEN]
+        inner += QUOTE_SIG_LEN
+        (qe_auth_len,) = struct.unpack_from("<H", cert_data, inner)
+        inner += 2
+        qe_auth = cert_data[inner : inner + qe_auth_len]
+        inner += qe_auth_len
+        cert_type, cert_len = struct.unpack_from("<HI", cert_data, inner)
+        inner += CERT_DATA_HEADER_LEN
+        cert_bytes = cert_data[inner : inner + cert_len]
         if cert_type != CERT_TYPE_PCK_CHAIN:
             raise AttestationFailed(
                 "unsupported QE certification data type",
