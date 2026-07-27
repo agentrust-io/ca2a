@@ -35,8 +35,8 @@ If any step raises, the call is denied. Absence of evidence is denial, not a war
 | Step | What it enforces | Function / type | Status |
 |---|---|---|---|
 | 1. Chain verification | Signature, continuity, attenuation, depth bound, anti-replay | `verify_chain` | Implemented |
-| 2. Peer attestation | Peer measurement matches an expected value | `ca2a_verify.sev_snp.verify_sev_snp_report` | SEV-SNP verifier implemented; not yet wired into the call path; report needs hardware |
-| 3. Scope intersection | Delegated scope intersected with local policy | `ca2a_runtime.peer.effective_scope`, `enforce_peer_call` | Implemented (decision core); Cedar engine binding pending (#10) |
+| 2. Peer attestation | Peer measurement matches an expected value | `ca2a_verify.sev_snp`, `.tdx`, `.tpm`; `ca2a_runtime.attestation` | Verifiers implemented and wired into the handshake. SEV-SNP and TDX appraise real hardware evidence; on a live call off hardware the appraisal is `assurance="none"` |
+| 3. Scope intersection | Delegated scope intersected with local policy | `ca2a_runtime.peer.effective_scope`, `enforce_peer_call` | Implemented, with `LocalPolicy` or the Cedar engine (`CedarPolicy`) |
 | 4. Payload sealing | Payload sealed to the peer's attested key | `SealedChannel.seal`, `open_sealed` | Implemented (crypto); binding to a verified report on the live path pending |
 | 5. Provenance record | A `DelegationRecord` emitted and linked to its parent | `enforce_peer_call`, `record_for`, `verify_dag` | Implemented (emitted by the decision core) |
 | Inbound pipeline handler | Verify, enforce, open sealed payload, emit record off a parsed request | `handle_peer_request`, `PeerRequest` | Implemented (transport-agnostic) |
@@ -57,9 +57,11 @@ delegated_scope = leaf.scope  # frozenset[str], the authority to enforce below
 
 `max_depth` comes from `Ca2aConfig.max_delegation_depth` (default 8). This step is deterministic and offline: it contacts no operator and depends only on the signed bytes. It is the only step that gates an inbound call in this release.
 
-## Step 2: verify peer attestation (pending, Tier 3)
+## Step 2: verify peer attestation (implemented; software mode on a live call)
 
-The runtime confirms the peer is running attested, measured code before it is trusted with the task, by checking the peer's report measurement against an expected value under a fresh nonce. A SEV-SNP verifier exists (`ca2a_verify.sev_snp.verify_sev_snp_report`: VCEK chain, report-signature, measurement binding), but it is not yet wired into this call path, producing a report requires real SEV-SNP hardware, and TDX/TPM backends are not implemented. Verification fails closed when evidence is absent. Do not treat this step as active on the live path yet. See [attestation.md](attestation.md).
+The runtime confirms the peer is running attested, measured code before it is trusted with the task, by checking the peer's report measurement against an expected value under a fresh nonce. Verifiers exist and are fail-closed for all three platforms: `ca2a_verify.sev_snp` (VCEK chain, ECDSA-P384 report signature, measurement binding), `ca2a_verify.tdx` (DCAP v4 including the nested type-6 QE certification data, PCK chain to the Intel SGX Root CA, QE binding, MRTD) and `ca2a_verify.tpm` (AK chain, AK signature, qualifying-data and PCR-digest binding). The SEV-SNP and TDX verifiers appraise genuine hardware evidence; TPM is synthetic-vector validated only. See [hardware validation](../hardware-validation.md).
+
+The handshake in `ca2a_runtime.attestation` gates the seal on an appraised channel key, so this step is wired into the call path. What is still missing is hardware on the live path: producing a report requires the platform, so off hardware the appraisal records `assurance="none"` and the `verifier` seam is not driven off a real quote. Do not read a completed software-mode call as an attested one. See [attestation.md](attestation.md).
 
 ## Step 3: intersect scope with local policy (implemented as a decision core)
 
