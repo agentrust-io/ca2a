@@ -7,6 +7,7 @@ and AK chain. The parsing follows the TPMS_ATTEST layout.
 
 from __future__ import annotations
 
+import os
 import struct
 
 import pytest
@@ -118,3 +119,44 @@ def test_provider_detect_and_attest() -> None:
     assert TpmProvider.detect() is False
     with pytest.raises(AttestationUnsupported):
         TpmProvider().attest("deadbeef", "nonce")
+
+
+@pytest.mark.skipif(
+    not os.environ.get("CA2A_TPM_FIXTURE_DIR"),
+    reason="set CA2A_TPM_FIXTURE_DIR to a dir with quote.msg + quote.sig + ak.pub + "
+    "nonce.hex (a real TPM capture) to run the hardware test",
+)
+def test_real_tpm_quote_parses_and_verifies() -> None:
+    """A genuine vTPM quote, end to end (see docs/hardware-validation.md).
+
+    Covers the parse, the magic/type checks, the qualifying-data binding and the
+    AK signature. It does NOT cover the AK certificate chain: Azure's AK cert
+    certifies its pre-provisioned AK rather than the one that signed this quote,
+    and carries no AIA extension to fetch its issuer. That is why this verifier
+    takes caller-supplied roots instead of pinning one.
+    """
+    import pathlib
+
+    from cryptography.exceptions import InvalidSignature
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import padding
+
+    d = pathlib.Path(os.environ["CA2A_TPM_FIXTURE_DIR"])
+    attest = (d / "quote.msg").read_bytes()
+    signature = (d / "quote.sig").read_bytes()
+    nonce = bytes.fromhex((d / "nonce.hex").read_text().strip())
+    ak_pub = serialization.load_pem_public_key((d / "ak.pub").read_bytes())
+
+    quote = TpmQuote.parse(attest)
+    assert quote.magic == 0xFF544347  # TPM_GENERATED
+    assert quote.attest_type == 0x8018  # TPM_ST_ATTEST_QUOTE
+    assert quote.qualifying_data == nonce  # freshness binding holds on real evidence
+    assert len(quote.pcr_digest) == 32
+    assert quote.pcr_digest != bytes(32)
+
+    ak_pub.verify(signature, attest, padding.PKCS1v15(), hashes.SHA256())
+
+    tampered = bytearray(attest)
+    tampered[100] ^= 0x01
+    with pytest.raises(InvalidSignature):
+        ak_pub.verify(signature, bytes(tampered), padding.PKCS1v15(), hashes.SHA256())

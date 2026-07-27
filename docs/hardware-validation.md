@@ -14,7 +14,7 @@ and the run is recorded below.
 |---|---|---|---|---|
 | AMD SEV-SNP (Azure CVM, vTPM-rooted) | Yes | Yes, to the real AMD ARK-Milan root | Yes | **Yes**, 2026-07-27, capture of 2026-07-20 |
 | Intel TDX (GCP C3, non-paravisor) | Yes | Yes, to the real Intel SGX Root CA | Yes | **Yes**, 2026-07-27, capture of 2026-07-21 |
-| TPM 2.0 | Yes | Yes, to a caller-supplied vendor root | Yes | No. Synthetic vectors only |
+| TPM 2.0 (Azure vTPM, Trusted Launch) | Yes | Yes, to a caller-supplied vendor root | Yes | **Partly**, 2026-07-27. Parse, bindings and AK signature yes; certificate chain no, see below |
 
 ## What these runs do and do not establish
 
@@ -70,10 +70,42 @@ flat layout, so the tests validated the defect. Failure was closed, so this was 
 false negative rather than an unsound accept, but the TDX path had never worked
 against real evidence. Synthetic self-consistency is not validation.
 
+## TPM 2.0, Azure Trusted Launch vTPM
+
+Evidence: a `TPMS_ATTEST` quote over PCRs 0-7 (SHA-256) from a `Standard_D2s_v7`
+Ubuntu 24.04 VM with Trusted Launch, vTPM and secure boot enabled, with a fresh
+32-byte nonce as qualifying data. The AK was created in-guest with
+`tpm2_createak` (RSA, RSASSA, SHA-256).
+
+What the run checks: `TPMS_ATTEST` parsing against a real blob (magic
+`0xFF544347`, type `0x8018`), the qualifying-data binding equalling the nonce
+byte for byte, a non-zero PCR digest matching what the TPM reported at quote
+time, the AK's RSA PKCS#1 v1.5 SHA-256 signature over the attest blob, and
+rejection of a single flipped bit.
+
+```
+CA2A_TPM_FIXTURE_DIR=<capture dir> pytest tests/unit/test_tpm.py
+```
+
+What it does **not** check, which matters: the AK certificate chain. Azure's
+pre-provisioned AK certificate (read from vTPM NV index `0x01C101D0`, subject
+`CN=<host>.TrustedVM.Azure.windows.net`, issuer `CN=Global Virtual TPM CA - 03`)
+certifies a *different* key than the one that signed this quote, so it does not
+verify against it, and the certificate carries no AIA extension, so its issuing
+intermediate is not fetchable from it. Chain-to-vendor-root therefore remains
+unexercised for TPM. This is exactly why the TPM verifier takes caller-supplied
+trust roots rather than pinning one, unlike SEV-SNP (AMD ARK) and TDX (Intel SGX
+Root CA); the shared `verify_cert_chain` those two use is the same code path and
+is exercised against real vendor roots there.
+
+Note also that this is a Hyper-V vTPM, which is what Azure confidential and
+Trusted Launch VMs actually present, not a discrete TPM chip.
+
 ## Not yet validated
 
-- **TPM 2.0**: implemented and synthetic-vector validated; needs a real AK-signed
-  quote plus a vendor AK certificate chain.
+- **TPM certificate chain**: needs a quote signed by Azure's pre-provisioned AK
+  (the one its NV certificate covers) plus Microsoft's `Global Virtual TPM CA`
+  intermediate, which is not distributed with the certificate.
 - **Live attested peer binding**: the handshake gating the sealed channel on a
   verified channel key runs in software mode. Driving it off a real quote on a
   confidential VM is the remaining hardware property, and the precondition for
