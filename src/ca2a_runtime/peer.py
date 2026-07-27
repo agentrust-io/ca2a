@@ -26,7 +26,7 @@ from ca2a_runtime.channel import open_sealed
 from ca2a_runtime.delegation.credential import DelegationCredential, verify_chain
 from ca2a_runtime.errors import ScopeNotPermitted, SealedChannelError
 from ca2a_runtime.policy import Policy
-from ca2a_runtime.provenance import DelegationRecord, record_for
+from ca2a_runtime.provenance import DelegationRecord, denial_record_for, record_for
 
 
 def effective_scope(
@@ -66,9 +66,21 @@ def enforce_peer_call(
     """
     effective = effective_scope(chain, policy, max_depth=max_depth)
     if requested_capability not in effective:
+        reason = f"capability {requested_capability!r} is not in the effective scope"
         raise ScopeNotPermitted(
-            f"capability {requested_capability!r} is not in the effective scope",
+            reason,
             detail=f"effective={sorted(effective)}",
+            # The refusal is evidence too: emit a linked denial record so an
+            # auditor walking the DAG sees why the call stopped here, rather
+            # than a gap where a hop should be.
+            record=denial_record_for(
+                chain[-1],
+                record_id=record_id,
+                parent_record_hash=parent_record_hash,
+                requested_capability=requested_capability,
+                effective_scope=effective,
+                reason=reason,
+            ),
         )
     record = record_for(chain[-1], record_id=record_id, parent_record_hash=parent_record_hash)
     return PeerDecision(

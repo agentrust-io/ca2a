@@ -77,10 +77,21 @@ class ProvenanceLinkBroken(CA2AError):
 
 class ScopeNotPermitted(CA2AError):
     """A requested capability is not in the effective scope (the delegated
-    scope intersected with the callee's local policy)."""
+    scope intersected with the callee's local policy).
+
+    Carries the signed-in-place provenance record for the refusal on ``record``
+    when the caller supplied enough context to build one. The call still fails
+    closed; the record is evidence of the refusal, not a way to continue.
+    """
 
     code = "SCOPE_NOT_PERMITTED"
     http_status = 403
+
+    def __init__(
+        self, message: str, *, detail: str | None = None, record: object | None = None
+    ) -> None:
+        super().__init__(message, detail=detail)
+        self.record = record
 
 
 class TransportError(CA2AError):

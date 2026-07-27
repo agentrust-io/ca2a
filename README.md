@@ -71,6 +71,38 @@ pip install --pre ca2a-runtime
 ca2a verify-chain --chain ./examples/minimal/chain.json
 ```
 
+### See it refuse a call, and prove why
+
+An agent asks for authority nobody delegated to it, is refused, and hands over a
+record a third party checks offline without trusting the operator that produced it:
+
+```bash
+python examples/rejection-with-proof/demo.py
+```
+
+```
+ALLOW  tool:search    effective scope ['tool:search']
+DENY   tool:purchase  capability 'tool:purchase' is not in the effective scope
+       requested   tool:purchase
+       effective   ['tool:search']
+```
+
+```bash
+ca2a verify-dag --dag examples/rejection-with-proof/dag.json \
+                --chain examples/rejection-with-proof/chain.json
+```
+
+```json
+{"verified": true, "records": 4, "outcome": "denied",
+ "requested_capability": "tool:purchase", "effective_scope": ["tool:search"],
+ "cross_checked": true}
+```
+
+The callee's own policy permits `tool:purchase`. It is refused anyway, because
+the delegated scope does not carry it. See
+[examples/rejection-with-proof/](examples/rejection-with-proof/) for what this
+does and does not claim; it makes no attestation claim.
+
 See [docs/quickstart.md](docs/quickstart.md) for the full walkthrough.
 
 ---

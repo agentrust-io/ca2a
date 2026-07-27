@@ -77,6 +77,22 @@ def _load_records(path: str) -> list[DelegationRecord]:
                         if item.get("parent_record_hash") is None
                         else str(item["parent_record_hash"])
                     ),
+                    decision=str(item.get("decision", "allow")),
+                    requested_capability=(
+                        None
+                        if item.get("requested_capability") is None
+                        else str(item["requested_capability"])
+                    ),
+                    effective_scope=(
+                        None
+                        if item.get("effective_scope") is None
+                        else frozenset(str(s) for s in item["effective_scope"])
+                    ),
+                    denial_reason=(
+                        None
+                        if item.get("denial_reason") is None
+                        else str(item["denial_reason"])
+                    ),
                 )
             )
         except (KeyError, TypeError, ValueError) as exc:
@@ -96,11 +112,19 @@ def _cmd_verify_dag(args: argparse.Namespace) -> int:
     except CA2AError as exc:
         print(json.dumps({"verified": False, "code": exc.code, "error": str(exc)}))
         return 1
-    out = {
+    leaf = records[-1]
+    out: dict[str, Any] = {
         "verified": True,
         "records": len(records),
-        "leaf_scope": sorted(records[-1].scope),
+        "leaf_scope": sorted(leaf.scope),
     }
+    if leaf.denied:
+        # The DAG verifies AND it documents a refusal. Both are true, and a
+        # verifier that only printed "verified" would bury the interesting part.
+        out["outcome"] = "denied"
+        out["requested_capability"] = leaf.requested_capability
+        out["effective_scope"] = sorted(leaf.effective_scope or frozenset())
+        out["denial_reason"] = leaf.denial_reason
     if args.chain:
         out["cross_checked"] = cross_checked
     print(json.dumps(out))

@@ -71,3 +71,63 @@ def test_enforce_record_links_to_parent() -> None:
                                  parent_record_hash="abc123")
     assert decision.record.parent_record_hash == "abc123"
     assert decision.record.credential_id == _chain()[-1].credential_id
+
+
+def test_denial_carries_a_linked_provenance_record() -> None:
+    """A refusal is evidence: it emits a record, it does not just raise."""
+    policy = LocalPolicy.of(["read"])
+    with pytest.raises(ScopeNotPermitted) as exc:
+        enforce_peer_call(_chain(), "write", policy=policy, record_id="rec-deny")
+
+    record = exc.value.record
+    assert record is not None
+    assert record.denied
+    assert record.decision == "deny"
+    assert record.record_id == "rec-deny"
+    assert record.requested_capability == "write"
+    assert record.effective_scope == frozenset({"read"})
+    assert "write" in record.denial_reason
+
+
+def test_denial_record_links_to_its_parent_hop() -> None:
+    chain = _chain()
+    allowed = enforce_peer_call(chain, "read", policy=LocalPolicy.of(["read"]), record_id="rec-0")
+    with pytest.raises(ScopeNotPermitted) as exc:
+        enforce_peer_call(
+            chain,
+            "write",
+            policy=LocalPolicy.of(["read"]),
+            record_id="rec-1",
+            parent_record_hash=allowed.record.record_hash(),
+        )
+    denial = exc.value.record
+    # the refusal sits in the DAG where the next hop would have been
+    assert verify_dag([allowed.record, denial]) == [allowed.record, denial]
+
+
+def test_nothing_may_be_chained_onto_a_denied_hop() -> None:
+    from ca2a_runtime.errors import ProvenanceLinkBroken
+
+    chain = _chain()
+    with pytest.raises(ScopeNotPermitted) as exc:
+        enforce_peer_call(chain, "write", policy=LocalPolicy.of(["read"]), record_id="rec-deny")
+    denial = exc.value.record
+    forged = enforce_peer_call(
+        chain,
+        "read",
+        policy=LocalPolicy.of(["read"]),
+        record_id="rec-after",
+        parent_record_hash=denial.record_hash(),
+    ).record
+    with pytest.raises(ProvenanceLinkBroken, match="chained onto a denied hop"):
+        verify_dag([denial, forged])
+
+
+def test_allow_record_hash_is_unchanged_by_the_denial_fields() -> None:
+    """Denial fields are omitted from an allow record's body, so hashes are stable."""
+    decision = enforce_peer_call(
+        _chain(), "read", policy=LocalPolicy.of(["read"]), record_id="rec-0"
+    )
+    assert "decision" not in decision.record.body()
+    assert "requested_capability" not in decision.record.body()
+    assert "effective_scope" not in decision.record.body()

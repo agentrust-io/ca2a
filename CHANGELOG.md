@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **A refusal is now evidence.** `enforce_peer_call` previously raised on an over-scoped call and emitted nothing, so a denial left no artifact and an auditor saw a gap where a hop should be. It now builds a linked denial record (`provenance.denial_record_for`) carrying the requested capability, the effective scope it fell outside, and the reason, and attaches it to `ScopeNotPermitted.record`. The call still fails closed; the record is evidence of the refusal, not a way to continue. `verify_dag` treats a denial as terminal and rejects any chain that continues past a refused hop, `cross_check_chain` matches only hop records positionally against the chain while still requiring a denial to name a credential that is in it, and `ca2a verify-dag` reports `outcome: denied` with the requested capability and effective scope. Denial fields are omitted from an allow record's hashed body, so existing allow-record hashes are unchanged.
+- **`examples/rejection-with-proof/`**: the front-door demo. An agent asks for authority nobody delegated to it, is refused, and the refusal verifies offline through the shipped CLI against the committed chain and DAG. The callee's local policy deliberately permits the capability, so the refusal turns on delegation rather than on the callee not supporting it. The example runs in CI (`tests/unit/test_example_rejection_with_proof.py`) so the README cannot promise something the code stopped doing. It makes no attestation claim and says so.
+
 ### Changed
 
 - Certificate-chain verification now delegates to agent-manifest's shared generic verifier (`agent-manifest>=0.5`) instead of ca2a's own copy. `ca2a_verify.verify_cert_chain` (used by the SEV-SNP VCEK, TDX PCK, and TPM AK chains alike) is now a thin wrapper over `agent_manifest.verify_cert_chain`, re-raising `CertChainError` as `AttestationFailed` to preserve ca2a's contract. This removes the org's last duplicated cert-chain verifier; ca2a keeps its own report/quote parsers, per-format signature checks, appraisal shapes, trust-root pinning, and `verify_offer` semantics. Behavior unchanged (all 201 tests pass unchanged).
