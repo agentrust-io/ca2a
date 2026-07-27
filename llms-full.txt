@@ -312,7 +312,17 @@ cA2A reuses the delegation semantics of [agent-manifest](https://github.com/agen
 
 # A2A Profile Binding
 
-cA2A binds to A2A v1.x as an overlay. This page states what the profile adds and where it attaches, without modifying A2A itself.
+cA2A binds to A2A v1.x as an overlay. This page states normatively what the profile adds and where it attaches, without modifying A2A itself.
+
+## Requirements language
+
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" in this document and the other pages under `docs/spec/` are to be interpreted as described in [BCP 14](https://www.rfc-editor.org/info/bcp14) ([RFC 2119](https://www.rfc-editor.org/rfc/rfc2119), [RFC 8174](https://www.rfc-editor.org/rfc/rfc8174)) when, and only when, they appear in all capitals.
+
+A requirement stated here that this implementation does not yet meet is marked inline. The profile states the requirement; it does not describe the implementation as conformant where it is not. See [LIMITATIONS.md](https://ca2a.agentrust-io.com/LIMITATIONS/index.md).
+
+## Scope of this profile
+
+This profile defines how a delegated A2A task carries verifiable authority, confidentiality, and provenance. It does not define a transport, a message framing, an identity issuance scheme, or a policy language.
 
 ## What A2A provides
 
@@ -327,9 +337,57 @@ A2A moves tasks and context between agents and authenticates a peer's domain via
 | Task payload | Sealing to the peer's attested measurement                                             |
 | (none)       | A TRACE record per hop linking to the parent, forming the delegation DAG               |
 
+## Normative requirements
+
+### P-1 Overlay
+
+A cA2A implementation MUST NOT change A2A wire formats, routing, or endpoints. Removing every cA2A field from a message MUST leave a valid A2A task. cA2A data MUST travel in A2A extension fields as defined in [transport](https://ca2a.agentrust-io.com/docs/spec/transport/index.md).
+
+### P-2 Extension declaration
+
+An agent supporting this profile MUST declare the extension URI in its Agent Card, and a client opting in MUST signal it per the A2A extension mechanism (the `A2A-Extensions` header for HTTP and JSON-RPC bindings, or the equivalent binding metadata). The extension URI for this version is given in [transport](https://ca2a.agentrust-io.com/docs/spec/transport/index.md).
+
+### P-3 Ignore versus enforce
+
+A peer that does not implement this profile MUST ignore the cA2A extension fields and handle the task as ordinary A2A. A peer that does implement it:
+
+- MUST treat a message carrying no cA2A keys as ordinary A2A input, and MUST NOT synthesize a partial trust state from their absence;
+- MUST fail closed when any cA2A key is present but the cA2A metadata is malformed or incomplete;
+- MUST run the inbound enforcement pipeline (P-4 through P-8) on a well-formed cA2A message before acting on the task.
+
+### P-4 Attenuated delegation
+
+A callee MUST verify the presented delegation chain before acting: every credential's signature, the continuity of each parent link, and the attenuation rule that a child's scope is a subset of its parent's. A callee MUST reject a chain whose depth exceeds its configured maximum, and MUST reject a credential replayed from a different chain. Verification MUST be possible offline, without contacting the issuer.
+
+### P-5 Effective scope
+
+A callee MUST compute the effective scope as the leaf credential's delegated scope intersected with the callee's own local policy, and MUST refuse any requested capability outside that intersection. A capability the local policy permits but the chain did not delegate MUST be refused. Neither input alone is sufficient authority.
+
+### P-6 Peer attestation
+
+Before accepting a delegated task across a trust boundary, a peer SHOULD be required to present attestation evidence binding its channel key to a measured runtime, and the caller MUST appraise that evidence against its expected measurement before sealing anything to that key. A caller that cannot appraise the evidence MUST NOT treat the peer as attested.
+
+> Not yet met by this implementation. The handshake gates the seal on an appraised channel key, but the appraisal runs in software mode at `assurance="none"`. See [attestation](https://ca2a.agentrust-io.com/docs/spec/attestation/index.md) and [hardware-validation](https://ca2a.agentrust-io.com/docs/hardware-validation/index.md).
+
+### P-7 Sealed payload
+
+When a caller seals a task payload, the payload MUST be readable only by the holder of the peer key appraised under P-6, and the sealed bytes on the wire MUST be opaque ciphertext. An implementation MUST NOT describe a payload as confined to a measurement unless the key it was sealed to was bound to a hardware-verified measurement.
+
+### P-8 Provenance
+
+Every hop MUST emit a provenance record naming the credential it acted under and linking to its parent record by hash, so that tampering with any record breaks its child's link. A refusal MUST also emit a record, stating the capability requested and the effective scope it fell outside; a refused hop MUST be terminal, and a verifier MUST reject a chain that continues past one. The resulting DAG MUST be verifiable offline by a party that trusts neither operator.
+
+### P-9 Honest assurance
+
+A record produced without hardware attestation MUST NOT claim a hardware assurance level. Software-mode records are Level 0.
+
 ## Attachment points
 
 cA2A does not change A2A wire formats. The delegation credential and the sealing metadata travel in A2A extension fields, so an A2A implementation that does not understand cA2A ignores them and a cA2A-aware peer enforces them. This is what keeps the profile an overlay rather than a fork.
+
+## Conformance
+
+An implementation claiming conformance MUST satisfy every MUST in this document. [conformance.md](https://ca2a.agentrust-io.com/docs/spec/conformance/index.md) maps these requirements onto the runnable checks in `tests/conformance/`, which is what a "cA2A-compatible" claim is measured against.
 
 ## Stability
 
