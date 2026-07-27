@@ -19,17 +19,21 @@ and the run is recorded below.
 ## What these runs do and do not establish
 
 They establish that the appraisal path in `ca2a_verify` accepts genuine evidence
-from that silicon and fails closed on a tampered copy. They do **not** establish
-that cA2A runs inside a TEE: quote *generation* still requires the hardware, and
-the `verifier` seam in `ca2a_runtime.attestation` is not yet driven off a live
-quote on a running peer. A live cA2A call is still software mode
-(`assurance="none"`).
+from that silicon and fails closed on a tampered copy.
 
-So the claim that is now true is "the cA2A verifier appraises real SEV-SNP and
-TDX evidence." The claim that is still not true is "cA2A is attested across trust
-domains." The second needs a peer whose channel key is bound to a hardware
-measurement on a live confidential VM, which stays on the critical path in
-[ROADMAP.md](../ROADMAP.md).
+As of 2026-07-27 the `verifier` seam in `ca2a_runtime.attestation` has also been
+driven off a live SEV-SNP quote on a running confidential VM, so `verify_offer`
+returned `assurance="hardware"` instead of `"none"` for the first time, and a
+payload was sealed to a channel key that a hardware-verified measurement vouches
+for. See the live-peer section below.
+
+What is still not established is a two-operator deployment on hardware. The live
+run had one attested peer; the cross-operator harness in
+`examples/cross-operator-delegation` is still software-attested with synthetic
+vectors. Quote generation also still requires the platform, so nothing running
+off a CVM is attested. Until a cross-operator run lands, "attested across trust
+domains" describes a demonstrated single-peer capability, not a demonstrated
+cross-domain deployment; see [ROADMAP.md](../ROADMAP.md).
 
 Verification is also bounded to a remote or rogue-admin adversary, not to one
 with physical access: [TEE.fail](https://tee.fail) extracts attestation keys from
@@ -69,6 +73,40 @@ bytes early and threw on every real quote. The synthetic fixture emitted the sam
 flat layout, so the tests validated the defect. Failure was closed, so this was a
 false negative rather than an unsound accept, but the TDX path had never worked
 against real evidence. Synthetic self-consistency is not validation.
+
+## Live attested peer on a SEV-SNP confidential VM
+
+Run 2026-07-27 on a `Standard_DC2ads_v5` Azure CVM (Ubuntu 24.04 CVM image,
+eastus). The guest reports `Detected confidential virtualization sev-snp` with
+`SEV: Status: vTom` and no `/dev/sev-guest`, the expected paravisor shape.
+
+Azure SEV-SNP is paravisor-mediated, so the guest cannot write `REPORT_DATA`
+directly. The binding is therefore one hop longer than bare-metal SNP:
+
+```
+channel key + caller nonce  ->  AK-signed TPM quote (extraData)
+vTPM AK                     ->  SNP REPORT_DATA == sha256(runtime_data)
+SNP report                  ->  VCEK -> ASK -> ARK-Milan (AMD KDS)
+```
+
+Driving `ca2a_runtime.attestation`'s `verifier` seam off that chain:
+
+| Result | Value |
+|---|---|
+| `assurance` | `hardware` (previously always `none`) |
+| Verified measurement | matches the launch measurement in the live SNP report |
+| Sealed payload round trip | opened inside the enclave, 102 bytes of ciphertext |
+| Binary swap | rejected, "offered measurement does not match the verified report" |
+| Stale nonce | rejected before any hardware work |
+
+This is the item that gated dropping the software-mode caveat on the sealed
+channel: the payload was sealed to a key that a hardware-verified measurement
+vouches for, not to an unappraised key. The transcript and the bridge script are
+kept out of the repository with the other captures.
+
+What it is not: a two-operator run. One peer was attested, by a caller on the
+same host. Two independently operated attested peers, ideally on different TEE
+families, is the next step and is what the cross-operator claim needs.
 
 ## TPM 2.0, Azure Trusted Launch vTPM
 
