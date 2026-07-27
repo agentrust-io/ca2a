@@ -43,11 +43,11 @@ from cryptography.hazmat.primitives.asymmetric.utils import decode_dss_signature
 from cryptography.hazmat.primitives.hashes import SHA384  # noqa: E402
 from cryptography.x509.oid import NameOID  # noqa: E402
 
+from ca2a_runtime.cedar import CedarPolicy  # noqa: E402
 from ca2a_runtime.channel import SealedChannel, generate_channel_keypair, open_sealed  # noqa: E402
 from ca2a_runtime.delegation import DelegationCredential, new_keypair  # noqa: E402
 from ca2a_runtime.errors import AttestationFailed, ScopeNotPermitted  # noqa: E402
 from ca2a_runtime.peer import effective_scope, enforce_peer_call  # noqa: E402
-from ca2a_runtime.policy import LocalPolicy  # noqa: E402
 from ca2a_runtime.provenance import (  # noqa: E402
     DelegationRecord,
     cross_check_chain,
@@ -168,20 +168,17 @@ def main() -> int:
                        sorted(chain[-1].scope) == ["task:read", "task:write"]))
 
     # ------------------------------------------------------------------
-    # Scope ∩ local policy at the Child. The child was delegated
-    # {task:read, task:write}; its local policy permits {task:read, task:audit}.
+    # Scope ∩ local Cedar policy at the Child. The child was delegated
+    # {task:read, task:write}; policy.cedar permits {task:read, task:audit}.
     # Effective scope is the intersection: {task:read}.
-    #
-    # We enforce with the LocalPolicy allow-set (the same model claim 3 uses),
-    # so the demo has no dependency on a specific Cedar engine version. The
-    # committed policy.cedar states the SAME rule as a Cedar policy for the real
-    # engine (ca2a_runtime.cedar.CedarPolicy); binding that engine in the peer
-    # path is tracked separately (see policy.py and issue #10).
     # ------------------------------------------------------------------
-    policy = LocalPolicy.of(["task:read", "task:audit"])
+    policy_path = HERE / "policy.cedar"
+    policy = CedarPolicy(policy_path.read_text(encoding="utf-8"))
     eff = effective_scope(chain, policy)
+    policy_candidates = chain[-1].scope | {"task:audit"}
+    policy_allow = sorted(cap for cap in policy_candidates if policy.permits(cap))
     print(f"      leaf delegated scope : {sorted(chain[-1].scope)}")
-    print(f"      child local policy   : {sorted(policy.allow)}")
+    print(f"      child Cedar policy   : {policy_allow} ({policy_path.name})")
     print(f"      effective scope      : {sorted(eff)}")
     checks.append(step(4, "effective scope = delegated ∩ policy = {task:read}",
                        sorted(eff) == ["task:read"]))
