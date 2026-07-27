@@ -188,13 +188,13 @@ def cross_check_chain(
     for rec in records:
         if not rec.denied:
             continue
-        cred = by_id.get(rec.credential_id)
-        if cred is None:
+        under = by_id.get(rec.credential_id)
+        if under is None:
             raise ProvenanceLinkBroken(
                 f"denial record {rec.record_id} references credential "
                 f"{rec.credential_id!r}, which is not in the chain"
             )
-        if rec.subject != cred.subject:
+        if rec.subject != under.subject:
             raise ProvenanceLinkBroken(
                 f"denial record {rec.record_id} subject does not match the chain"
             )
