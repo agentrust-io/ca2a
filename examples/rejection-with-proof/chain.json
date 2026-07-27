@@ -1,0 +1,42 @@
+{
+  "chain": [
+    {
+      "credential_id": "cred-0-orchestrator",
+      "issuer": "667e9aa02b1e19e4ef9a24627e10b97e099532dff71a1065a343a6037a8e3c3a",
+      "subject": "2108c06f9eb264876fc88c0c79c0986177a87222a776ce1b0de7c24483084ea3",
+      "scope": [
+        "task:read",
+        "task:write",
+        "tool:purchase",
+        "tool:search"
+      ],
+      "depth": 0,
+      "parent_id": null,
+      "signature": "bf10c51cda37517c28f20f66f9f216eade1fd49c766003f2343a7bf5a8b0d423b704f936dd55851a3debb2afb982dd8ba685dd18c171c3bb6a025442063cb20f"
+    },
+    {
+      "credential_id": "cred-1-researcher",
+      "issuer": "2108c06f9eb264876fc88c0c79c0986177a87222a776ce1b0de7c24483084ea3",
+      "subject": "de5c05ea1d7946c8f2c6ffde727cc6ed0da7b906ff2e1219f5916a3cc372f46b",
+      "scope": [
+        "task:read",
+        "tool:purchase",
+        "tool:search"
+      ],
+      "depth": 1,
+      "parent_id": "cred-0-orchestrator",
+      "signature": "1702778d81160bc46f1044b1b628e28b010d9d45c0767c1d1ce50b9f4ebfb3fe954455805ed5e9fdf7d72cc8ec18bb83cd23966ba88d95de21fa94b8b4026f06"
+    },
+    {
+      "credential_id": "cred-2-retriever",
+      "issuer": "de5c05ea1d7946c8f2c6ffde727cc6ed0da7b906ff2e1219f5916a3cc372f46b",
+      "subject": "6eb31885c7ac3d745186ed36a2e77b754325a1ceba6f81b76994a36866d68f52",
+      "scope": [
+        "tool:search"
+      ],
+      "depth": 2,
+      "parent_id": "cred-1-researcher",
+      "signature": "08999679fff8d3d0940fb94c085ed549511aa026bf9b702da91e8244387db3d86c50004e547950009cf5ce7bf7625bf67893583011097622bed1782de844cf0d"
+    }
+  ]
+}

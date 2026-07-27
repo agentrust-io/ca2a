@@ -1,0 +1,51 @@
+{
+  "records": [
+    {
+      "record_id": "rec-0-orchestrator",
+      "credential_id": "cred-0-orchestrator",
+      "subject": "2108c06f9eb264876fc88c0c79c0986177a87222a776ce1b0de7c24483084ea3",
+      "scope": [
+        "task:read",
+        "task:write",
+        "tool:purchase",
+        "tool:search"
+      ],
+      "parent_record_hash": null
+    },
+    {
+      "record_id": "rec-1-researcher",
+      "credential_id": "cred-1-researcher",
+      "subject": "de5c05ea1d7946c8f2c6ffde727cc6ed0da7b906ff2e1219f5916a3cc372f46b",
+      "scope": [
+        "task:read",
+        "tool:purchase",
+        "tool:search"
+      ],
+      "parent_record_hash": "2bb2e3f8b86b5874219bf2a5818bf576863daeb947b2d3461ea6eb6abd8622e2"
+    },
+    {
+      "record_id": "rec-2-retriever",
+      "credential_id": "cred-2-retriever",
+      "subject": "6eb31885c7ac3d745186ed36a2e77b754325a1ceba6f81b76994a36866d68f52",
+      "scope": [
+        "tool:search"
+      ],
+      "parent_record_hash": "35a4fad0f11b40ed72e47239c3d844ddd262bc1d4fd439913cc5bd0d916b57ec"
+    },
+    {
+      "record_id": "rec-denied-purchase",
+      "credential_id": "cred-2-retriever",
+      "subject": "6eb31885c7ac3d745186ed36a2e77b754325a1ceba6f81b76994a36866d68f52",
+      "scope": [
+        "tool:search"
+      ],
+      "parent_record_hash": "56d85126ea94f17f88fe4d0b1df35c300b2f9f79a2dfbcae814be097616da7ab",
+      "decision": "deny",
+      "requested_capability": "tool:purchase",
+      "effective_scope": [
+        "tool:search"
+      ],
+      "denial_reason": "capability 'tool:purchase' is not in the effective scope"
+    }
+  ]
+}
