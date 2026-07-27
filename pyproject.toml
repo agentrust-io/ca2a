@@ -48,7 +48,7 @@ dev = [
     "bandit[toml]>=1.7",
     "pip-audit>=2.6",
     # Conformance suite: asserts emitted records pass the TRACE Level checks.
-    "agentrust-trace-tests>=0.2,<0.3",
+    "agentrust-trace-tests>=0.2,<0.4",
 ]
 
 [project.scripts]
