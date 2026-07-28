@@ -32,18 +32,18 @@ Per [A2A v1.0 extensions](https://a2a-protocol.org/v1.0.0/topics/extensions/), a
 
 | Item | Value |
 |---|---|
-| Extension URI | `https://agentrust.io/extensions/ca2a/v0.1` |
-| Opt-in header | `A2A-Extensions: https://agentrust.io/extensions/ca2a/v0.1` |
+| Extension URI | `https://agentrust-io.com/extensions/ca2a/v0.1` |
+| Opt-in header | `A2A-Extensions: https://agentrust-io.com/extensions/ca2a/v0.1` |
 
 Namespaced keys on A2A `metadata` (message and/or params):
 
 | Metadata key | JSON type | Meaning |
 |---|---|---|
-| `https://agentrust.io/extensions/ca2a/v0.1/delegation_chain` | array of credential objects | Root-to-leaf delegation chain |
-| `https://agentrust.io/extensions/ca2a/v0.1/requested_capability` | string | Capability the callee must grant |
-| `https://agentrust.io/extensions/ca2a/v0.1/record_id` | string | Provenance record id for this hop |
-| `https://agentrust.io/extensions/ca2a/v0.1/parent_record_hash` | string or `null` | Parent TRACE/provenance hash; `null` for a root hop |
-| `https://agentrust.io/extensions/ca2a/v0.1/sealed_payload` | string (base64url) or omitted | Opaque sealed ciphertext only, not a verified measurement binding |
+| `https://agentrust-io.com/extensions/ca2a/v0.1/delegation_chain` | array of credential objects | Root-to-leaf delegation chain |
+| `https://agentrust-io.com/extensions/ca2a/v0.1/requested_capability` | string | Capability the callee must grant |
+| `https://agentrust-io.com/extensions/ca2a/v0.1/record_id` | string | Provenance record id for this hop |
+| `https://agentrust-io.com/extensions/ca2a/v0.1/parent_record_hash` | string or `null` | Parent TRACE/provenance hash; `null` for a root hop |
+| `https://agentrust-io.com/extensions/ca2a/v0.1/sealed_payload` | string (base64url) or omitted | Opaque sealed ciphertext only, not a verified measurement binding |
 
 Constants and helpers live in `ca2a_runtime.transport`.
 

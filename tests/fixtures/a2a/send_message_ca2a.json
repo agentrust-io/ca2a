@@ -13,10 +13,10 @@
       ],
       "metadata": {
         "https://example.com/ext/unrelated/v1/note": "preserved by non-cA2A peers",
-        "https://agentrust.io/extensions/ca2a/v0.1/delegation_chain": [],
-        "https://agentrust.io/extensions/ca2a/v0.1/requested_capability": "read",
-        "https://agentrust.io/extensions/ca2a/v0.1/record_id": "rec-fixture",
-        "https://agentrust.io/extensions/ca2a/v0.1/parent_record_hash": null
+        "https://agentrust-io.com/extensions/ca2a/v0.1/delegation_chain": [],
+        "https://agentrust-io.com/extensions/ca2a/v0.1/requested_capability": "read",
+        "https://agentrust-io.com/extensions/ca2a/v0.1/record_id": "rec-fixture",
+        "https://agentrust-io.com/extensions/ca2a/v0.1/parent_record_hash": null
       }
     }
   }

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Extension URI moved to `https://agentrust-io.com/extensions/ca2a/v0.1`.** The previous `agentrust.io` host is not ours: it resolves to parked AWS addresses. An extension identifier is something we are asking other operators to copy into their Agent Cards, so it must not depend on a domain we do not control. A2A treats these URIs as identifiers rather than fetchable URLs, so nothing breaks functionally, but any peer pinning the old string must update. The adapter constant, the transport spec, the fixture, and the test that pins the constant all move together.
+
+### Fixed
+
+- Two spec pages contradicted `hardware-validation.md` after the live hardware run landed. `profile.md` P-6 still read "not yet met ... `assurance="none"`" and `call-graph.md` still called hardware appraisal "the remaining hardware step", when `verify_offer` had already returned `assurance="hardware"` off a live SEV-SNP quote on 2026-07-27. Both now state what is true, including the two limits that remain: the appraisal is one-directional (the caller appraised the callee, not the reverse), and the committed examples stay software-attested because genuine evidence embeds per-CPU identifiers.
+
 ### Added
 
 - **A refusal is now evidence.** `enforce_peer_call` previously raised on an over-scoped call and emitted nothing, so a denial left no artifact and an auditor saw a gap where a hop should be. It now builds a linked denial record (`provenance.denial_record_for`) carrying the requested capability, the effective scope it fell outside, and the reason, and attaches it to `ScopeNotPermitted.record`. The call still fails closed; the record is evidence of the refusal, not a way to continue. `verify_dag` treats a denial as terminal and rejects any chain that continues past a refused hop, `cross_check_chain` matches only hop records positionally against the chain while still requiring a denial to name a credential that is in it, and `ca2a verify-dag` reports `outcome: denied` with the requested capability and effective scope. Denial fields are omitted from an allow record's hashed body, so existing allow-record hashes are unchanged.
@@ -25,7 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - A2A transport adapter (`ca2a_runtime.transport`): parse/attach cA2A extension
   metadata on A2A `SendMessage`-shaped messages into `PeerRequest` (and the
-  reverse). Extension URI `https://agentrust.io/extensions/ca2a/v0.1`. Fail closed
+  reverse). Extension URI `https://agentrust-io.com/extensions/ca2a/v0.1`. Fail closed
   on malformed cA2A metadata; absence of all cA2A keys returns `None` (ordinary
   A2A). The adapter itself adds no HTTP serving or seal-to-verified-measurement
   binding; the reference transport below adds serving, and hardware measurement
