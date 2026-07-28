@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **BREAKING: TRACE records now carry the v0.2 profile** `tag:agentrust-io.com,2026:trace-v0.2`. Pins move to `agentrust-trace>=0.5` and `agentrust-trace-tests>=0.4,<0.5`, which have to move together: the conformance suite cut over rather than dual-accepting, so 0.4.0 of the suite fails a v0.1 record and 0.3.x fails a v0.2 one. The v0.1 URI named `agentrust.io`, a domain this project never controlled, which RFC 4151 does not permit for a tag URI (agentrust-io/trace-spec#107). Nothing else about the record format changed.
+
+### Changed
+
 - **Extension URI moved to `https://agentrust-io.com/extensions/ca2a/v0.1`.** The previous `agentrust.io` host is not ours: it resolves to parked AWS addresses. An extension identifier is something we are asking other operators to copy into their Agent Cards, so it must not depend on a domain we do not control. A2A treats these URIs as identifiers rather than fetchable URLs, so nothing breaks functionally, but any peer pinning the old string must update. The adapter constant, the transport spec, the fixture, and the test that pins the constant all move together.
 
 ### Fixed
