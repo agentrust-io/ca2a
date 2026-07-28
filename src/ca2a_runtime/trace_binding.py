@@ -28,8 +28,8 @@ import rfc8785
 from agentrust_trace import sign_record
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-# The frozen TRACE v0.1 profile URI. Every record's eat_profile equals this.
-EAT_PROFILE = "tag:agentrust.io,2026:trace-v0.1"
+# The frozen TRACE v0.2 profile URI. Every record's eat_profile equals this.
+EAT_PROFILE = "tag:agentrust-io.com,2026:trace-v0.2"
 
 # The platform value for a software-attestation (no hardware TEE) run. Records
 # emitted with this platform are honestly Level 0 only: trace-tests fails a
