@@ -55,7 +55,9 @@ A callee MUST compute the effective scope as the leaf credential's delegated sco
 
 Before accepting a delegated task across a trust boundary, a peer SHOULD be required to present attestation evidence binding its channel key to a measured runtime, and the caller MUST appraise that evidence against its expected measurement before sealing anything to that key. A caller that cannot appraise the evidence MUST NOT treat the peer as attested.
 
-> Not yet met by this implementation. The handshake gates the seal on an appraised channel key, but the appraisal runs in software mode at `assurance="none"`. See [attestation](https://ca2a.agentrust-io.com/docs/spec/attestation/index.md) and [hardware-validation](https://ca2a.agentrust-io.com/docs/hardware-validation/index.md).
+> Met one-directionally as of 2026-07-27. Driven off a live SEV-SNP quote on a running confidential VM, `verify_offer` returned `assurance="hardware"` and a payload was sealed to a channel key that a hardware-verified measurement vouches for. A cross-operator, cross-TEE run followed: an Azure SEV-SNP peer calling a GCP Intel TDX peer.
+>
+> Two limits remain, and P-6 is not fully met until both close. The appraisal is **one-directional**: the caller appraised the callee, not the reverse, so neither side has yet proven itself to a peer that is simultaneously proving itself back. And the committed harness in `examples/` still runs software-attested against synthetic vectors, because genuine evidence embeds per-CPU identifiers and is not shippable as a fixture. See [attestation](https://ca2a.agentrust-io.com/docs/spec/attestation/index.md) and [hardware-validation](https://ca2a.agentrust-io.com/docs/hardware-validation/index.md).
 
 ### P-7 Sealed payload
 
