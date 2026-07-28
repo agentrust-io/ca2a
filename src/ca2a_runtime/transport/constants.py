@@ -8,7 +8,7 @@ namespaced keys below. See ``docs/spec/transport.md``.
 
 from __future__ import annotations
 
-EXTENSION_URI = "https://agentrust.io/extensions/ca2a/v0.1"
+EXTENSION_URI = "https://agentrust-io.com/extensions/ca2a/v0.1"
 
 KEY_DELEGATION_CHAIN = f"{EXTENSION_URI}/delegation_chain"
 KEY_REQUESTED_CAPABILITY = f"{EXTENSION_URI}/requested_capability"

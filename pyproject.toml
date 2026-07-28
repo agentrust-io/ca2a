@@ -9,7 +9,7 @@ description = "Confidential agent-to-agent runtime: attested, attenuated delegat
 readme = "README.md"
 license = { text = "MIT" }
 authors = [
-    { name = "AgenTrust Contributors", email = "oss@agentrust.io" },
+    { name = "AgenTrust Contributors", email = "oss@agentrust-io.com" },
 ]
 keywords = ["a2a", "agent-to-agent", "delegation", "tee", "attestation", "confidential-computing", "ai-agents"]
 classifiers = [

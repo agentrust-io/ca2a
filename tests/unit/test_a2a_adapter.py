@@ -241,5 +241,5 @@ def test_sealed_payload_is_opaque_bytes_only() -> None:
 
 
 def test_extension_uri_is_stable() -> None:
-    assert EXTENSION_URI == "https://agentrust.io/extensions/ca2a/v0.1"
+    assert EXTENSION_URI == "https://agentrust-io.com/extensions/ca2a/v0.1"
     assert KEY_DELEGATION_CHAIN.startswith(EXTENSION_URI)
