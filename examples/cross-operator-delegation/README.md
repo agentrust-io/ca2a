@@ -39,11 +39,9 @@ so the labeling here is deliberate:
 ## Files
 
 - `ca2a-config.yaml`: runtime config (software-only, advisory).
-- `policy.cedar`: the Child's local policy stated as a Cedar rule. It permits
-  `{task:read, task:audit}`. The demo enforces the same rule with the
-  `LocalPolicy` allow-set (the model [claim 3](../../experiments/claim3-scope-policy-intersection/)
-  uses), so it has no dependency on a specific Cedar engine version; binding the
-  Cedar engine in the peer path is tracked separately.
+- `policy.cedar`: the Child's local policy. The demo loads this file into
+  `CedarPolicy`, which evaluates the Cedar rule permitting
+  `{task:read, task:audit}`.
 - `demo.py`: the end-to-end offline flow. Regenerates `chain.json` / `dag.json`
   on each run and re-verifies them through the CLI.
 - `chain.json`: a valid two-hop delegation chain, `task:admin` narrowing to
@@ -68,7 +66,7 @@ Cross-operator delegation example (offline; synthetic SEV-SNP vectors)
   [2] mutual attestation binds each channel key (software-asserted): OK
   [3] attenuated delegation chain verifies (leaf scope narrows): OK
       leaf delegated scope : ['task:read', 'task:write']
-      child local policy   : ['task:audit', 'task:read']
+      child Cedar policy   : ['task:audit', 'task:read'] (policy.cedar)
       effective scope      : ['task:read']
   [4] effective scope = delegated ∩ policy = {task:read}: OK
   [5] child ALLOWS task:read (delegated and locally permitted): OK

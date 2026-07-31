@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 from ca2a_runtime.cedar import CedarPolicy
@@ -13,6 +15,12 @@ from tests.unit.conftest import build_chain
 POLICIES = (
     'permit(principal, action == Action::"read", resource);\n'
     'permit(principal, action == Action::"write", resource);\n'
+)
+EXAMPLE_POLICY = (
+    Path(__file__).resolve().parents[2]
+    / "examples"
+    / "cross-operator-delegation"
+    / "policy.cedar"
 )
 
 
@@ -55,3 +63,10 @@ def test_capability_with_colon() -> None:
     p = CedarPolicy('permit(principal, action == Action::"tool:read", resource);')
     assert p.permits("tool:read")
     assert not p.permits("tool:write")
+
+
+def test_cross_operator_example_policy() -> None:
+    p = CedarPolicy(EXAMPLE_POLICY.read_text(encoding="utf-8"))
+    assert p.permits("task:read")
+    assert p.permits("task:audit")
+    assert not p.permits("task:write")
