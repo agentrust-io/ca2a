@@ -26,8 +26,7 @@ an opt-in constant. Verifying against no root at all is refused.
 
 from __future__ import annotations
 
-from agent_manifest import ParsedSignature as _AmParsedSignature
-from agent_manifest import TpmVerificationError
+from agent_manifest import ParsedSignature, TpmVerificationError
 from agent_manifest import parse_tpmt_signature as _am_parse_tpmt_signature
 from cryptography import x509
 from cryptography.hazmat.primitives.serialization import Encoding
@@ -45,9 +44,8 @@ __all__ = [
     "verify_tpm_report",
 ]
 
-ParsedSignature = _AmParsedSignature
-"""A parsed ``TPMT_SIGNATURE``. Re-exported from agent-manifest, which owns the
-layout; the fields (``sig_alg``, ``hash_alg``, ``signature``) are unchanged."""
+# ParsedSignature is re-exported from agent-manifest, which owns the layout. Its
+# fields (sig_alg, hash_alg, signature) are unchanged from cA2A's former copy.
 
 
 def parse_tpmt_signature(blob: bytes) -> ParsedSignature:
