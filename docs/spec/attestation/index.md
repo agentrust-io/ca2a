@@ -6,20 +6,29 @@ Before a peer is trusted with a delegated task, it proves it is running attested
 
 A provider implements `BaseProvider`:
 
-- `detect()` returns whether the provider is available on the current host.
+- `detect()` returns whether the provider is available on the current host. Available means `attest` can actually produce evidence here, not merely that the hardware exists: a provider that returns True and then raises would be selected and then fail.
 - `attest(public_key, nonce)` returns an `AttestationReport` binding `public_key` to the host's hardware measurement under `nonce`.
 
-An `AttestationReport` carries `platform`, `measurement`, the bound `public_key`, and the `nonce`.
+An `AttestationReport` carries `platform`, `measurement`, the bound `public_key`, and the `nonce`. Those four fields are what a report *claims*; on their own they are an assertion, since any peer can populate them with any values. Four further fields carry the evidence that makes them checkable, and they are named to match cmcp's report model so evidence is portable between the two runtimes:
+
+| Field                       | Contents                                                                   |
+| --------------------------- | -------------------------------------------------------------------------- |
+| `raw_evidence`              | the raw blob the hardware signed (for TPM, the bare `TPMS_ATTEST`)         |
+| `quote_signature`           | the signature over `raw_evidence` (for TPM, a marshalled `TPMT_SIGNATURE`) |
+| `attestation_key_pem`       | the key that produced that signature                                       |
+| `attestation_key_chain_pem` | the leaf-first certificate chain for that key                              |
+
+All four are absent on `software-only`, which has no evidence by construction. A report claiming a hardware platform with no evidence cannot be verified, so it fails closed rather than being trusted.
 
 ## Providers
 
-| Provider        | Platform                    | Status                                                                                                  |
-| --------------- | --------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `software-only` | none                        | Available; for development and CI. Reports `platform: software-only`, never a hardware platform string. |
-| `sev-snp`       | AMD SEV-SNP                 | Verifier implemented (see below). Report generation requires a real SEV-SNP guest.                      |
-| `tdx`           | Intel TDX                   | Verifier implemented (see below). Quote generation requires a real TDX guest.                           |
-| `tpm`           | TPM 2.0 / vTPM              | Verifier implemented (see below). Quote generation requires a real TPM.                                 |
-| `opaque`        | OPAQUE Confidential Runtime | Tier 3, explicit opt-in, not auto-selected                                                              |
+| Provider        | Platform                    | Status                                                                                                                         |
+| --------------- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `software-only` | none                        | Available; for development and CI. Reports `platform: software-only`, never a hardware platform string.                        |
+| `sev-snp`       | AMD SEV-SNP                 | Verifier implemented (see below). Report generation requires a real SEV-SNP guest.                                             |
+| `tdx`           | Intel TDX                   | Verifier implemented (see below). Quote generation requires a real TDX guest.                                                  |
+| `tpm`           | TPM 2.0 / vTPM              | Verifier and collector both implemented (see below). `attest` produces a real quote on a Linux host with a TPM and tpm2-pytss. |
+| `opaque`        | OPAQUE Confidential Runtime | Tier 3, explicit opt-in, not auto-selected                                                                                     |
 
 ## SEV-SNP verification
 
@@ -41,13 +50,37 @@ What is validated. The chain-verification path accepts the genuine self-signed I
 
 ## TPM verification
 
-`ca2a_verify.tpm.verify_tpm_quote` appraises a TPM 2.0 quote (`TPMS_ATTEST`) offline: the AK certificate chain is verified to a trusted root, the AK signature over the attest blob is verified (ECDSA-SHA256 or RSA PKCS#1 v1.5), the structure is confirmed to be a TPM-generated quote (magic and type), and the qualifying data (the verifier's nonce) and the PCR digest (the platform measurement) are checked against expected values.
+`ca2a_verify.tpm.verify_tpm_report` appraises a peer's TPM report offline: the AK certificate chain is verified to a trusted root, the AK signature over the attest blob is verified (ECDSA-SHA256 or RSA PKCS#1 v1.5), the structure is confirmed to be a TPM-generated quote (magic and type), and the key-and-nonce binding below is checked. `verify_tpm_quote` is the lower-level form taking an attest blob and a bare signature directly.
 
-What is validated. Unlike SEV-SNP and TDX, TPM attestation keys chain to per-vendor EK roots, so there is no single published root to validate against; the caller supplies the vendor roots it trusts, and the verifier is exercised against synthetic self-consistent vectors. Producing a quote (`TpmProvider.attest`) fails closed off a real TPM.
+The cryptography is not implemented in cA2A. Steps 1, 2 and 4 delegate to `agent_manifest.verify_tpm_quote`, the canonical hardware-validated implementation cA2A already depends on; three divergent copies of one TPM verifier is the problem being retired (cmcp#447). What cA2A keeps is the piece agent-manifest does not model: `TPMT_SIGNATURE`, the envelope `tpm2_quote -s` and tpm2-pytss `signature.marshal()` actually emit, which is unwrapped to the bare signature agent-manifest takes.
+
+### The signed binding
+
+A TPM quote commits caller-chosen bytes in its `extraData` (qualifying data) field. cA2A commits **both** the offered channel public key and the nonce:
+
+```
+extraData = sha256("ca2a-tpm-v1|" || len32(public_key) || public_key || len32(nonce) || nonce)
+```
+
+Committing the nonce alone would sign for freshness only, leaving `public_key` an unsigned assertion, and sealing a payload "to a key from a verified report" would not actually be rooted in hardware. The verifier re-derives this value from the report's own fields and requires equality, which is what promotes `public_key` and `nonce` from claim to signed fact. A report whose key was substituted after the quote was taken is rejected.
+
+Two encoding details are load-bearing. The value is hashed to 32 bytes rather than carried raw because `TPM2B_DATA` is capped below 64 bytes on some platforms (Azure returns `TPM_RC_SIZE`). Each field is length-prefixed rather than delimiter-joined because with a delimiter a value containing it shifts the split without changing the digest, so `("a|b", "c")` and `("a", "b|c")` would commit identical bytes and a peer could bind a key other than the one it appears to offer. `nonce` is an arbitrary caller-supplied string, so that is reachable rather than theoretical.
+
+The measurement is `sha256:` followed by the quote's own `pcrDigest`, over PCRs 0-7 in the SHA-256 bank. The collector separately reads those PCRs and requires its digest to equal the quoted one, which catches a PCR selection mismatch before evidence ships. The verifier returns the measurement read out of the signed quote rather than the report's `measurement` field, and rejects a report where the two disagree.
+
+### Trust anchors
+
+TPM attestation keys chain to per-vendor roots, not to one published root the way SEV-SNP and TDX do. cA2A does not decide which vendors a deployment trusts: the verifier takes caller-supplied roots and consults nothing implicitly. `ca2a_verify.tpm_roots.AZURE_VTPM_ROOT_2023_PEM` is the one root validated against hardware, available so a deployment on that platform need not re-derive it, but trusting it stays an explicit import. Supplying no root at all is refused, because a chain validated against no anchor would accept any self-consistent chain.
+
+### Two deliberate differences from cmcp's collector
+
+cmcp falls back to the SHA-1 PCR bank and downgrades the report to `software-only`; cA2A requires the SHA-256 bank and raises instead, because a report labelled `sha256:` that measured SHA-1 banks is a mislabel waiting to happen. cmcp can also emit a report whose only evidence is an unsigned PCR read, marked software-only; in cA2A, failing to produce a signed quote raises, because the platform string on a cA2A report is the provider's identity and a `tpm` report that can never verify is worse than an honest error.
+
+What is validated. The collector's checks, the TPM interaction shapes, and report verification end to end are exercised against synthetic self-consistent vectors in `tests/unit/test_tpm_attest.py`. A quote from a genuine Azure Trusted Launch vTPM parses and verifies under `CA2A_TPM_FIXTURE_DIR`. What has **not** been demonstrated is a full collect-then-verify pass in one process on hardware: on the Azure test VM, installing `agent-manifest` conflicts with the distribution's `tpm2_pytss`, so the collector and the verifier could not be run together there. See [LIMITATIONS.md](https://ca2a.agentrust-io.com/LIMITATIONS/index.md).
 
 ## Fail closed
 
-Providers without a backend `detect()` to False, so they are never selected automatically, and verification fails closed when evidence is absent or invalid. This is deliberate: cA2A must not be described as attested across trust domains until a backend verifies a quote against a golden measurement on real hardware. See [LIMITATIONS.md](https://ca2a.agentrust-io.com/LIMITATIONS/index.md).
+A provider `detect()`s to True only where `attest` works on that host, and verification fails closed when evidence is absent or invalid. `sev-snp` and `tdx` have verifiers but no collector yet, so their `attest` raises `AttestationUnsupported`; `software-only` returns False from `detect` so a no-guarantee posture is always an explicit choice. See [LIMITATIONS.md](https://ca2a.agentrust-io.com/LIMITATIONS/index.md).
 
 ## Why this is the critical path
 
