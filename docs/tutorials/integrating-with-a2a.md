@@ -137,7 +137,7 @@ ca2a validate-config --config ca2a.yaml
 # ok: provider=auto enforcement=enforcing
 ```
 
-`Ca2aConfig` accepts `provider` from `auto`, `tpm`, `sev-snp`, `tdx`, `opaque`, `software-only`, and `enforcement_mode` from `enforcing`, `advisory`, `silent`. Hardware providers `detect()` to `False` until their backend lands, so `auto` never selects one silently. `max_delegation_depth` is passed straight through to `verify_chain`. The config is parsed and validated now; the runtime that consumes it on a live inbound call is Tier 2.
+`Ca2aConfig` accepts `provider` from `auto`, `tpm`, `sev-snp`, `tdx`, `opaque`, `software-only`, and `enforcement_mode` from `enforcing`, `advisory`, `silent`. A provider `detect()`s to `True` only where it can actually attest, so `auto` never selects one that would then fail; `software-only` is never auto-selected at all. `max_delegation_depth` is passed straight through to `verify_chain`. The config is parsed and validated now; the runtime that consumes it on a live inbound call is Tier 2.
 
 ## What awaits Tier 2 and Tier 3
 
@@ -146,7 +146,7 @@ Do not present any of the following as usable. They are design today, and the co
 | Capability | Step | Status | What happens today |
 |---|---|---|---|
 | Runtime peer-call enforcement | reads chain off the wire, gates the inbound call | Tier 2, not built | No live path accepts a credential on an inbound A2A task |
-| Peer attestation check | 2 | Tier 3, not built | `detect()` is `False` for all hardware providers; verification fails closed (`ATTESTATION_UNSUPPORTED` / `ATTESTATION_FAILED`) |
+| Peer attestation check | 2 | Tier 3, partly built | `tpm` collects and verifies a real quote; `sev-snp` / `tdx` / `opaque` verify but cannot collect. No live inbound path runs the check yet, and verification fails closed (`ATTESTATION_UNSUPPORTED` / `ATTESTATION_FAILED`) |
 | Cedar scope intersection | 3 | Tier 2, not built | Runtime does not consult a policy; `policy_bundle_path` only reserves the surface |
 | Sealed payload channel | 4 | Tier 2, fails closed | `SealedChannel.seal` / `open` raise `SEALED_CHANNEL_ERROR` rather than send plaintext |
 | Live provenance emission | 5b | Tier 2, not built | The runtime does not emit and link records automatically on the inbound path |

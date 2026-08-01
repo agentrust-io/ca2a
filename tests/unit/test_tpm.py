@@ -115,8 +115,16 @@ def test_short_quote_rejected() -> None:
         TpmQuote.parse(b"\x00\x00")
 
 
-def test_provider_detect_and_attest() -> None:
-    assert TpmProvider.detect() is False
+def test_provider_fails_closed_off_tpm_hardware() -> None:
+    """Off a TPM host, detect is False and attest raises rather than inventing evidence.
+
+    This asserts the pair *agrees*. It deliberately does not assert ``detect() is
+    False`` unconditionally: on a host that does have a TPM and the bindings, True
+    is now the correct answer because ``attest`` works there. The contract and both
+    branches are covered in test_tpm_attest.py.
+    """
+    if TpmProvider.detect():
+        pytest.skip("this host has a TPM; the hardware path is covered separately")
     with pytest.raises(AttestationUnsupported):
         TpmProvider().attest("deadbeef", "nonce")
 
