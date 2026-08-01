@@ -5,7 +5,7 @@ implementation is expected to satisfy the same behaviors.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import pytest
 from cryptography.hazmat.primitives.asymmetric import ec
@@ -404,3 +404,18 @@ def test_action_007_controller_rejection_is_valid_negative_outcome() -> None:
         LocalPolicy.of(["robot.move"]),
     )
     assert result == _ActionEvidenceResult("valid_negative_outcome", "CONTROLLER_REJECTED")
+
+
+def test_action_008_invalid_delegation_signature_is_provenance_invalid() -> None:
+    chain = _action_chain()
+    records = _records(chain)
+    leaf = chain[-1]
+    tampered_signature = f"{int(leaf.signature[:2], 16) ^ 1:02x}{leaf.signature[2:]}"
+    bad_chain = [*chain[:-1], replace(leaf, signature=tampered_signature)]
+    result = _verify_action_evidence(
+        bad_chain,
+        records,
+        _action_evidence(records),
+        LocalPolicy.of(["robot.move"]),
+    )
+    assert result == _ActionEvidenceResult("provenance_invalid", "INVALID_CREDENTIAL")
