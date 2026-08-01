@@ -2,8 +2,8 @@
   "chain": [
     {
       "credential_id": "cred-0-orchestrator",
-      "issuer": "0aca4cf1251cb3648cd1f8605481d8dece5cd3a106a362a11b86f43d270da087",
-      "subject": "41eebfb4e9ac7f0944041b6c8fad485159f3d0391721dcec1bbe478986c6879f",
+      "issuer": "4b6b80f73e41b5401523db167775027ee5d41a1d83954557c905b00962cd5c8e",
+      "subject": "f5d7ff727931d0acb4393c9012d9a4fe9c3a0837a1c191a31e5ad1c35fa2dd07",
       "scope": [
         "task:read",
         "task:write",
@@ -12,12 +12,12 @@
       ],
       "depth": 0,
       "parent_id": null,
-      "signature": "2380d30571a6493f6236c3aa9d381fd28a9cd3fcd4fa0fd5316166867575b206d8eb882c39fc7362c89cd407eef77848c228410a7816a10b563888eb99789a08"
+      "signature": "749c4a53497b1bb6ca17f4aafe6bad30674484baa4f8f3083581cf9bbbb950d5cb9e3a2ab0453b7cb9c24b339496f4eaa6a6d989960d356633aeb53c58251007"
     },
     {
       "credential_id": "cred-1-researcher",
-      "issuer": "41eebfb4e9ac7f0944041b6c8fad485159f3d0391721dcec1bbe478986c6879f",
-      "subject": "cb42a0b6b9ec7839846a0ddbcb67d851d9b1013fc04066687181938d9ea7dce8",
+      "issuer": "f5d7ff727931d0acb4393c9012d9a4fe9c3a0837a1c191a31e5ad1c35fa2dd07",
+      "subject": "747e897486d4d32abd45d3a9e04e5357f6a88a1bad8d0ce9dc6084cd10c7b121",
       "scope": [
         "task:read",
         "tool:purchase",
@@ -25,18 +25,18 @@
       ],
       "depth": 1,
       "parent_id": "cred-0-orchestrator",
-      "signature": "ad8d7b0aa00bd04e45bd9dca84f92bd7f23b4f4dde9e6eeff441ccf7c5222c5a0ccb45b5ba1b8399b6625cd3b4cfd97bc953b16bba01034a05ae01d55ba50503"
+      "signature": "0a5d95fded81c149bc652bfa5903c7a02e3caa9e0f5a41761ffef19d2dad9fd3e4ac5e1f2ef921bc92a6ed146aad0b3765709491447e7f87d9331df502e3af02"
     },
     {
       "credential_id": "cred-2-retriever",
-      "issuer": "cb42a0b6b9ec7839846a0ddbcb67d851d9b1013fc04066687181938d9ea7dce8",
-      "subject": "2014e45331bb1717e9983dbba3fd4b6adc81ee48257afe5c0e027f12f61e8d7d",
+      "issuer": "747e897486d4d32abd45d3a9e04e5357f6a88a1bad8d0ce9dc6084cd10c7b121",
+      "subject": "b05e7f85927cc4a5886ec097da0200c4a02d0d944dd2d73c9a10f5662041074c",
       "scope": [
         "tool:search"
       ],
       "depth": 2,
       "parent_id": "cred-1-researcher",
-      "signature": "0a18f20de83626e8f32960f3a3a543fed07b4c9f1ccce1eec4e3a6b7798311b68d08052ec408a675cd153fbfb9594d369c6333b672d2c1ba16854c517ebebf05"
+      "signature": "a6ec5c6c8add5923b9bf3f9fc9cb8cd0c10cf6faf53a3e04571a418f199d8191bbf9ee4f0b7ddd06f75eaeaa4e25e0a761e62ca59b09d31d6544b4bc90ce1e0d"
     }
   ]
 }
