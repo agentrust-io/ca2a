@@ -5,15 +5,22 @@ AMD SEV-SNP and Intel TDX do. cA2A therefore does not decide which vendors a
 deployment trusts: :func:`ca2a_verify.tpm.verify_tpm_report` takes the roots the
 caller supplies, and nothing here is consulted implicitly.
 
-What this module provides is the one root cA2A has actually validated against
-hardware, so a deployment on that platform does not have to re-derive it. Trusting
-it stays an explicit import:
+What this module provides is a root observed on Azure Trusted Launch, so a
+deployment on that platform does not have to re-derive it. Trusting it stays an
+explicit import:
 
     from ca2a_verify.tpm_roots import AZURE_VTPM_ROOT_2023_PEM
 
 A chain that validates to an unpinned root is not evidence, because an attacker
 who can present any self-consistent chain would pass. So passing no roots at all
 is refused rather than treated as "trust anything".
+
+**This root is not sufficient on every Azure Trusted Launch host.** Measured on
+hardware 2026-08-01 (see the fleet-variance note below): the attestation key
+certificate presentation varies across the Azure fleet, and on a host whose AK
+certificate carries no AIA extension there is no way to obtain the intermediates,
+so no chain reaches this root and verification fails closed. Do not read the
+presence of this constant as a promise that Azure verifies out of the box.
 """
 
 from __future__ import annotations
@@ -28,9 +35,28 @@ from __future__ import annotations
 #       CN=Azure Cloud Virtual TPM CA 2025
 #         CN=Azure Virtual TPM Root Certificate Authority 2023   <- this cert
 #
-# The intermediates are fetchable over the certificate AIA extension, so only the
-# self-signed root is pinned here. This is the same anchor cmcp pins in
-# cmcp_verify/tpm_roots.py; the two were validated against the same chain.
+# On that host the intermediates were fetchable over the certificate AIA extension,
+# so only the self-signed root is pinned here. This is the same anchor cmcp pins in
+# cmcp_verify/tpm_roots.py.
+#
+# FLEET VARIANCE, measured 2026-08-01 on a Standard_D2s_v7 in eastus2. The same NV
+# index presented a materially different certificate:
+#
+#   size          994 bytes, not 1596
+#   subject       CN=<vm-id>.TrustedVM.Azure.windows.net   (same shape)
+#   issuer        CN=Global Virtual TPM CA - 03            (a DIFFERENT hierarchy)
+#   AIA           absent entirely
+#
+# With no AIA there is nothing to walk, so the collector ships the leaf alone, and
+# no chain can reach the root below. `tpm2_getcap handles-nv-index` showed only
+# 0x01C101D0, so the intermediates are not stored elsewhere in NV either. Chained
+# verification on that host is therefore impossible with this anchor, and
+# verify_tpm_report fails with "AK chain root is not among the supplied trusted
+# TPM roots" - correctly, since it cannot prove key provenance.
+#
+# The consequence for a deployment: obtain and pin the root for the hierarchy your
+# own hosts present, rather than assuming this one. Both observations are real;
+# Azure runs more than one vTPM CA generation.
 AZURE_VTPM_ROOT_2023_PEM = b"""\
 -----BEGIN CERTIFICATE-----
 MIIFsDCCA5igAwIBAgIQUfQx2iySCIpOKeDZKd5KpzANBgkqhkiG9w0BAQwFADBp
