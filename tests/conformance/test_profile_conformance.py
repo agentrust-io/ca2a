@@ -412,10 +412,26 @@ def test_action_008_invalid_delegation_signature_is_provenance_invalid() -> None
     leaf = chain[-1]
     tampered_signature = f"{int(leaf.signature[:2], 16) ^ 1:02x}{leaf.signature[2:]}"
     bad_chain = [*chain[:-1], replace(leaf, signature=tampered_signature)]
-    result = _verify_action_evidence(
-        bad_chain,
+    evidence = _action_evidence(
         records,
-        _action_evidence(records),
-        LocalPolicy.of(["robot.move"]),
+        requested_capability="robot.inspect",
+        controller_decision="rejected",
     )
-    assert result == _ActionEvidenceResult("provenance_invalid", "INVALID_CREDENTIAL")
+    restrictive_policy = LocalPolicy.of(["robot.move"])
+    permissive_policy = LocalPolicy.of(["robot.move", "robot.inspect"])
+
+    # The controls establish both downstream classifications that invalid provenance must preempt.
+    assert _verify_action_evidence(chain, records, evidence, restrictive_policy) == (
+        _ActionEvidenceResult("authorization_invalid", "SCOPE_NOT_PERMITTED")
+    )
+    assert _verify_action_evidence(chain, records, evidence, permissive_policy) == (
+        _ActionEvidenceResult("valid_negative_outcome", "CONTROLLER_REJECTED")
+    )
+
+    # ACTION-008 verifies provenance validation precedes authorization and controller outcome classification.
+    assert _verify_action_evidence(bad_chain, records, evidence, restrictive_policy) == (
+        _ActionEvidenceResult("provenance_invalid", "INVALID_CREDENTIAL")
+    )
+    assert _verify_action_evidence(bad_chain, records, evidence, permissive_policy) == (
+        _ActionEvidenceResult("provenance_invalid", "INVALID_CREDENTIAL")
+    )
