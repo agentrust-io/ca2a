@@ -104,7 +104,9 @@ Peer attestation proves a peer runs measured code before a task is trusted to it
 - `ATTESTATION_UNSUPPORTED` (`AttestationUnsupported`): no attestation backend is available for the requested platform.
 - `ATTESTATION_FAILED` (`AttestationFailed`): a backend ran but the measurement or quote did not verify.
 
-Real hardware providers (`tpm`, `sev-snp`, `tdx`, `opaque`) return `False` from `detect()` in this release, so they are never auto-selected, and verification against an absent backend fails closed rather than assuming a peer is trustworthy. The `software-only` provider is for development and CI and never reports a hardware platform string. Until at least one real hardware backend verifies a quote, cA2A must not be described as attested across a trust boundary. This is Tier 3 on the [roadmap](../../ROADMAP.md) and a shared critical path with cmcp.
+A provider returns `True` from `detect()` only where `attest()` can actually produce evidence on that host, so a provider is never selected and then found broken. `tpm` has a collector: on a Linux host with a TPM and tpm2-pytss it produces a real quote, and `AttestationUnsupported` names the actual missing piece rather than claiming no TPM is present. `sev-snp`, `tdx` and `opaque` have verifiers but no collector yet, so their `attest()` raises. The `software-only` provider returns `False` from `detect()`, so a no-guarantee posture is always an explicit choice, and it never reports a hardware platform string.
+
+Verification fails closed on absent or invalid evidence. A report claiming a hardware platform with no `raw_evidence` or `quote_signature`, or with no certificate chain for the key that signed it, is rejected rather than trusted. The remaining gap is a full collect-then-verify pass in one process on hardware, which is Tier 3 on the [roadmap](../../ROADMAP.md) and a shared critical path with cmcp.
 
 ## Missing or failed attestation is denial
 

@@ -38,6 +38,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# TPM quote collection. Only the collector needs these bindings; verifying a
+# peer's quote does not, so this stays out of the base dependencies.
+tpm = [
+    "tpm2-pytss>=2.2; sys_platform == 'linux'",
+]
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",

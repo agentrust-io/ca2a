@@ -7,18 +7,43 @@ serves as the platform measurement. Verification lives in
 :mod:`ca2a_verify.tpm`.
 
 Unlike AMD SEV-SNP and Intel TDX, TPM attestation keys chain to per-vendor EK
-roots rather than one published root, so there is no single real root to
-validate against. The verifier is exercised against synthetic self-consistent
-vectors, and a production deployment supplies its own trusted vendor roots.
-Producing a quote requires a real TPM, so :meth:`TpmProvider.attest` fails closed.
+roots rather than one published root, so there is no single real root to validate
+against. The verifier therefore takes the roots the caller trusts;
+:mod:`ca2a_verify.tpm_roots` ships the one root cA2A has validated on hardware as
+an opt-in constant rather than a default.
+
+:meth:`TpmProvider.attest` produces a real quote. What it binds is the point:
+``extraData`` commits :func:`tpm_qualifying_data`, a digest over *both* the
+channel public key and the caller's nonce. Without that, a report's
+``public_key`` field would stay an unsigned assertion and sealing a payload to
+"a key from a verified report" would not actually be rooted in hardware.
+
+Two deliberate differences from cmcp's collector, which this is otherwise ported
+from:
+
+- **No SHA-1 fallback.** cmcp falls back to the SHA-1 PCR bank and downgrades the
+  report to software-only. cA2A requires the SHA-256 bank and raises instead. A
+  report labelled ``sha256:`` that measured SHA-1 banks is a mislabel waiting to
+  happen, and cA2A has no legacy deployments to keep working.
+- **No unsigned-PCR-read tier.** cmcp can emit a report whose only evidence is an
+  unsigned PCR read, marked software-only. Here, failing to produce a signed
+  quote raises: the platform string on a cA2A report is the provider's identity
+  and a ``tpm`` report that can never verify is worse than an honest error.
 """
 
 from __future__ import annotations
 
+import hashlib
+import logging
+import sys
 from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
 
 from ca2a_runtime.errors import AttestationFailed, AttestationUnsupported
 from ca2a_runtime.tee.base import AttestationReport, BaseProvider
+
+logger = logging.getLogger(__name__)
 
 TPM_GENERATED_VALUE = 0xFF544347
 TPM_ST_ATTEST_QUOTE = 0x8018
@@ -26,6 +51,57 @@ CLOCK_INFO_LEN = 17
 FIRMWARE_VERSION_LEN = 8
 
 TPM_DEVICES = ("/dev/tpmrm0", "/dev/tpm0")
+
+# The PCR selection quoted, and the bank the measurement is labelled with.
+QUOTE_PCR_SELECTION = "sha256:0,1,2,3,4,5,6,7"
+_PCR_COUNT = 8
+
+# Domain-separated binding committed into the quote's extraData. Versioned
+# because it is wire format: a peer and its verifier must derive it identically.
+# See docs/spec/attestation.md.
+_QUALIFYING_DATA_PREFIX = b"ca2a-tpm-v1|"
+
+# Platforms that provision an attestation key expose it at a persistent handle
+# with a certificate in NV. Azure Trusted Launch uses these two; both are
+# TCG-conventional ranges rather than Azure inventions, so probing is harmless
+# elsewhere and simply finds nothing.
+_PLATFORM_AK_HANDLE = 0x81000003
+_PLATFORM_AK_CERT_NV_INDEX = 0x01C101D0
+
+# TPM2_NV_Read is bounded by TPM2_PT_NV_BUFFER_MAX, so a certificate larger than
+# that must be read in chunks.
+_NV_READ_CHUNK_BYTES = 512
+_TPM2_CAP_TPM_PROPERTIES = 0x00000006
+_TPM2_PT_NV_BUFFER_MAX = 0x0000012B
+
+# Walking the certificate AIA extension at collection time is what lets a relying
+# party verify offline later: the chain travels with the evidence.
+_AIA_FETCH_TIMEOUT_SECONDS = 5
+_AIA_MAX_DEPTH = 4
+_AIA_CA_ISSUERS_OID = "1.3.6.1.5.5.7.48.2"
+
+
+def tpm_qualifying_data(public_key: str, nonce: str) -> bytes:
+    """Return the 32 bytes a cA2A TPM quote commits in ``extraData``.
+
+    Binds the channel public key and the nonce together, so one signature covers
+    freshness *and* which key is being offered. A caller that seals to the key in
+    a verified report is then sealing to a key the TPM signed for.
+
+    Hashed rather than concatenated raw because ``TPM2B_DATA`` is capped below 64
+    bytes on some platforms (Azure returns ``TPM_RC_SIZE``); 32 bytes always fits.
+
+    Each field is length-prefixed rather than separated by a delimiter. With a
+    delimiter, a value containing it moves the split without changing the digest:
+    ``("a|b", "c")`` and ``("a", "b|c")`` would commit identical bytes, so a peer
+    could bind a key other than the one it appears to offer. ``nonce`` is an
+    arbitrary caller-supplied string, so that is reachable rather than theoretical.
+    """
+    parts = []
+    for field in (public_key.encode(), nonce.encode()):
+        parts.append(len(field).to_bytes(4, "big"))
+        parts.append(field)
+    return hashlib.sha256(_QUALIFYING_DATA_PREFIX + b"".join(parts)).digest()
 
 
 def _read_u16(buf: bytes, pos: int) -> tuple[int, int]:
@@ -80,19 +156,380 @@ class TpmQuote:
         )
 
 
+def _tpm2_pytss_available() -> bool:
+    """True when the tpm2-pytss bindings can be imported."""
+    try:
+        import tpm2_pytss  # noqa: F401
+    except Exception as exc:  # noqa: BLE001 - a broken install must read as absent
+        logger.debug("tpm2-pytss unavailable: %s", exc)
+        return False
+    return True
+
+
 class TpmProvider(BaseProvider):
-    """TPM 2.0 provider. Quote generation requires a real TPM."""
+    """TPM 2.0 provider. Produces a real quote over PCRs 0-7 in the SHA-256 bank.
+
+    ``detect`` reports True only where ``attest`` can actually run: Linux, a TPM
+    device node, and the tpm2-pytss bindings present. Reporting True on a host
+    where attestation then fails is the failure mode this provider used to have.
+    """
 
     platform = "tpm"
 
     @classmethod
     def detect(cls) -> bool:
-        import os
-
-        return any(os.path.exists(dev) for dev in TPM_DEVICES)
+        if sys.platform != "linux":
+            return False
+        if not any(Path(dev).exists() for dev in TPM_DEVICES):
+            return False
+        return _tpm2_pytss_available()
 
     def attest(self, public_key: str, nonce: str) -> AttestationReport:
-        raise AttestationUnsupported(
-            "TPM quote generation requires a real TPM",
-            detail="no TPM device present; run on a host with a TPM 2.0 / vTPM",
+        """Quote PCRs 0-7, committing ``public_key`` and ``nonce`` in extraData.
+
+        Raises :class:`AttestationUnsupported` when this host cannot produce a
+        quote at all, and :class:`AttestationFailed` when it can but the attempt
+        did not yield verifiable evidence.
+        """
+        self._require_host()
+        return self._collect(public_key, nonce)
+
+    # ── host preconditions ────────────────────────────────────────────────────
+
+    @classmethod
+    def _require_host(cls) -> None:
+        """Fail with the actual reason, never a generic "no TPM present"."""
+        if sys.platform != "linux":
+            raise AttestationUnsupported(
+                "TPM quote generation is only implemented on Linux",
+                detail=f"running on {sys.platform}; the TPM resource manager is a Linux device",
+            )
+        present = [dev for dev in TPM_DEVICES if Path(dev).exists()]
+        if not present:
+            raise AttestationUnsupported(
+                "TPM quote generation requires a TPM device",
+                detail=(
+                    f"none of {', '.join(TPM_DEVICES)} exist; run on a host with a "
+                    "TPM 2.0 or vTPM"
+                ),
+            )
+        if not _tpm2_pytss_available():
+            raise AttestationUnsupported(
+                "TPM quote generation requires the tpm2-pytss bindings",
+                detail=(
+                    f"a TPM is present at {present[0]} but tpm2-pytss is not importable; "
+                    "install the 'tpm' extra"
+                ),
+            )
+
+    # ── collection ────────────────────────────────────────────────────────────
+
+    def _collect(self, public_key: str, nonce: str) -> AttestationReport:
+        from tpm2_pytss.ESAPI import ESAPI
+        from tpm2_pytss.types import TPM2B_DATA, TPML_PCR_SELECTION
+
+        qualifying_data = tpm_qualifying_data(public_key, nonce)
+
+        with ESAPI() as ectx:
+            pcr_digest_local = self._read_pcrs(ectx, TPML_PCR_SELECTION)
+            try:
+                ak_handle, ak_public, chain_pem, transient = self._attestation_key(ectx)
+            except Exception as exc:  # noqa: BLE001 - keep the error contract
+                raise AttestationFailed(
+                    "no attestation key was available to sign a quote",
+                    detail=f"{type(exc).__name__}: {exc}",
+                ) from exc
+            try:
+                quoted, signature = ectx.quote(
+                    ak_handle,
+                    QUOTE_PCR_SELECTION,
+                    TPM2B_DATA(qualifying_data),
+                )
+                attest_blob = bytes(quoted.attestationData)
+                signature_blob = bytes(signature.marshal())
+                ak_pem = bytes(ak_public.to_pem())
+            except Exception as exc:  # noqa: BLE001 - any TPM fault means no evidence
+                raise AttestationFailed(
+                    "TPM2_Quote did not produce a signed quote",
+                    detail=f"{type(exc).__name__}: {exc}",
+                ) from exc
+            finally:
+                if transient:
+                    try:
+                        ectx.flush_context(ak_handle)
+                    except Exception as exc:  # noqa: BLE001
+                        logger.debug("flushing the transient attestation key failed: %s", exc)
+
+        quote = TpmQuote.parse(attest_blob)
+        self._check_quote(quote, qualifying_data, pcr_digest_local)
+
+        if transient:
+            logger.warning(
+                "Quoted with a transient attestation key: this host provisions no "
+                "certified platform key, so the report carries no chain and a verifier "
+                "using vendor roots will reject it."
+            )
+
+        return AttestationReport(
+            platform=self.platform,
+            # The digest the TPM signed, not a locally recomputed one.
+            measurement="sha256:" + quote.pcr_digest.hex(),
+            public_key=public_key,
+            nonce=nonce,
+            raw_evidence=attest_blob,
+            quote_signature=signature_blob,
+            attestation_key_pem=ak_pem,
+            attestation_key_chain_pem=chain_pem,
         )
+
+    @staticmethod
+    def _read_pcrs(ectx: Any, selection_cls: Any) -> bytes:
+        """Return sha256 over the concatenated SHA-256 PCRs 0-7.
+
+        ``pcr_read`` returns a ``TPML_DIGEST``, so its ``digests`` are iterated
+        once. Treating it as a list of banks yields ``bytes`` of a structure and
+        silently corrupts the measurement.
+        """
+        try:
+            _, _, digests = ectx.pcr_read(selection_cls.parse(QUOTE_PCR_SELECTION))
+            raw = [bytes(digest) for digest in digests.digests]
+        except Exception as exc:  # noqa: BLE001
+            raise AttestationUnsupported(
+                "the SHA-256 PCR bank could not be read",
+                detail=(
+                    f"{type(exc).__name__}: {exc}. cA2A does not fall back to SHA-1: a "
+                    "report labelled sha256 must measure the SHA-256 bank."
+                ),
+            ) from exc
+        if len(raw) < _PCR_COUNT:
+            raise AttestationFailed(
+                "the TPM returned fewer PCRs than were selected",
+                detail=f"got {len(raw)}, expected {_PCR_COUNT}",
+            )
+        return hashlib.sha256(b"".join(raw[:_PCR_COUNT])).digest()
+
+    @staticmethod
+    def _check_quote(quote: TpmQuote, qualifying_data: bytes, pcr_digest_local: bytes) -> None:
+        """Check the TPM signed what this collector believes it asked for.
+
+        The PCR cross-check catches a selection mismatch at collection time: the
+        quote's ``pcrDigest`` is the TPM's own digest over the selected PCRs, so it
+        must equal the digest computed from the separate PCR read. If it does not,
+        the measurement about to be shipped describes different PCRs than were
+        measured, and the peer would be attesting to the wrong thing.
+        """
+        if quote.magic != TPM_GENERATED_VALUE:
+            raise AttestationFailed(
+                "the quote is not TPM-generated", detail=f"magic={quote.magic:#x}"
+            )
+        if quote.attest_type != TPM_ST_ATTEST_QUOTE:
+            raise AttestationFailed(
+                "the attestation is not a quote", detail=f"type={quote.attest_type:#x}"
+            )
+        if quote.qualifying_data != qualifying_data:
+            raise AttestationFailed(
+                "the quote does not commit the requested key and nonce binding",
+                detail="extraData does not match the derived qualifying data",
+            )
+        if quote.pcr_digest != pcr_digest_local:
+            raise AttestationFailed(
+                "the quoted PCR digest does not match the PCRs that were read",
+                detail=(
+                    f"quote={quote.pcr_digest.hex()} read={pcr_digest_local.hex()}; the "
+                    "measurement would describe a different PCR selection"
+                ),
+            )
+
+    # ── attestation key ───────────────────────────────────────────────────────
+
+    def _attestation_key(self, ectx: Any) -> tuple[Any, Any, bytes | None, bool]:
+        """Return ``(handle, public, chain_pem, transient)`` for the signing key.
+
+        Prefers the platform attestation key: one the platform provisioned and
+        certified, at a persistent handle with its certificate in NV. Only that
+        key's signature says anything about *where* the key lives, because the
+        certificate chains to a vendor root.
+
+        Falls back to a transient restricted signing key. That still yields a
+        verifiable signature but no provenance, so it is returned with no chain and
+        cannot be mistaken for the stronger tier.
+        """
+        cert_der = self._read_nv(ectx, _PLATFORM_AK_CERT_NV_INDEX)
+        if cert_der is not None:
+            try:
+                handle = ectx.tr_from_tpmpublic(_PLATFORM_AK_HANDLE)
+                public, _, _ = ectx.read_public(handle)
+                chain = self._chain_from_leaf(cert_der)
+                if chain and self._certifies(chain, public):
+                    logger.info(
+                        "Using the platform attestation key at %#x with its certificate "
+                        "from NV %#x.",
+                        _PLATFORM_AK_HANDLE,
+                        _PLATFORM_AK_CERT_NV_INDEX,
+                    )
+                    return handle, public, chain, False
+                logger.warning(
+                    "The certificate at NV %#x does not certify the key at %#x; falling "
+                    "back to a transient attestation key.",
+                    _PLATFORM_AK_CERT_NV_INDEX,
+                    _PLATFORM_AK_HANDLE,
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning(
+                    "The platform attestation key is unusable (%s); falling back to a "
+                    "transient key.",
+                    exc,
+                )
+
+        handle, public = self._create_attestation_key(ectx)
+        return handle, public, None, True
+
+    @staticmethod
+    def _read_nv(ectx: Any, index: int) -> bytes | None:
+        """Read an NV index in full, or None when it is not defined or readable.
+
+        Chunked because ``TPM2_NV_Read`` is bounded by ``TPM2_PT_NV_BUFFER_MAX``.
+        Requesting the whole object at once fails with ``TPM_RC_VALUE`` on the size
+        parameter, which is why a 1596-byte certificate cannot be fetched in one
+        call even though the index is plainly readable.
+        """
+        try:
+            handle = ectx.tr_from_tpmpublic(index)
+            public, _ = ectx.nv_read_public(handle)
+            total = int(public.nvPublic.dataSize)
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("NV index %#x is not defined: %s", index, exc)
+            return None
+
+        chunk = _NV_READ_CHUNK_BYTES
+        try:
+            caps = ectx.get_capability(_TPM2_CAP_TPM_PROPERTIES, _TPM2_PT_NV_BUFFER_MAX, 1)
+            for prop in caps[1].data.tpmProperties:
+                if int(prop.property) == _TPM2_PT_NV_BUFFER_MAX:
+                    chunk = min(chunk, int(prop.value))
+                    break
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("NV buffer max unavailable, using %d: %s", chunk, exc)
+
+        out = bytearray()
+        try:
+            while len(out) < total:
+                want = min(chunk, total - len(out))
+                out += bytes(ectx.nv_read(handle, want, len(out)))
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("NV index %#x read failed at offset %d: %s", index, len(out), exc)
+            return None
+        return bytes(out)
+
+    @staticmethod
+    def _certifies(chain_pem: bytes, tpm_public: Any) -> bool:
+        """True when the chain's leaf carries the TPM key's public key."""
+        from cryptography import x509
+        from cryptography.hazmat.primitives import serialization
+
+        try:
+            leaf = x509.load_pem_x509_certificates(chain_pem)[0]
+        except Exception as exc:  # noqa: BLE001
+            logger.debug("could not load the leaf certificate: %s", exc)
+            return False
+        return leaf.public_key().public_bytes(
+            serialization.Encoding.PEM, serialization.PublicFormat.SubjectPublicKeyInfo
+        ) == bytes(tpm_public.to_pem())
+
+    @staticmethod
+    def _chain_from_leaf(leaf_der: bytes) -> bytes:
+        """Build a leaf-first PEM chain by following each certificate's AIA extension.
+
+        Assembled at collection time on purpose: shipping the chain with the
+        evidence is what keeps verification offline later. A self-signed
+        certificate or a missing AIA ends the walk, and whatever was gathered is
+        returned, so a partial chain still travels rather than being discarded.
+        """
+        import urllib.request
+
+        from cryptography import x509
+        from cryptography.hazmat.primitives.serialization import Encoding, pkcs7
+
+        def load_any(data: bytes) -> list[x509.Certificate]:
+            for loader in (x509.load_der_x509_certificate, x509.load_pem_x509_certificate):
+                try:
+                    return [loader(data)]
+                except Exception as exc:  # noqa: BLE001
+                    logger.debug("not an X.509 certificate via %s: %s", loader.__name__, exc)
+            for bundle_loader in (
+                pkcs7.load_der_pkcs7_certificates,
+                pkcs7.load_pem_pkcs7_certificates,
+            ):
+                try:
+                    found = list(bundle_loader(data))
+                except Exception as exc:  # noqa: BLE001
+                    logger.debug("not a PKCS#7 bundle via %s: %s", bundle_loader.__name__, exc)
+                    continue
+                if found:
+                    return found
+            return []
+
+        chain = load_any(leaf_der)
+        if not chain:
+            logger.warning(
+                "The attestation key certificate parsed as neither X.509 nor PKCS#7; no "
+                "chain will be shipped."
+            )
+            return b""
+
+        while len(chain) < _AIA_MAX_DEPTH:
+            current = chain[-1]
+            if current.subject == current.issuer:
+                break
+            try:
+                aia = current.extensions.get_extension_for_class(
+                    x509.AuthorityInformationAccess
+                ).value
+            except x509.ExtensionNotFound:
+                break
+            issuer = None
+            for access in aia:
+                if access.access_method.dotted_string != _AIA_CA_ISSUERS_OID:
+                    continue
+                url = access.access_location.value
+                if not isinstance(url, str) or not url.startswith(("http://", "https://")):
+                    continue
+                try:
+                    # http(s) only, checked immediately above.
+                    with urllib.request.urlopen(  # noqa: S310  # nosec B310
+                        url, timeout=_AIA_FETCH_TIMEOUT_SECONDS
+                    ) as response:
+                        found = load_any(response.read())
+                except Exception as exc:  # noqa: BLE001
+                    logger.debug("AIA fetch failed for %s: %s", url, exc)
+                    continue
+                if found:
+                    issuer = found[0]
+                    break
+            if issuer is None:
+                break
+            chain.append(issuer)
+
+        return b"".join(c.public_bytes(Encoding.PEM) for c in chain)
+
+    @staticmethod
+    def _create_attestation_key(ectx: Any) -> tuple[Any, Any]:
+        """Create a transient restricted signing key and return ``(handle, public)``.
+
+        Restricted signing is what makes the key usable for TPM2_Quote: the TPM will
+        only sign TPM-generated structures with it, so a quote cannot be forged by
+        asking the key to sign arbitrary bytes.
+        """
+        from tpm2_pytss.constants import ESYS_TR
+        from tpm2_pytss.types import TPM2B_PUBLIC, TPM2B_SENSITIVE_CREATE
+
+        template = TPM2B_PUBLIC.parse(
+            "rsa2048:rsassa:null",
+            objectAttributes=(
+                "restricted|sign|fixedtpm|fixedparent|sensitivedataorigin|userwithauth|noda"
+            ),
+        )
+        handle, public, _, _, _ = ectx.create_primary(
+            TPM2B_SENSITIVE_CREATE(), template, ESYS_TR.OWNER
+        )
+        return handle, public

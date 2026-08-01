@@ -139,7 +139,7 @@ Exit code 0. See the [Sealed Channel](../spec/sealed-channel.md) page.
 python experiments/claim6-cross-operator-attestation/run.py
 ```
 
-This SKIPs. Real hardware attestation backends (SEV-SNP VCEK chain, Intel TDX quote via QVL/PCS, TPM AK cert plus checkquote) are Tier 3 and not implemented. Every `BaseProvider.detect()` returns `False`, so no provider can produce a quote and no counterparty can verify one. The script probes for a provider, finds none, prints a software-only illustration of the `AttestationReport` shape clearly marked as carrying no assurance, then SKIPs.
+This SKIPs. The SEV-SNP and TDX collectors are Tier 3 and not implemented, so on the SEV-SNP path this experiment exercises no provider that can produce a quote. (`TpmProvider.attest` does now produce a real quote on a Linux host with a TPM, but this experiment is written against SEV-SNP.) The script probes for a provider, finds none, prints a software-only illustration of the `AttestationReport` shape clearly marked as carrying no assurance, then SKIPs.
 
 ```text
 KEY RESULT: SKIP: cross-operator attestation is gated on Tier 3 (real
