@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Corrected the Azure vTPM trust-anchor claim after measuring it on hardware (2026-08-01).** `ca2a_verify/tpm_roots.py` presented `AZURE_VTPM_ROOT_2023_PEM` as "the one root cA2A has validated on hardware", which does not hold fleet-wide. On a `Standard_D2s_v7` in eastus2 the AK certificate at NV `0x01C101D0` is 994 bytes, is issued by `CN=Global Virtual TPM CA - 03`, and carries **no AIA extension**, so no intermediates can be fetched (and none are stored elsewhere in NV), no chain reaches the pinned root, and `verify_tpm_report` fails closed with "AK chain root is not among the supplied trusted TPM roots". A different host (`Standard_D2s_v5`, eastus) presented a 1596-byte certificate under `Azure Cloud Virtual TPM CA - 11` whose AIA chain does reach that root. Both are real: Azure runs more than one vTPM CA generation. The constant stays, now documented as one observed hierarchy rather than a guarantee, and a deployment must pin the hierarchy its own hosts present. `LIMITATIONS.md` and the attestation spec say so too.
+
+  The same run **retires** the caveat that collector and verifier could not run in one process: building `tpm2-pytss` from source inside a venv resolves the conflict with `agent-manifest`'s `cryptography`. What blocks end-to-end verification on that host is the missing certificate chain, not tooling.
+
 ### Added
 
 - **`TpmProvider.attest` now produces a real TPM quote.** Previously `detect()` returned True on any host with a TPM device node while `attest()` raised unconditionally, so on every Azure Trusted Launch VM and most modern client hardware the provider was selected and then failed, with an error that claimed no TPM was present when one was (#73). The collector is ported from cmcp's hardware-validated path: it prefers the platform attestation key at persistent handle `0x81000003` with its certificate chunk-read from NV `0x01C101D0` (a single read of a 1596-byte certificate fails with `TPM_RC_VALUE`, because `TPM2_NV_Read` is bounded by `TPM2_PT_NV_BUFFER_MAX`), assembles the chain by walking each certificate's AIA extension so verification stays offline later, and falls back to a transient restricted signing key where no certified platform key exists. `detect()` now returns True only where `attest()` can actually run, and `AttestationUnsupported` names the piece that is actually missing.
