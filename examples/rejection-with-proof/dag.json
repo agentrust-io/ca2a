@@ -3,7 +3,7 @@
     {
       "record_id": "rec-0-orchestrator",
       "credential_id": "cred-0-orchestrator",
-      "subject": "41eebfb4e9ac7f0944041b6c8fad485159f3d0391721dcec1bbe478986c6879f",
+      "subject": "2f35acc0747fb45e739288d02bbd18e54e5283f770e30391b1c272fc1285e3bf",
       "scope": [
         "task:read",
         "task:write",
@@ -15,31 +15,31 @@
     {
       "record_id": "rec-1-researcher",
       "credential_id": "cred-1-researcher",
-      "subject": "cb42a0b6b9ec7839846a0ddbcb67d851d9b1013fc04066687181938d9ea7dce8",
+      "subject": "b12a13df30c7123fe6ab8e03551d7c7465cb1acfa04701e0efb05eeba9a2b7d6",
       "scope": [
         "task:read",
         "tool:purchase",
         "tool:search"
       ],
-      "parent_record_hash": "143db9ccd89d3cf4c50426e5e8dedc32e7feac0bbc2735f63b605bba45eef613"
+      "parent_record_hash": "3655a4752c7d0841cf4cc2adb80523ea988469a548d4b05636707132ab25c1b1"
     },
     {
       "record_id": "rec-2-retriever",
       "credential_id": "cred-2-retriever",
-      "subject": "2014e45331bb1717e9983dbba3fd4b6adc81ee48257afe5c0e027f12f61e8d7d",
+      "subject": "2da412a4c5cd6d9f59cf6bf84fc8d78cb9ba3352c515f85031592cd6a59fb9a2",
       "scope": [
         "tool:search"
       ],
-      "parent_record_hash": "2e0ac019c2a7949a0cb5c8eab207ddef3351405db20dd4360144b6c4e605c6a0"
+      "parent_record_hash": "1b5cc71b77a37400961d71ccc75c4292f5ed122bd77ef854137dda059540faf9"
     },
     {
       "record_id": "rec-denied-purchase",
       "credential_id": "cred-2-retriever",
-      "subject": "2014e45331bb1717e9983dbba3fd4b6adc81ee48257afe5c0e027f12f61e8d7d",
+      "subject": "2da412a4c5cd6d9f59cf6bf84fc8d78cb9ba3352c515f85031592cd6a59fb9a2",
       "scope": [
         "tool:search"
       ],
-      "parent_record_hash": "c8ce42ebbbe084bbe88571a12576d8a4c1d5d3753d071e35dd19838274605f09",
+      "parent_record_hash": "169191a74d471318788dab7619b3914121763baa8a34b2f4465b7e16ba10398e",
       "decision": "deny",
       "requested_capability": "tool:purchase",
       "effective_scope": [

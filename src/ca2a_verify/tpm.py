@@ -13,9 +13,11 @@ The cryptography is **not** implemented here. Steps 1, 2 and 4 are delegated to
 hardware-validated. Three divergent copies of one TPM verifier is the problem
 being retired; see cmcp#447.
 
-What does live here is the piece agent-manifest does not model: ``TPMT_SIGNATURE``,
-the wire format ``tpm2_quote -s`` and tpm2-pytss ``signature.marshal()`` actually
-emit. agent-manifest takes a bare signature, so the envelope is unwrapped here.
+``TPMT_SIGNATURE`` used to be unwrapped here too, because agent-manifest did not
+model it. It does as of 0.8, so :func:`parse_tpmt_signature` is now a thin
+delegation that keeps cA2A's error contract (:class:`AttestationFailed`) while the
+wire format itself lives in one place. cmcp carried a byte-identical copy of the
+same parse; both are retired.
 
 There is no single published TPM root, so the caller supplies the vendor roots it
 trusts. :mod:`ca2a_verify.tpm_roots` carries the one root validated on hardware as
@@ -24,9 +26,8 @@ an opt-in constant. Verifying against no root at all is refused.
 
 from __future__ import annotations
 
-import struct
-from dataclasses import dataclass
-
+from agent_manifest import ParsedSignature, TpmVerificationError
+from agent_manifest import parse_tpmt_signature as _am_parse_tpmt_signature
 from cryptography import x509
 from cryptography.hazmat.primitives.serialization import Encoding
 
@@ -43,70 +44,26 @@ __all__ = [
     "verify_tpm_report",
 ]
 
-# TPM2_ALG_ID values for the signing schemes a quote can use.
-_ALG_RSASSA = 0x0014
-_ALG_RSAPSS = 0x0016
-_ALG_ECDSA = 0x0018
-
-
-@dataclass(frozen=True)
-class ParsedSignature:
-    """A parsed ``TPMT_SIGNATURE``: the algorithm ids and the bare signature."""
-
-    sig_alg: int
-    hash_alg: int
-    signature: bytes
+# ParsedSignature is re-exported from agent-manifest, which owns the layout. Its
+# fields (sig_alg, hash_alg, signature) are unchanged from cA2A's former copy.
 
 
 def parse_tpmt_signature(blob: bytes) -> ParsedSignature:
     """Unwrap a ``TPMT_SIGNATURE`` into a bare signature.
 
-    Layout: ``sigAlg`` (2), ``hashAlg`` (2), then the algorithm-specific body. For
-    RSA that is a size-prefixed ``TPM2B_PUBLIC_KEY_RSA``. For ECDSA it is two
-    size-prefixed integers, R then S, which are re-encoded as a DER sequence
-    because that is what ``cryptography`` verifies against.
+    Delegates the layout to ``agent_manifest.parse_tpmt_signature`` and translates
+    its error into cA2A's, so callers keep catching :class:`AttestationFailed`.
+    The parse handles RSASSA/RSAPSS (a size-prefixed ``TPM2B_PUBLIC_KEY_RSA``) and
+    ECDSA (R and S as size-prefixed integers, re-encoded as a DER sequence).
 
-    Raises :class:`AttestationFailed` on anything malformed.
+    The upstream reason is passed through as the message rather than collapsed
+    into a generic one: "unsupported algorithm" and "truncated" are different
+    faults and a caller that cannot tell them apart cannot report usefully.
     """
-    if len(blob) < 6:
-        raise AttestationFailed("TPMT_SIGNATURE too short")
     try:
-        sig_alg, hash_alg = struct.unpack_from(">HH", blob, 0)
-        offset = 4
-
-        if sig_alg in (_ALG_RSASSA, _ALG_RSAPSS):
-            (size,) = struct.unpack_from(">H", blob, offset)
-            offset += 2
-            if len(blob) < offset + size:
-                raise AttestationFailed("TPMT_SIGNATURE truncated inside the RSA signature")
-            return ParsedSignature(sig_alg, hash_alg, blob[offset : offset + size])
-
-        if sig_alg == _ALG_ECDSA:
-            from cryptography.hazmat.primitives.asymmetric.utils import encode_dss_signature
-
-            parts: list[bytes] = []
-            for _ in range(2):
-                (size,) = struct.unpack_from(">H", blob, offset)
-                offset += 2
-                if len(blob) < offset + size:
-                    raise AttestationFailed(
-                        "TPMT_SIGNATURE truncated inside the ECDSA signature"
-                    )
-                parts.append(blob[offset : offset + size])
-                offset += size
-            return ParsedSignature(
-                sig_alg,
-                hash_alg,
-                encode_dss_signature(
-                    int.from_bytes(parts[0], "big"), int.from_bytes(parts[1], "big")
-                ),
-            )
-    except struct.error as exc:
-        raise AttestationFailed("TPMT_SIGNATURE is malformed", detail=str(exc)) from exc
-
-    raise AttestationFailed(
-        "unsupported TPM signature algorithm", detail=f"sigAlg={sig_alg:#06x}"
-    )
+        return _am_parse_tpmt_signature(blob)
+    except TpmVerificationError as exc:
+        raise AttestationFailed(str(exc)) from exc
 
 
 def _delegate(

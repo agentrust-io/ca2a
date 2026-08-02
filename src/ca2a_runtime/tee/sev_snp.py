@@ -1,10 +1,15 @@
 """AMD SEV-SNP attestation report parsing and the SEV-SNP provider.
 
-This module parses the SEV-SNP ``ATTESTATION_REPORT`` structure (1184 bytes,
-AMD SEV-SNP ABI) and exposes the fields the cA2A verifier appraises: the launch
-measurement, the report data (which binds the runtime key and nonce), and the
-ECDSA-P384 signature over the report body. The verification and certificate
-chain appraisal live in :mod:`ca2a_verify.sev_snp`.
+This module exposes the SEV-SNP ``ATTESTATION_REPORT`` fields the cA2A verifier
+appraises: the launch measurement, the report data (which binds the runtime key
+and nonce), and the ECDSA-P384 signature over the report body. The verification
+and certificate chain appraisal live in :mod:`ca2a_verify.sev_snp`.
+
+The layout itself is **not** defined here. Offsets and parsing come from
+``agent_manifest`` (>=0.10), which cmcp also consumes; between them the org
+carried four mirrors of one ABI table, two inside cmcp alone. :class:`SevSnpReport`
+stays as cA2A's surface, keeping its error contract and the ``signature_rs``
+helper, but the bytes are read by the shared parser.
 
 Producing a report requires a real SEV-SNP guest (``/dev/sev-guest``), so
 :meth:`SevSnpProvider.attest` fails closed off hardware. The verifier does not
@@ -14,18 +19,20 @@ synthetic report vectors in the test suite.
 
 from __future__ import annotations
 
-import struct
 from dataclasses import dataclass
+
+from agent_manifest import SNP_OFFSETS, SNP_REPORT_LEN, SnpVerificationError, parse_snp_report
 
 from ca2a_runtime.errors import AttestationFailed, AttestationUnsupported
 from ca2a_runtime.tee.base import AttestationReport, BaseProvider
 
-# Layout of the SEV-SNP ATTESTATION_REPORT (offsets in bytes).
-REPORT_SIZE = 0x4A0  # 1184
-SIG_OFFSET = 0x2A0  # signature covers report[:SIG_OFFSET]
-REPORT_DATA_OFFSET = 0x50
+# Layout of the SEV-SNP ATTESTATION_REPORT, re-exported from agent-manifest's
+# shared ABI table so cA2A and cmcp cannot disagree about where a field sits.
+REPORT_SIZE = SNP_REPORT_LEN
+SIG_OFFSET = SNP_OFFSETS["signature"]  # signature covers report[:SIG_OFFSET]
+REPORT_DATA_OFFSET = SNP_OFFSETS["report_data"]
 REPORT_DATA_LEN = 64
-MEASUREMENT_OFFSET = 0x90
+MEASUREMENT_OFFSET = SNP_OFFSETS["measurement"]
 MEASUREMENT_LEN = 48
 # ECDSA-P384 signature: r then s, each in a 72-byte little-endian field.
 SIG_COMPONENT_LEN = 72
@@ -64,26 +71,24 @@ class SevSnpReport:
 
     @classmethod
     def parse(cls, blob: bytes) -> SevSnpReport:
-        """Parse a raw report, raising AttestationFailed on any malformed input."""
-        if len(blob) < REPORT_SIZE:
-            raise AttestationFailed(
-                "SEV-SNP report too short",
-                detail=f"got {len(blob)} bytes, need at least {REPORT_SIZE}",
-            )
-        version, guest_svn, policy = struct.unpack_from("<IIQ", blob, 0)
-        (vmpl,) = struct.unpack_from("<I", blob, 0x30)
-        (signature_algo,) = struct.unpack_from("<I", blob, 0x34)
-        report_data = blob[REPORT_DATA_OFFSET : REPORT_DATA_OFFSET + REPORT_DATA_LEN]
-        measurement = blob[MEASUREMENT_OFFSET : MEASUREMENT_OFFSET + MEASUREMENT_LEN]
+        """Parse a raw report, raising AttestationFailed on any malformed input.
+
+        The bytes are read by ``agent_manifest.parse_snp_report``; this keeps
+        cA2A's error contract so callers still catch :class:`AttestationFailed`.
+        """
+        try:
+            shared = parse_snp_report(blob)
+        except SnpVerificationError as exc:
+            raise AttestationFailed("SEV-SNP report is malformed", detail=str(exc)) from exc
         return cls(
-            version=version,
-            guest_svn=guest_svn,
-            policy=policy,
-            vmpl=vmpl,
-            signature_algo=signature_algo,
-            measurement=measurement,
-            report_data=report_data,
-            raw=bytes(blob[:REPORT_SIZE]),
+            version=shared.version,
+            guest_svn=shared.guest_svn,
+            policy=shared.policy,
+            vmpl=shared.vmpl,
+            signature_algo=shared.signature_algo,
+            measurement=shared.measurement,
+            report_data=shared.report_data,
+            raw=shared.raw,
         )
 
 
