@@ -435,3 +435,57 @@ def test_action_008_invalid_delegation_signature_is_provenance_invalid() -> None
     assert _verify_action_evidence(bad_chain, records, evidence, permissive_policy) == (
         _ActionEvidenceResult("provenance_invalid", "INVALID_CREDENTIAL")
     )
+def test_action_009_multi_hop_attenuation_verifies() -> None:
+    chain = build_chain(
+        [
+            frozenset({"robot.move", "robot.inspect", "robot.stop"}),
+            frozenset({"robot.move", "robot.inspect"}),
+            frozenset({"robot.move"}),
+        ]
+    )
+    records = _records(chain)
+    result = _verify_action_evidence(
+        chain,
+        records,
+        _action_evidence(records),
+        LocalPolicy.of(["robot.move", "robot.inspect"]),
+    )
+    assert result == _ActionEvidenceResult("verified", "ACCEPTED")
+
+
+def test_action_010_intermediate_scope_widening_is_provenance_invalid() -> None:
+    chain = build_chain(
+        [
+            frozenset({"robot.move"}),
+            frozenset({"robot.move", "robot.inspect"}),
+            frozenset({"robot.move"}),
+        ]
+    )
+    records = _records(chain)
+    result = _verify_action_evidence(
+        chain,
+        records,
+        _action_evidence(records),
+        LocalPolicy.of(["robot.move", "robot.inspect"]),
+    )
+    assert result == _ActionEvidenceResult("provenance_invalid", "SCOPE_ESCALATION")
+
+
+def test_action_011_delegatee_mismatch_is_provenance_invalid() -> None:
+    chain = _action_chain()
+    records = _records(chain)
+    leaf = records[-1]
+    records[-1] = DelegationRecord(
+        leaf.record_id,
+        leaf.credential_id,
+        subject="different-delegatee",
+        scope=leaf.scope,
+        parent_record_hash=leaf.parent_record_hash,
+    )
+    result = _verify_action_evidence(
+        chain,
+        records,
+        _action_evidence(records),
+        LocalPolicy.of(["robot.move"]),
+    )
+    assert result == _ActionEvidenceResult("provenance_invalid", "PROVENANCE_LINK_BROKEN")
