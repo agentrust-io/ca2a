@@ -5,6 +5,10 @@ delegation hop, linked into a verifiable DAG via the A2A profile's `delegation`
 block, then verify the DAG offline.
 
 ```bash
+# From repo root, package installed editable (pip install -e ".[dev]").
+# The published ca2a-runtime 0.1.0a1 predates the `delegation` and
+# `trace_binding` modules this demo imports, so a PyPI install is not
+# enough yet.
 python examples/trace-dag/demo.py
 ```
 
