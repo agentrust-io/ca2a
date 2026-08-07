@@ -27,6 +27,7 @@ theme:
   name: material
   logo: docs/assets/icon.svg
   favicon: docs/assets/icon.svg
+  custom_dir: overrides
   palette:
     - scheme: slate
       primary: custom

@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{#
+  SEO and AEO head additions for cA2A.
+
+  Two things happen here:
+
+  1. The homepage <title> is overridden. Material falls back to site_name when a
+     page has no front-matter title, which left the homepage titled "cA2A".
+     Front matter is not an option here: docs_dir is the repository root, so
+     README.md is also the GitHub landing page and YAML front matter would
+     render as noise there.
+
+  2. Open Graph and Twitter card meta, so links to this site produce a card
+     rather than a bare URL, plus JSON-LD so answer engines can model what
+     cA2A is.
+
+  Asset paths are derived from config.site_url. Do not hardcode them: assets
+  live under /docs/assets/ here because docs_dir is the repository root, and
+  that differs from sibling repositories.
+#}
+
+{% block htmltitle %}
+  {% if page and page.is_homepage %}
+    <title>Secure, confidential agent-to-agent delegation - {{ config.site_name }}</title>
+  {% else %}
+    {{ super() }}
+  {% endif %}
+{% endblock %}
+
+{% block extrahead %}
+  {{ super() }}
+  {% set page_desc = page.meta.description if page and page.meta and page.meta.description else config.site_description %}
+  {% set page_url = page.canonical_url if page and page.canonical_url else config.site_url %}
+  {% set og_image = config.site_url ~ 'docs/assets/og.png' %}
+  {% set social_title = 'Secure, confidential agent-to-agent delegation' %}
+
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="{{ config.site_name }}">
+  <meta property="og:title" content="{% if page and page.title and not page.is_homepage %}{{ page.title }} - {{ config.site_name }}{% else %}{{ config.site_name }}: {{ social_title }}{% endif %}">
+  <meta property="og:description" content="{{ page_desc }}">
+  <meta property="og:url" content="{{ page_url }}">
+  <meta property="og:image" content="{{ og_image }}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="cA2A: an AgenTrust open standard">
+  <meta property="og:locale" content="en_US">
+
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{% if page and page.title and not page.is_homepage %}{{ page.title }} - {{ config.site_name }}{% else %}{{ config.site_name }}: {{ social_title }}{% endif %}">
+  <meta name="twitter:description" content="{{ page_desc }}">
+  <meta name="twitter:image" content="{{ og_image }}">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "TechArticle",
+        "name": "cA2A (Confidential Agent2Agent)",
+        "description": "A trust profile on the Agent2Agent (A2A) protocol. Where A2A's Signed Agent Card verifies only the domain owner, cA2A adds attested attenuated delegation, a sealed peer channel bound to the peer's attested measurement, and an offline-verifiable provenance record per hop.",
+        "url": "{{ config.site_url }}",
+        "license": "https://opensource.org/licenses/MIT",
+        "author": { "@type": "Organization", "name": "AgenTrust", "url": "https://agentrust-io.com" },
+        "isPartOf": { "@type": "WebSite", "name": "{{ config.site_name }}", "url": "{{ config.site_url }}" }
+      },
+      {
+        "@type": "Organization",
+        "name": "AgenTrust",
+        "url": "https://agentrust-io.com",
+        "sameAs": [
+          "https://github.com/agentrust-io",
+          "https://agentrust-io.com/demos/",
+          "https://cmcp.agentrust-io.com",
+          "https://manifest.agentrust-io.com",
+          "https://trace.agentrust-io.com",
+          "https://ca2a.agentrust-io.com"
+        ]
+      },
+      {
+        "@type": "WebSite",
+        "name": "{{ config.site_name }}",
+        "url": "{{ config.site_url }}"
+      }
+    ]
+  }
+  </script>
+{% endblock %}
