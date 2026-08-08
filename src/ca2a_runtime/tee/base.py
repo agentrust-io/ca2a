@@ -40,10 +40,12 @@ class BaseProvider(ABC):
     True and then raising is the one combination to avoid, because the provider
     gets selected and then fails.
 
-    :class:`~ca2a_runtime.tee.tpm.TpmProvider` implements ``attest``. SEV-SNP and
-    TDX do not yet: their collectors are Tier 3 (see ROADMAP.md), so they raise
-    :class:`~ca2a_runtime.errors.AttestationUnsupported` while their verifiers are
-    exercised against report vectors.
+    All three hardware providers implement ``attest``: TPM 2.0 through
+    tpm2-pytss, SEV-SNP and TDX through the kernel configfs-TSM interface. Each
+    ``detect`` therefore probes what its ``attest`` actually needs, and where a
+    host cannot collect at all, ``attest`` raises
+    :class:`~ca2a_runtime.errors.AttestationUnsupported` naming the missing piece
+    rather than reporting a generic absence of the platform.
     """
 
     platform: str = "base"
