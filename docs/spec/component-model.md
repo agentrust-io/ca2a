@@ -22,7 +22,7 @@ The cA2A runtime is a set of small, composable modules under `src/`. Each maps t
 
 ### tee
 
-`ca2a_runtime.tee.base` defines the provider interface and evidence model. `AttestationReport` is a frozen dataclass binding a `public_key` to a `measurement` under a `nonce` on a named `platform`, plus four optional evidence fields (`raw_evidence`, `quote_signature`, `attestation_key_pem`, `attestation_key_chain_pem`) that make those claims checkable. `BaseProvider` is an ABC with `detect()` and `attest(public_key, nonce)`, and the two must agree: `detect()` is True only where `attest()` works. TPM has a collector; SEV-SNP, TDX and OPAQUE have verifiers but no collector yet, so their `attest()` raises and verification fails closed. See [attestation](attestation.md).
+`ca2a_runtime.tee.base` defines the provider interface and evidence model. `AttestationReport` is a frozen dataclass binding a `public_key` to a `measurement` under a `nonce` on a named `platform`, plus four optional evidence fields (`raw_evidence`, `quote_signature`, `attestation_key_pem`, `attestation_key_chain_pem`) that make those claims checkable. `BaseProvider` is an ABC with `detect()` and `attest(public_key, nonce)`, and the two must agree: `detect()` is True only where `attest()` works. TPM, SEV-SNP and TDX all have collectors, the latter two through the kernel configfs-TSM interface; OPAQUE has a verifier but no collector, so its `attest()` raises and verification fails closed. See [attestation](attestation.md).
 
 ### config
 
