@@ -155,7 +155,11 @@ def test_real_amd_untrusted_root_rejected() -> None:
 
 
 def test_provider_detect_and_attest() -> None:
-    assert SevSnpProvider.detect() is False  # no /dev/sev-guest in this environment
+    """No configfs-TSM in this environment, so the pair agrees on "cannot collect".
+
+    The collector itself is exercised in test_snp_tdx_attest.py.
+    """
+    assert SevSnpProvider.detect() is False
     with pytest.raises(AttestationUnsupported):
         SevSnpProvider().attest("deadbeef", "nonce")
 

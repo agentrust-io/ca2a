@@ -192,12 +192,18 @@ def test_policy_003_allowed_not_delegated_denied() -> None:
 # --- Group 3: Attestation ---
 
 def test_attest_001_providers_fail_closed() -> None:
+    """Both providers can collect on the right guest; this host is not one.
+
+    The pair must agree. A provider that reported True here and then raised
+    would be selected and then fail, and the error must name what is missing
+    rather than asserting the platform is absent.
+    """
     assert SevSnpProvider.detect() is False
     assert TdxProvider.detect() is False
-    with pytest.raises(AttestationUnsupported):
-        SevSnpProvider().attest("deadbeef", "n")
-    with pytest.raises(AttestationUnsupported):
-        TdxProvider().attest("deadbeef", "n")
+    for provider in (SevSnpProvider(), TdxProvider()):
+        with pytest.raises(AttestationUnsupported) as excinfo:
+            provider.attest("deadbeef", "n")
+        assert excinfo.value.detail
 
 
 def _sev_setup():
