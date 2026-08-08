@@ -26,7 +26,7 @@ The cA2A runtime is a set of small, composable modules under `src/`. Each maps t
 
 ### config
 
-`ca2a_runtime.config` holds `Ca2aConfig`, a frozen dataclass validated by `from_dict()` / `load()`. It defines the surface the runtime peer path will consume: `provider` (from `VALID_PROVIDERS`), `enforcement_mode` (from `VALID_ENFORCEMENT`), `max_delegation_depth`, `policy_bundle_path`, and `listen_addr`. Invalid values raise `CONFIG_ERROR`. The config surface is implemented and validated; the peer path that consumes `enforcement_mode`, `policy_bundle_path`, and `listen_addr` is Tier 2 and not yet built.
+`ca2a_runtime.config` holds `Ca2aConfig`, a frozen dataclass validated by `from_dict()` / `load()`: `provider` (from `VALID_PROVIDERS`), `enforcement_mode` (from `VALID_ENFORCEMENT`), `max_delegation_depth`, `policy_bundle_path`, `local_policy`, and `listen_addr`. Invalid values raise `CONFIG_ERROR`. `ca2a_runtime.bootstrap` turns a validated config into a running `PeerNode`: it resolves the policy from `local_policy` or `policy_bundle_path` and the provider from `provider`, both fail-closed. `enforcement_mode` is still only recorded; the peer path always fails closed on a denial.
 
 ### errors
 
@@ -34,7 +34,7 @@ The cA2A runtime is a set of small, composable modules under `src/`. Each maps t
 
 ### cli
 
-`ca2a_runtime.cli` exposes the `ca2a` command with two subcommands: `validate-config --config` (loads and validates a `Ca2aConfig`) and `verify-chain --chain [--max-depth]` (calls `verify_chain_file` and prints a JSON result). Both are implemented and operate offline.
+`ca2a_runtime.cli` exposes the `ca2a` command. `validate-config --config` loads and validates a `Ca2aConfig`, `verify-chain --chain [--max-depth]` calls `verify_chain_file`, and `verify-dag --dag [--chain]` verifies a provenance DAG; all three operate offline. `start --config` is the one online command: it builds a `PeerNode` through `ca2a_runtime.bootstrap` and serves it with `ca2a_runtime.transport.server`.
 
 ## Component map
 
@@ -43,9 +43,10 @@ The cA2A runtime is a set of small, composable modules under `src/`. Each maps t
 | delegation | `ca2a_runtime.delegation.credential` | `DelegationCredential`, `new_keypair`, `verify_chain` | Implemented |
 | provenance | `ca2a_runtime.provenance` | `DelegationRecord`, `record_for`, `verify_dag`, `cross_check_chain` | Implemented |
 | verify | `ca2a_verify.verify` | `verify_delegation_chain`, `verify_chain_file`, `ChainResult` | Implemented |
-| config | `ca2a_runtime.config` | `Ca2aConfig` | Surface implemented; peer path pending (Tier 2) |
+| config | `ca2a_runtime.config` | `Ca2aConfig` | Implemented |
+| bootstrap | `ca2a_runtime.bootstrap` | `load_policy`, `select_provider`, `build_peer_node` | Implemented |
 | errors | `ca2a_runtime.errors` | `CA2AError` and subclasses | Implemented |
-| cli | `ca2a_runtime.cli` | `ca2a validate-config`, `ca2a verify-chain` | Implemented |
+| cli | `ca2a_runtime.cli` | `ca2a validate-config`, `ca2a verify-chain`, `ca2a verify-dag`, `ca2a start` | Implemented |
 | channel | `ca2a_runtime.channel.sealed` | `SealedChannel` | Placeholder, fails closed (Tier 2) |
 | tee | `ca2a_runtime.tee.base` | `BaseProvider`, `AttestationReport` | Interface only; hardware backends pending (Tier 3) |
 

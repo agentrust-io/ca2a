@@ -10,4 +10,4 @@ attestation:
 
 max_delegation_depth: 8
 policy_bundle_path: policy.cedar
-listen_addr: "0.0.0.0:8443"
+listen_addr: "127.0.0.1:8443"

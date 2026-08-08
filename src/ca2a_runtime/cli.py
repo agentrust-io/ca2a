@@ -11,7 +11,7 @@ from typing import Any
 from ca2a_runtime import __version__
 from ca2a_runtime.config import Ca2aConfig
 from ca2a_runtime.delegation import DelegationCredential, verify_chain
-from ca2a_runtime.errors import CA2AError, InvalidCredential, ProvenanceLinkBroken
+from ca2a_runtime.errors import CA2AError, ConfigError, InvalidCredential, ProvenanceLinkBroken
 from ca2a_runtime.provenance import DelegationRecord, cross_check_chain, verify_dag
 from ca2a_verify import verify_chain_file
 
@@ -131,6 +131,53 @@ def _cmd_verify_dag(args: argparse.Namespace) -> int:
     return 0
 
 
+def _cmd_start(args: argparse.Namespace) -> int:
+    """Serve the reference HTTP transport from a config file (``ca2a start``)."""
+    from ca2a_runtime.bootstrap import build_peer_node
+    from ca2a_runtime.transport.server import serve
+
+    try:
+        cfg = Ca2aConfig.load(args.config)
+        node = build_peer_node(cfg, config_dir=Path(args.config).resolve().parent)
+        host, port = cfg.listen_host_port()
+    except ConfigError as exc:
+        print(f"invalid config: {exc}", file=sys.stderr)
+        return 1
+
+    if cfg.enforcement_mode != "enforcing":
+        print(
+            f"note: enforcement_mode={cfg.enforcement_mode!r} is accepted in config, "
+            "but the peer path always fails closed on cA2A denials",
+            file=sys.stderr,
+        )
+
+    if cfg.provider == "software-only":
+        # The callee cannot claim an assurance level; the caller appraises the
+        # offer. Say what that appraisal will be so it is not a surprise.
+        print(
+            'note: software-only provider, callers appraise this channel key as '
+            'assurance="none" and the seal carries no hardware guarantee',
+            file=sys.stderr,
+        )
+
+    try:
+        server = serve(node, host=host, port=port)
+    except OSError as exc:
+        print(f"cannot bind {host}:{port}: {exc}", file=sys.stderr)
+        return 1
+
+    # Flushed, because an operator redirecting stdout to a log needs to see the
+    # peer come up rather than wait on a full buffer.
+    print(f"ca2a listening on {host}:{port} (provider={node.provider.platform})", flush=True)
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        print("ca2a stopped", file=sys.stderr)
+    finally:
+        server.server_close()
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="ca2a", description="Confidential agent-to-agent")
     parser.add_argument("--version", action="version", version=f"ca2a {__version__}")
@@ -153,6 +200,13 @@ def build_parser() -> argparse.ArgumentParser:
     )
     vd.add_argument("--max-depth", type=int, default=8)
     vd.set_defaults(func=_cmd_verify_dag)
+
+    st = sub.add_parser(
+        "start",
+        help="Serve the reference HTTP peer transport from a config file",
+    )
+    st.add_argument("--config", required=True, help="Path to ca2a-config.yaml")
+    st.set_defaults(func=_cmd_start)
 
     return parser
 

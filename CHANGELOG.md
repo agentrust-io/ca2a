@@ -26,6 +26,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **No SHA-1 PCR fallback and no unsigned-PCR-read tier**, both deliberate departures from cmcp's collector. cmcp downgrades to `software-only` in each case; cA2A raises. A report labelled `sha256:` that measured SHA-1 banks is a mislabel waiting to happen, and a `tpm` report that can never verify is worse than an honest error. The collector also cross-checks its own PCR read against the quote's `pcrDigest`, so a PCR selection mismatch is caught before evidence ships.
 - Docs corrected where they stated the opposite of the code: `detect()` returning False for every hardware provider was asserted in the attestation spec, the component model, failure modes, and two tutorials.
 
+### Added
+
+- **`ca2a start`**: run the reference transport from a config file. It resolves
+  the policy (`local_policy` or a Cedar `policy_bundle_path`, the latter relative
+  to the config file) and the attestation provider, builds a
+  `ca2a_runtime.node.PeerNode`, and serves it with
+  `ca2a_runtime.transport.server`. The wiring lives in `ca2a_runtime.bootstrap`
+  (`load_policy`, `select_provider`, `build_peer_node`) so a program that already
+  has a `Policy` and a provider can keep constructing a `PeerNode` directly; the
+  CLI adds no capability the library did not have. No new dependencies: the
+  reference transport is standard library only. Provider selection fails closed.
+  `software-only` has no hardware guarantee, so `auto` refuses to start when no
+  confidential-computing platform is detected rather than silently choosing it,
+  and a named hardware provider whose device node is absent is a startup error.
+  Software mode prints what a caller will appraise the channel key as
+  (`assurance="none"`) instead of letting the operator assume otherwise. This
+  closes the `ca2a start` gap the transport spec listed. See issue #47.
+
+### Changed
+
+- `Ca2aConfig.listen_addr` now defaults to `127.0.0.1:8443` and must name a host
+  explicitly. It was `0.0.0.0:8443` while nothing read it; now that `ca2a start`
+  binds it, defaulting to every interface would put a peer on the network by
+  omission. `transport.server.serve` already defaulted to loopback, so the two
+  agree. Bracketed IPv6 (`[::1]:8443`) parses, and a malformed address fails
+  `ca2a validate-config` rather than at bind time.
+- Dropped `enclave_private_key_hex` from the config. A `PeerNode` generates its
+  own X25519 channel keypair and publishes the public half through the
+  attestation handshake, so the caller seals to a key the node attested. A
+  pre-shared key in a config file would be sealing to something nobody appraised.
+
 ### Changed
 
 - **BREAKING: TRACE records now carry the v0.2 profile** `tag:agentrust-io.com,2026:trace-v0.2`. Pins move to `agentrust-trace>=0.5` and `agentrust-trace-tests>=0.4,<0.5`, which have to move together: the conformance suite cut over rather than dual-accepting, so 0.4.0 of the suite fails a v0.1 record and 0.3.x fails a v0.2 one. The v0.1 URI named `agentrust.io`, a domain this project never controlled, which RFC 4151 does not permit for a tag URI (agentrust-io/trace-spec#107). Nothing else about the record format changed.
