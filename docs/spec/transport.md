@@ -13,7 +13,7 @@ cA2A is a profile on A2A, not a competing transport. A2A moves tasks and context
 | Live attestation handshake on an inbound call | Implemented in software mode (`ca2a_runtime.attestation`, `assurance="none"`) |
 | Seal gated on the appraised channel key on a live call | Implemented in software mode |
 | Seal bound to a hardware-verified measurement | Not yet: needs a real quote via the `verifier` seam (Tier 3) |
-| `ca2a start` CLI listener | Not yet: serving is via `transport.server.serve` |
+| `ca2a start` CLI listener | Implemented: builds a `PeerNode` from a config file and serves it over the reference transport |
 
 The reference HTTP server/client run a live call end to end in software mode (`assurance="none"`). That is progress on Tier 2 transport wiring and a convenience for running the peer path off hardware. It is not evidence that cA2A is attested across trust domains: that needs the hardware `verifier` seam driven by a real quote. See [LIMITATIONS.md](../../LIMITATIONS.md) and [ROADMAP.md](../../ROADMAP.md).
 
@@ -80,6 +80,16 @@ message = attach_ca2a_metadata(message, request)
 
 `sealed_payload` is base64url-decoded into opaque `bytes` on `PeerRequest`. That decode step does not imply the ciphertext is bound to a verified attestation report.
 
+## Running the reference transport
+
+A library caller builds a `PeerNode` and hands it to `ca2a_runtime.transport.server.serve`. `ca2a start` is the same thing driven from a config file: it resolves the policy (`local_policy` or a Cedar `policy_bundle_path`) and the attestation provider, builds the node, and binds `listen_addr`.
+
+```bash
+ca2a start --config examples/minimal/ca2a-config.yaml
+```
+
+Provider selection fails closed rather than downgrading. `software-only` carries no hardware guarantee, so `auto` refuses to start when no confidential-computing platform is detected instead of quietly selecting it, and a named hardware provider whose device node is absent is a startup error. The node generates its own X25519 channel keypair and publishes the public half through the handshake, so there is no private key in the config file. See [configuration](../configuration.md).
+
 ## What a cA2A peer enforces on inbound
 
 Once a `PeerRequest` has been parsed, the intended inbound order is:
@@ -106,10 +116,10 @@ attestation:
   provider: auto
   enforcement_mode: enforcing
 max_delegation_depth: 8
-listen_addr: "0.0.0.0:8443"
+listen_addr: "127.0.0.1:8443"
 ```
 
-`max_delegation_depth` bounds the chain length a peer will accept and is passed through to `verify_chain`. `listen_addr` is reserved for the future HTTP listener (`ca2a start`); this adapter does not open a socket. See [failure modes](failure-modes.md).
+`max_delegation_depth` bounds the chain length a peer will accept and is passed through to `verify_chain`. `listen_addr` is the address `ca2a start` binds for the reference transport; the adapter itself does not open a socket. See [failure modes](failure-modes.md) and [configuration](../configuration.md).
 
 ## Transport stability
 

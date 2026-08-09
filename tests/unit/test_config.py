@@ -15,6 +15,7 @@ def test_defaults_from_empty_dict() -> None:
     assert cfg.provider == "auto"
     assert cfg.enforcement_mode == "enforcing"
     assert cfg.max_delegation_depth == 8
+    assert cfg.listen_host_port() == ("127.0.0.1", 8443)
 
 
 def test_unknown_provider_rejected() -> None:
@@ -57,3 +58,31 @@ def test_load_invalid_yaml(tmp_path: Path) -> None:
     p.write_text("attestation: [unclosed\n")
     with pytest.raises(ConfigError):
         Ca2aConfig.load(p)
+
+
+def test_local_policy_from_dict() -> None:
+    cfg = Ca2aConfig.from_dict({"local_policy": ["read", "write"]})
+    assert cfg.local_policy == frozenset({"read", "write"})
+
+
+def test_bad_local_policy_rejected() -> None:
+    with pytest.raises(ConfigError):
+        Ca2aConfig.from_dict({"local_policy": "read"})
+    with pytest.raises(ConfigError):
+        Ca2aConfig.from_dict({"local_policy": [""]})
+
+
+def test_listen_addr_split() -> None:
+    cfg = Ca2aConfig.from_dict({"listen_addr": "10.0.0.4:9000"})
+    assert cfg.listen_host_port() == ("10.0.0.4", 9000)
+
+
+def test_listen_addr_ipv6_brackets_stripped() -> None:
+    cfg = Ca2aConfig.from_dict({"listen_addr": "[::1]:8443"})
+    assert cfg.listen_host_port() == ("::1", 8443)
+
+
+@pytest.mark.parametrize("addr", [":8443", "8443", "host:port", "host:0", "host:70000"])
+def test_bad_listen_addr_rejected(addr: str) -> None:
+    with pytest.raises(ConfigError):
+        Ca2aConfig.from_dict({"listen_addr": addr})
