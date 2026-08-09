@@ -179,9 +179,18 @@ Trusted Launch VMs actually present, not a discrete TPM chip.
 - **TPM certificate chain**: needs a quote signed by Azure's pre-provisioned AK
   (the one its NV certificate covers) plus Microsoft's `Global Virtual TPM CA`
   intermediate, which is not distributed with the certificate.
-- **Live attested peer binding**: the handshake gating the sealed channel on a
-  verified channel key runs in software mode. Driving it off a real quote on a
-  confidential VM is the remaining hardware property, and the precondition for
-  describing cA2A as attested across trust domains.
-- **Cross-operator run on real hardware**: the two-operator harness
-  (`examples/cross-operator-delegation`) is validated in software.
+- **Mutual simultaneous attestation**: in the cross-TEE run above the attestation
+  was one-directional. A appraised B's TDX quote; B's appraisal of A's SNP report
+  was not exercised, and both peers were driven by one operator's harness. Two
+  independently operated peers attesting each other at the same time is the
+  remaining step.
+- **The committed cross-operator harness on hardware**:
+  `examples/cross-operator-delegation` still runs on synthetic vectors, because
+  the real captures embed per-CPU identifiers and cannot ship as fixtures. The
+  hardware runs are recorded above rather than committed, so this is an
+  evidence-distribution constraint rather than an implementation gap.
+
+Two entries previously listed here, the live attested peer binding and the
+cross-operator run on real hardware, were both done on 2026-07-27 and are
+recorded above. They are removed rather than left, because a reader who stops at
+this section would otherwise conclude the opposite of what the document says.
