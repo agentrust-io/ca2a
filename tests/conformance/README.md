@@ -102,3 +102,6 @@ Spec: [trace-a2a-profile.md](../../docs/spec/trace-a2a-profile.md), [provenance-
 | ACTION-006 | MUST | A valid delegated action denied by local policy is classified as authorization-invalid, not malformed provenance. | `SCOPE_NOT_PERMITTED`. |
 | ACTION-007 | MUST | A valid delegated action whose controller outcome is negative remains valid evidence of a negative outcome. | `valid_negative_outcome`. |
 | ACTION-008 | MUST | An action whose delegation chain contains a credential with an invalid signature is rejected as provenance-invalid before authorization or outcome handling. | `INVALID_CREDENTIAL`. |
+| ACTION-009 | MUST | A delegated action with a strictly attenuating multi-hop credential chain verifies. | `verified`. |
+| ACTION-010 | MUST | An action evidence chain with scope widening at an intermediate hop is rejected as provenance-invalid. | `SCOPE_ESCALATION`. |
+| ACTION-011 | MUST | Action evidence whose delegatee differs from the subject of the referenced credential is rejected as provenance-invalid. | `PROVENANCE_LINK_BROKEN`. |
