@@ -3,7 +3,7 @@
 ---
 Status: Proposal
 Written: 2026-08-09
-Stability: Unstable, no code written
+Stability: Unstable
 ---
 
 ## What is one-directional, and what is not
@@ -61,6 +61,16 @@ fails if the calls are swapped.
 appraised and then discarded adds a round trip and no property. Sealing the
 response to it makes it load-bearing: the callee's answer becomes readable only by
 the enclave it appraised.
+
+## Decisions taken 2026-08-09
+
+1. **Stateless HMAC challenge** (option B below). Works across instances with no
+   storage, and the guarantee it gives is at-most-once-per-window rather than
+   exactly-once. That weaker property is stated here rather than left implied.
+2. **Record the outcome, requirement configurable.** A callee does not demand
+   attestation by default and can be configured to.
+3. **The response is sealed to the caller's attested key**, so that key is
+   load-bearing rather than ceremonial.
 
 ## The state problem
 
