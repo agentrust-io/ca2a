@@ -42,6 +42,7 @@ from typing import Any
 
 from ca2a_runtime.errors import AttestationFailed, AttestationUnsupported
 from ca2a_runtime.tee.base import AttestationReport, BaseProvider
+from ca2a_runtime.tee.binding import TPM_PREFIX, derive_binding
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +60,7 @@ _PCR_COUNT = 8
 # Domain-separated binding committed into the quote's extraData. Versioned
 # because it is wire format: a peer and its verifier must derive it identically.
 # See docs/spec/attestation.md.
-_QUALIFYING_DATA_PREFIX = b"ca2a-tpm-v1|"
+_QUALIFYING_DATA_PREFIX = TPM_PREFIX
 
 # Platforms that provision an attestation key expose it at a persistent handle
 # with a certificate in NV. Azure Trusted Launch uses these two; both are
@@ -91,17 +92,10 @@ def tpm_qualifying_data(public_key: str, nonce: str) -> bytes:
     Hashed rather than concatenated raw because ``TPM2B_DATA`` is capped below 64
     bytes on some platforms (Azure returns ``TPM_RC_SIZE``); 32 bytes always fits.
 
-    Each field is length-prefixed rather than separated by a delimiter. With a
-    delimiter, a value containing it moves the split without changing the digest:
-    ``("a|b", "c")`` and ``("a", "b|c")`` would commit identical bytes, so a peer
-    could bind a key other than the one it appears to offer. ``nonce`` is an
-    arbitrary caller-supplied string, so that is reachable rather than theoretical.
+    The derivation itself is :func:`ca2a_runtime.tee.binding.derive_binding`,
+    shared with the SEV-SNP and TDX bindings so the three cannot drift apart.
     """
-    parts = []
-    for field in (public_key.encode(), nonce.encode()):
-        parts.append(len(field).to_bytes(4, "big"))
-        parts.append(field)
-    return hashlib.sha256(_QUALIFYING_DATA_PREFIX + b"".join(parts)).digest()
+    return derive_binding(_QUALIFYING_DATA_PREFIX, public_key, nonce)
 
 
 def _read_u16(buf: bytes, pos: int) -> tuple[int, int]:

@@ -6,23 +6,41 @@ measurement MRTD and the report data are read), and the ECDSA signature section
 PCK signature, and the PCK certificate chain). Verification lives in
 :mod:`ca2a_verify.tdx`.
 
-Producing a quote requires a real TDX guest, so :meth:`TdxProvider.attest` fails
-closed off hardware. Byte offsets follow the Intel DCAP Quote v4 layout, including
-the nested type-6 QE certification data that wraps the QE report and the PCK
-chain. The verifier is exercised against synthetic self-consistent vectors plus
-the real Intel SGX Root CA in the test suite, and against a genuine GCP C3 quote
-when ``CA2A_TDX_QUOTE`` points at one; see ``docs/hardware-validation.md``.
+:meth:`TdxProvider.attest` produces a real quote through the kernel configfs-TSM
+interface (see :mod:`ca2a_runtime.tee.tsm`). Non-paravisor TDX is
+guest-controlled, so unlike Azure's SEV-SNP the guest sets ``REPORTDATA``
+directly: it commits :func:`tdx_report_data`, a digest over *both* the channel
+public key and the caller's nonce, so a caller sealing to the key in a verified
+quote is sealing to a key the TDX module signed for.
+
+Byte offsets follow the Intel DCAP Quote v4 layout, including the nested type-6
+QE certification data that wraps the QE report and the PCK chain. The verifier is
+exercised against synthetic self-consistent vectors plus the real Intel SGX Root
+CA in the test suite, and against a genuine GCP C3 quote when ``CA2A_TDX_QUOTE``
+points at one; see ``docs/hardware-validation.md``.
 """
 
 from __future__ import annotations
 
 import struct
 from dataclasses import dataclass
+from pathlib import Path
 
 from cryptography import x509
+from cryptography.hazmat.primitives.serialization import Encoding
 
 from ca2a_runtime.errors import AttestationFailed, AttestationUnsupported
 from ca2a_runtime.tee.base import AttestationReport, BaseProvider
+from ca2a_runtime.tee.binding import TDX_PREFIX, derive_binding, pad_report_data
+from ca2a_runtime.tee.tsm import (
+    PROVIDER_TDX_GUEST,
+    collect_report,
+    require_tsm,
+    tsm_available,
+)
+from ca2a_runtime.tee.tsm import (
+    REPORT_DATA_LEN as TSM_REPORT_DATA_LEN,
+)
 
 HEADER_LEN = 48
 TD_REPORT_LEN = 584
@@ -44,6 +62,20 @@ CERT_TYPE_PCK_CHAIN = 5
 CERT_TYPE_QE_REPORT = 6
 CERT_DATA_HEADER_LEN = 6
 TDX_GUEST_DEVICE = "/dev/tdx_guest"
+
+# MRTD is a 48-byte launch digest; the label says what produced it.
+MEASUREMENT_DIGEST_LABEL = "sha384"
+
+
+def tdx_report_data(public_key: str, nonce: str) -> bytes:
+    """Return the 64 bytes a cA2A TDX quote commits in ``REPORTDATA``.
+
+    The 32-byte binding digest, zero-padded to the field width. See
+    :mod:`ca2a_runtime.tee.binding` and ``docs/spec/attestation.md``.
+    """
+    return pad_report_data(
+        derive_binding(TDX_PREFIX, public_key, nonce), TSM_REPORT_DATA_LEN
+    )
 
 
 @dataclass(frozen=True)
@@ -137,18 +169,73 @@ class TdxQuote:
 
 
 class TdxProvider(BaseProvider):
-    """Intel TDX provider. Quote generation requires a real TDX guest."""
+    """Intel TDX provider. Produces a real DCAP quote via configfs-TSM.
+
+    ``detect`` reports True only where ``attest`` can actually run: Linux, the
+    configfs-TSM interface, and the ``tdx_guest`` device node whose driver
+    registers the TSM provider. Both signals are required because the provider
+    name is only readable from inside an entry, which needs root, so the device
+    node stands in for "this is a TDX guest" at detection time and ``attest``
+    confirms it against the kernel before returning any bytes.
+    """
 
     platform = "tdx"
 
     @classmethod
     def detect(cls) -> bool:
-        import os
-
-        return os.path.exists(TDX_GUEST_DEVICE)
+        if not tsm_available():
+            return False
+        return Path(TDX_GUEST_DEVICE).exists()
 
     def attest(self, public_key: str, nonce: str) -> AttestationReport:
-        raise AttestationUnsupported(
-            "TDX quote generation requires a real TDX guest",
-            detail=f"{TDX_GUEST_DEVICE} not present; run on an Intel TDX confidential VM",
+        """Request a TDX quote committing ``public_key`` and ``nonce``.
+
+        Raises :class:`AttestationUnsupported` when this host cannot produce a
+        quote at all, and :class:`AttestationFailed` when it can but the attempt
+        did not yield verifiable evidence.
+        """
+        self._require_host()
+
+        expected = tdx_report_data(public_key, nonce)
+        outblob, _auxblob = collect_report(expected, expect_provider=PROVIDER_TDX_GUEST)
+        quote = TdxQuote.parse(outblob)
+
+        if quote.tee_type != TEE_TYPE_TDX:
+            raise AttestationFailed(
+                "the quote is not a TDX quote",
+                detail=f"tee_type={quote.tee_type:#x}, expected {TEE_TYPE_TDX:#x}",
+            )
+        if quote.report_data != expected:
+            raise AttestationFailed(
+                "the quote does not commit the requested key and nonce binding",
+                detail="REPORTDATA does not match the derived binding",
+            )
+
+        # The PCK chain arrives inside the quote, so the evidence is already
+        # self-contained; auxblob would only repeat it.
+        chain_pem = b"".join(cert.public_bytes(Encoding.PEM) for cert in quote.pck_chain)
+
+        return AttestationReport(
+            platform=self.platform,
+            measurement=f"{MEASUREMENT_DIGEST_LABEL}:{quote.measurement.hex()}",
+            public_key=public_key,
+            nonce=nonce,
+            # A TDX quote carries its own signature and PCK chain, so the
+            # evidence a peer ships is the quote verbatim.
+            raw_evidence=outblob,
+            quote_signature=quote.quote_signature,
+            attestation_key_chain_pem=chain_pem or None,
         )
+
+    @classmethod
+    def _require_host(cls) -> None:
+        """Fail with the actual reason, never a generic "no TDX guest"."""
+        require_tsm("TDX")
+        if not Path(TDX_GUEST_DEVICE).exists():
+            raise AttestationUnsupported(
+                "TDX quote generation requires a non-paravisor TDX guest",
+                detail=(
+                    f"configfs-TSM is present but {TDX_GUEST_DEVICE} is not, so the "
+                    "tdx_guest driver has not registered a TSM provider on this host"
+                ),
+            )

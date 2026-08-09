@@ -16,6 +16,15 @@ and the run is recorded below.
 | Intel TDX (GCP C3, non-paravisor) | Yes | Yes, to the real Intel SGX Root CA | Yes | **Yes**, 2026-07-27, capture of 2026-07-21 |
 | TPM 2.0 (Azure vTPM, Trusted Launch) | Yes | Yes, to a caller-supplied vendor root | Yes | **Partly**, 2026-07-27. Parse, bindings and AK signature yes; certificate chain no, see below |
 
+That table is about *appraisal*. Collection is a separate axis, and a verifier validated on real evidence says nothing about whether this codebase can produce that evidence:
+
+| Platform | Collector | Run on real silicon |
+|---|---|---|
+| TPM 2.0 | tpm2-pytss, platform AK with a transient fallback | **Yes**, 2026-08-01, Azure Trusted Launch vTPM |
+| AMD SEV-SNP (non-paravisor) | configfs-TSM, provider `sev_guest` | **No** |
+| AMD SEV-SNP (Azure paravisor) | Out of scope: the guest cannot set `REPORT_DATA`, so the channel key is rooted through the vTPM instead | n/a |
+| Intel TDX (non-paravisor) | configfs-TSM, provider `tdx_guest` | **No** |
+
 ## What these runs do and do not establish
 
 They establish that the appraisal path in `ca2a_verify` accepts genuine evidence
@@ -179,6 +188,16 @@ Trusted Launch VMs actually present, not a discrete TPM chip.
 - **TPM certificate chain**: needs a quote signed by Azure's pre-provisioned AK
   (the one its NV certificate covers) plus Microsoft's `Global Virtual TPM CA`
   intermediate, which is not distributed with the certificate.
+- **SEV-SNP collection**: `SevSnpProvider.attest` requests a report over
+  configfs-TSM and has never run on an SNP guest. It needs a non-paravisor guest
+  (kernel 6.7+, the `sev-guest` driver registering a TSM provider) and root. The
+  run should confirm the provider string is `sev_guest`, that the returned
+  `REPORT_DATA` equals the derived `ca2a-snp-v1` binding, and that the report
+  verifies to the AMD root, ideally with the VCEK chain arriving in `auxblob`.
+  Note that the SEV-SNP appraisal above used an Azure capture, and Azure is
+  precisely where this collector does not apply.
+- **TDX collection**: `TdxProvider.attest` likewise. A GCP C3 guest is the
+  natural host, since the quote appraised above came from one.
 - **Mutual simultaneous attestation**: in the cross-TEE run above the attestation
   was one-directional. A appraised B's TDX quote; B's appraisal of A's SNP report
   was not exercised, and both peers were driven by one operator's harness. Two

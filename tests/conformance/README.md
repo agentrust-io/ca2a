@@ -52,7 +52,7 @@ Spec: [attestation.md](../../docs/spec/attestation.md)
 
 | ID | Level | Requirement | Expected outcome |
 |---|---|---|---|
-| ATTEST-001 | MUST | Hardware providers without a backend are never auto-selected. | `detect()` returns False; generating a report fails closed with `ATTESTATION_UNSUPPORTED`. |
+| ATTEST-001 | MUST | A hardware provider is never selected on a host where it cannot produce evidence. | `detect()` returns False wherever collection is impossible, and `attest()` fails closed with `ATTESTATION_UNSUPPORTED` naming the missing piece rather than the platform. |
 | ATTEST-002 | MUST | An attestation report whose measurement differs from the expected value is rejected. | `ATTESTATION_FAILED`. |
 | ATTEST-003 | MUST | A report whose certificate chain does not reach a trusted root is rejected. | `ATTESTATION_FAILED`. |
 | ATTEST-004 | MUST | A report with a tampered body or signature is rejected. | `ATTESTATION_FAILED`. |

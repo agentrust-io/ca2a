@@ -150,6 +150,10 @@ def test_real_intel_root_accepted_and_stranger_rejected() -> None:
 
 
 def test_provider_detect_and_attest() -> None:
+    """No configfs-TSM in this environment, so the pair agrees on "cannot collect".
+
+    The collector itself is exercised in test_snp_tdx_attest.py.
+    """
     assert TdxProvider.detect() is False
     with pytest.raises(AttestationUnsupported):
         TdxProvider().attest("deadbeef", "nonce")
