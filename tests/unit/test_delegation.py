@@ -49,8 +49,13 @@ def test_tampered_scope_fails_verify() -> None:
     _, sub = new_keypair()
     signed = DelegationCredential("c0", pub, sub, frozenset({"cap:a"}), 0).sign(priv)
     tampered = DelegationCredential(
-        signed.credential_id, signed.issuer, signed.subject,
-        frozenset({"cap:a", "cap:root"}), signed.depth, signed.parent_id, signed.signature,
+        signed.credential_id,
+        signed.issuer,
+        signed.subject,
+        frozenset({"cap:a", "cap:root"}),
+        signed.depth,
+        signed.parent_id,
+        signed.signature,
     )
     with pytest.raises(InvalidCredential):
         tampered.verify_signature()
@@ -93,8 +98,13 @@ def test_broken_parent_link_rejected() -> None:
 def test_replayed_credential_id_rejected() -> None:
     chain = build_chain([frozenset({"cap:a"}), frozenset({"cap:a"})])
     dup = DelegationCredential(
-        chain[0].credential_id, chain[0].issuer, chain[0].subject,
-        chain[0].scope, chain[0].depth, chain[0].parent_id, chain[0].signature,
+        chain[0].credential_id,
+        chain[0].issuer,
+        chain[0].subject,
+        chain[0].scope,
+        chain[0].depth,
+        chain[0].parent_id,
+        chain[0].signature,
     )
     with pytest.raises(CredentialReplay):
         verify_chain([chain[0], dup])

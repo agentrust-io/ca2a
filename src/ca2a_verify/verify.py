@@ -48,7 +48,7 @@ def _parse_chain(data: Any) -> list[DelegationCredential]:
     if isinstance(data, dict) and "chain" in data:
         data = data["chain"]
     if not isinstance(data, list):
-        raise InvalidCredential("chain document must be a list or {\"chain\": [...]}")
+        raise InvalidCredential('chain document must be a list or {"chain": [...]}')
     return [DelegationCredential.from_dict(item) for item in data]
 
 

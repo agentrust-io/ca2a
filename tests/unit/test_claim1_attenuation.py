@@ -66,9 +66,7 @@ def test_hand_built_escalating_chain_raises() -> None:
     root_priv, root_pub = new_keypair()
     mid_priv, mid_pub = new_keypair()
     _, leaf_pub = new_keypair()
-    root = DelegationCredential(
-        "c0", root_pub, mid_pub, frozenset({"cap:read"}), 0
-    ).sign(root_priv)
+    root = DelegationCredential("c0", root_pub, mid_pub, frozenset({"cap:read"}), 0).sign(root_priv)
     child = DelegationCredential(
         "c1",
         mid_pub,

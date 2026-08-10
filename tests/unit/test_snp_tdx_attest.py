@@ -49,8 +49,7 @@ def test_binding_is_32_bytes() -> None:
 def test_each_platform_commits_different_bytes() -> None:
     """Domain separation: one report must not be replayable as another platform's."""
     digests = {
-        derive_binding(prefix, PUBLIC_KEY, NONCE)
-        for prefix in (TPM_PREFIX, SNP_PREFIX, TDX_PREFIX)
+        derive_binding(prefix, PUBLIC_KEY, NONCE) for prefix in (TPM_PREFIX, SNP_PREFIX, TDX_PREFIX)
     }
     assert len(digests) == 3
 

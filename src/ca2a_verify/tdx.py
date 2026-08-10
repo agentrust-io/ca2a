@@ -57,9 +57,7 @@ def verify_tdx_quote(
     quote = TdxQuote.parse(quote_bytes)
 
     if quote.tee_type != TEE_TYPE_TDX:
-        raise AttestationFailed(
-            "quote is not a TDX quote", detail=f"tee_type={quote.tee_type:#x}"
-        )
+        raise AttestationFailed("quote is not a TDX quote", detail=f"tee_type={quote.tee_type:#x}")
 
     # 1. PCK chain to a trusted Intel root.
     verify_cert_chain(quote.pck_chain, trusted_roots)

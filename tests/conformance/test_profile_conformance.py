@@ -70,10 +70,12 @@ def _records(chain):
 
 
 def _action_chain() -> list[DelegationCredential]:
-    return build_chain([
-        frozenset({"robot.move", "robot.inspect", "robot.stop"}),
-        frozenset({"robot.move", "robot.inspect"}),
-    ])
+    return build_chain(
+        [
+            frozenset({"robot.move", "robot.inspect", "robot.stop"}),
+            frozenset({"robot.move", "robot.inspect"}),
+        ]
+    )
 
 
 def _action_evidence(
@@ -132,6 +134,7 @@ def _verify_action_evidence(
 
 # --- Group 1: Delegation ---
 
+
 def test_deleg_001_signature() -> None:
     _, pub = new_keypair()
     _, sub = new_keypair()
@@ -161,8 +164,15 @@ def test_deleg_004_depth() -> None:
 
 def test_deleg_005_replay() -> None:
     chain = build_chain([frozenset({"a"}), frozenset({"a"})])
-    dup = DelegationCredential(chain[0].credential_id, chain[0].issuer, chain[0].subject,
-                               chain[0].scope, chain[0].depth, chain[0].parent_id, chain[0].signature)
+    dup = DelegationCredential(
+        chain[0].credential_id,
+        chain[0].issuer,
+        chain[0].subject,
+        chain[0].scope,
+        chain[0].depth,
+        chain[0].parent_id,
+        chain[0].signature,
+    )
     with pytest.raises(CredentialReplay):
         verify_chain([chain[0], dup])
 
@@ -172,6 +182,7 @@ def test_deleg_006_valid_chain_accepted() -> None:
 
 
 # --- Group 2: Scope-policy intersection ---
+
 
 def test_policy_001_intersection() -> None:
     assert effective_scope(_narrowing(), LocalPolicy.of(["read", "audit"])) == frozenset({"read"})
@@ -190,6 +201,7 @@ def test_policy_003_allowed_not_delegated_denied() -> None:
 
 
 # --- Group 3: Attestation ---
+
 
 def test_attest_001_providers_fail_closed() -> None:
     """Both providers can collect on the right guest; this host is not one.
@@ -218,13 +230,16 @@ def _sev_setup():
 def test_attest_002_wrong_measurement() -> None:
     report, chain, root = _sev_setup()
     with pytest.raises(AttestationFailed):
-        verify_sev_snp_report(report, chain, trusted_roots=[root], expected_measurement=b"\x99" * 48)
+        verify_sev_snp_report(
+            report, chain, trusted_roots=[root], expected_measurement=b"\x99" * 48
+        )
 
 
 def test_attest_003_untrusted_root() -> None:
     report, chain, _ = _sev_setup()
-    stranger = make_ec_cert("s", "s", ec.generate_private_key(ec.SECP384R1()),
-                            ec.generate_private_key(ec.SECP384R1()))
+    stranger = make_ec_cert(
+        "s", "s", ec.generate_private_key(ec.SECP384R1()), ec.generate_private_key(ec.SECP384R1())
+    )
     with pytest.raises(AttestationFailed):
         verify_sev_snp_report(report, chain, trusted_roots=[stranger])
 
@@ -245,6 +260,7 @@ def test_attest_005_tdx_wrong_mrtd() -> None:
 
 
 # --- Group 4: Sealed channel ---
+
 
 def test_seal_001_only_peer_key_opens() -> None:
     priv, pub = generate_channel_keypair()
@@ -269,6 +285,7 @@ def test_seal_003_tamper_fails_closed() -> None:
 
 # --- Group 5: Provenance ---
 
+
 def test_prov_001_dag_verifies() -> None:
     recs = _records(_deep3())
     assert verify_dag(recs) == recs
@@ -278,9 +295,15 @@ def test_prov_002_tamper_detected() -> None:
     chain = _deep3()
     recs = _records(chain)
     from ca2a_runtime.provenance import DelegationRecord
+
     # Tamper the middle record: the leaf's parent link no longer matches.
-    recs[1] = DelegationRecord(recs[1].record_id, recs[1].credential_id, recs[1].subject,
-                               frozenset({"a", "injected"}), recs[1].parent_record_hash)
+    recs[1] = DelegationRecord(
+        recs[1].record_id,
+        recs[1].credential_id,
+        recs[1].subject,
+        frozenset({"a", "injected"}),
+        recs[1].parent_record_hash,
+    )
     with pytest.raises(ProvenanceLinkBroken):
         verify_dag(recs)
 
@@ -290,12 +313,14 @@ def test_prov_003_bound_to_authority() -> None:
     recs = _records(chain)
     cross_check_chain(recs, chain)  # aligned: passes
     from ca2a_runtime.provenance import DelegationRecord
+
     recs[0] = DelegationRecord(recs[0].record_id, "WRONG", recs[0].subject, recs[0].scope, None)
     with pytest.raises(ProvenanceLinkBroken):
         cross_check_chain(recs, chain)
 
 
 # --- Group 6: Inbound pipeline ---
+
 
 def test_pipe_001_grants_and_records() -> None:
     req = PeerRequest(chain=_narrowing(), requested_capability="read", record_id="r0")
@@ -306,8 +331,12 @@ def test_pipe_001_grants_and_records() -> None:
 
 def test_pipe_002_sealed_without_key_fails_closed() -> None:
     _, pub = generate_channel_keypair()
-    req = PeerRequest(chain=_narrowing(), requested_capability="read", record_id="r0",
-                      sealed_payload=SealedChannel(pub).seal(b"x"))
+    req = PeerRequest(
+        chain=_narrowing(),
+        requested_capability="read",
+        record_id="r0",
+        sealed_payload=SealedChannel(pub).seal(b"x"),
+    )
     with pytest.raises(SealedChannelError):
         handle_peer_request(req, policy=LocalPolicy.of(["read"]))
 
@@ -320,6 +349,7 @@ def test_pipe_003_invalid_chain_rejected_first() -> None:
 
 
 # --- Group 7: Delegation-linked action evidence ---
+
 
 def test_action_001_valid_delegated_action_evidence() -> None:
     chain = _action_chain()
@@ -441,6 +471,8 @@ def test_action_008_invalid_delegation_signature_is_provenance_invalid() -> None
     assert _verify_action_evidence(bad_chain, records, evidence, permissive_policy) == (
         _ActionEvidenceResult("provenance_invalid", "INVALID_CREDENTIAL")
     )
+
+
 def test_action_009_multi_hop_attenuation_verifies() -> None:
     chain = build_chain(
         [

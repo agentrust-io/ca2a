@@ -83,7 +83,9 @@ class _PeerHandler(BaseHTTPRequestHandler):
             return
         length = int(self.headers.get("Content-Length", "0") or "0")
         if length <= 0 or length > _MAX_BODY:
-            self._send_json(400, {"error": {"code": "BAD_REQUEST", "message": "invalid body length"}})
+            self._send_json(
+                400, {"error": {"code": "BAD_REQUEST", "message": "invalid body length"}}
+            )
             return
         try:
             message = json.loads(self.rfile.read(length))

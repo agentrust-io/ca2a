@@ -70,9 +70,7 @@ def attest_channel(provider: BaseProvider, public_key: str, nonce: str) -> Chann
     )
 
 
-def offer_channel(
-    provider: BaseProvider, *, nonce: str
-) -> tuple[X25519PrivateKey, ChannelOffer]:
+def offer_channel(provider: BaseProvider, *, nonce: str) -> tuple[X25519PrivateKey, ChannelOffer]:
     """Generate a channel keypair and bind its public key into a report under ``nonce``.
 
     The private key is returned to the callee and, on hardware, never leaves the

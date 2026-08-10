@@ -203,8 +203,7 @@ class TpmProvider(BaseProvider):
             raise AttestationUnsupported(
                 "TPM quote generation requires a TPM device",
                 detail=(
-                    f"none of {', '.join(TPM_DEVICES)} exist; run on a host with a "
-                    "TPM 2.0 or vTPM"
+                    f"none of {', '.join(TPM_DEVICES)} exist; run on a host with a TPM 2.0 or vTPM"
                 ),
             )
         if not _tpm2_pytss_available():

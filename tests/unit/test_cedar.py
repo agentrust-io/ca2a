@@ -17,10 +17,7 @@ POLICIES = (
     'permit(principal, action == Action::"write", resource);\n'
 )
 EXAMPLE_POLICY = (
-    Path(__file__).resolve().parents[2]
-    / "examples"
-    / "cross-operator-delegation"
-    / "policy.cedar"
+    Path(__file__).resolve().parents[2] / "examples" / "cross-operator-delegation" / "policy.cedar"
 )
 
 

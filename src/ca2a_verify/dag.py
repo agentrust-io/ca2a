@@ -169,9 +169,7 @@ def verify_trace_dag(
         except InvalidSignature as exc:
             raise TraceRecordInvalid(f"record {i} signature does not verify") from exc
         except ValueError as exc:
-            raise TraceRecordInvalid(
-                f"record {i} could not be verified", detail=str(exc)
-            ) from exc
+            raise TraceRecordInvalid(f"record {i} could not be verified", detail=str(exc)) from exc
 
         record_hash = trace_record_hash(record)
         if record_hash in seen_hashes:
@@ -202,9 +200,7 @@ def verify_trace_dag(
     )
 
 
-def cross_check_trace_dag(
-    records: list[dict[str, Any]], chain: list[DelegationCredential]
-) -> None:
+def cross_check_trace_dag(records: list[dict[str, Any]], chain: list[DelegationCredential]) -> None:
     """Tie a verified TRACE DAG to the delegation chain it should reflect.
 
     Confirms the DAG has one record per credential and that every non-root hop

@@ -239,9 +239,7 @@ def test_require_hardware_accepts_a_verified_hardware_caller() -> None:
 
 def test_unknown_requirement_value_is_a_config_error() -> None:
     with pytest.raises(ConfigError, match="require_caller_attestation"):
-        handle_peer_request(
-            _request(), policy=POLICY, require_caller_attestation="strict-ish"
-        )
+        handle_peer_request(_request(), policy=POLICY, require_caller_attestation="strict-ish")
 
 
 # --------------------------------------------------------------------------
@@ -284,9 +282,7 @@ def test_a_challenge_from_another_instance_does_not_verify() -> None:
     """
     node_a, node_b = PeerNode(POLICY), PeerNode(POLICY)
     offer = _caller_offer(node_a.issue_challenge())
-    message = a2a_adapter.attach_ca2a_metadata(
-        {}, _request(caller_offer=offer)
-    )
+    message = a2a_adapter.attach_ca2a_metadata({}, _request(caller_offer=offer))
     node_b.require_caller_attestation = REQUIRE_ANY
     with pytest.raises(AttestationFailed):
         node_b.handle(message)
@@ -350,9 +346,7 @@ def test_caller_offer_round_trips_through_a2a_metadata() -> None:
 
 
 def test_absent_caller_offer_parses_as_no_offer() -> None:
-    parsed = a2a_adapter.parse_peer_request(
-        a2a_adapter.attach_ca2a_metadata({}, _request())
-    )
+    parsed = a2a_adapter.parse_peer_request(a2a_adapter.attach_ca2a_metadata({}, _request()))
     assert parsed.caller_offer is None
 
 
@@ -467,9 +461,7 @@ def test_client_refuses_to_fake_mutuality_against_a_silent_callee() -> None:
     try:
         wire.serialize_channel_offer = _no_challenge  # type: ignore[assignment]
         with pytest.raises(AttestationFailed, match="issued no challenge"):
-            client.send_task(
-                base, _chain(), "read", "r0", caller_provider=SoftwareProvider()
-            )
+            client.send_task(base, _chain(), "read", "r0", caller_provider=SoftwareProvider())
     finally:
         wire.serialize_channel_offer = original  # type: ignore[assignment]
         srv.shutdown()
@@ -483,9 +475,7 @@ def test_sealed_payload_still_reaches_a_callee_that_appraises_the_caller() -> No
     sealed = seal_to_peer(peer, b"confidential task input")
     offer = _caller_offer(node.issue_challenge())
     result = node.handle(
-        a2a_adapter.attach_ca2a_metadata(
-            {}, _request(sealed=sealed, caller_offer=offer)
-        )
+        a2a_adapter.attach_ca2a_metadata({}, _request(sealed=sealed, caller_offer=offer))
     )
     assert result.payload == b"confidential task input"
     assert result.caller_attestation == CALLER_SOFTWARE_ONLY

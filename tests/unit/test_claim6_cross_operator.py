@@ -44,8 +44,9 @@ class Operator:
         )
 
 
-def _make_operator(name: str, measurement: bytes, root_key: ec.EllipticCurvePrivateKey,
-                   root_name: str) -> Operator:
+def _make_operator(
+    name: str, measurement: bytes, root_key: ec.EllipticCurvePrivateKey, root_name: str
+) -> Operator:
     vcek_key = ec.generate_private_key(ec.SECP384R1())
     vcek_cert = make_ec_cert(f"{name}-VCEK", root_name, vcek_key, root_key)
     priv, pub = generate_channel_keypair()
@@ -63,8 +64,10 @@ def domains():
 
 def _verify_peer(peer: Operator, root: x509.Certificate, expected_measurement: bytes) -> str:
     report = verify_sev_snp_report(
-        peer.report(), [peer.vcek_cert, root],
-        trusted_roots=[root], expected_measurement=expected_measurement,
+        peer.report(),
+        [peer.vcek_cert, root],
+        trusted_roots=[root],
+        expected_measurement=expected_measurement,
     )
     return report.report_data[:32].hex()  # the peer's attested channel public key
 
@@ -87,21 +90,25 @@ def test_mutual_attestation_and_sealed_delegation(domains) -> None:
 def test_independent_keys_across_domains(domains) -> None:
     a, b = domains["a"], domains["b"]
     assert a.channel_pub != b.channel_pub
-    assert a.vcek_cert.fingerprint(a.vcek_cert.signature_hash_algorithm) != \
-        b.vcek_cert.fingerprint(b.vcek_cert.signature_hash_algorithm)
+    assert a.vcek_cert.fingerprint(a.vcek_cert.signature_hash_algorithm) != b.vcek_cert.fingerprint(
+        b.vcek_cert.signature_hash_algorithm
+    )
 
 
 def test_binary_swap_detected(domains) -> None:
     root, b = domains["root"], domains["b"]
     # B silently runs a tampered binary: its measurement changes.
     swapped = make_sev_snp_report(
-        b.vcek_key, measurement=b"\xee" * 48,
+        b.vcek_key,
+        measurement=b"\xee" * 48,
         report_data=bytes.fromhex(b.channel_pub) + b"\x00" * 32,
     )
     with pytest.raises(AttestationFailed):
         verify_sev_snp_report(
-            swapped, [b.vcek_cert, root],
-            trusted_roots=[root], expected_measurement=b.measurement,
+            swapped,
+            [b.vcek_cert, root],
+            trusted_roots=[root],
+            expected_measurement=b.measurement,
         )
 
 
@@ -111,6 +118,8 @@ def test_untrusted_operator_root_rejected(domains) -> None:
     stranger_root = make_ec_cert("stranger", "stranger", stranger_key, stranger_key)
     with pytest.raises(AttestationFailed):
         verify_sev_snp_report(
-            b.report(), [b.vcek_cert, domains["root"]],
-            trusted_roots=[stranger_root], expected_measurement=b.measurement,
+            b.report(),
+            [b.vcek_cert, domains["root"]],
+            trusted_roots=[stranger_root],
+            expected_measurement=b.measurement,
         )

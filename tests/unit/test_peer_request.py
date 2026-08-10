@@ -30,19 +30,21 @@ def test_handles_request_with_sealed_payload() -> None:
     priv, pub = generate_channel_keypair()
     payload = b"do the thing"
     req = PeerRequest(
-        chain=_chain(), requested_capability="read", record_id="rec-0",
+        chain=_chain(),
+        requested_capability="read",
+        record_id="rec-0",
         sealed_payload=SealedChannel(pub).seal(payload),
     )
-    result = handle_peer_request(
-        req, policy=LocalPolicy.of(["read"]), enclave_private_key=priv
-    )
+    result = handle_peer_request(req, policy=LocalPolicy.of(["read"]), enclave_private_key=priv)
     assert result.payload == payload
 
 
 def test_denied_capability_raises_before_payload() -> None:
     priv, pub = generate_channel_keypair()
     req = PeerRequest(
-        chain=_chain(), requested_capability="admin", record_id="rec-0",
+        chain=_chain(),
+        requested_capability="admin",
+        record_id="rec-0",
         sealed_payload=SealedChannel(pub).seal(b"secret"),
     )
     with pytest.raises(ScopeNotPermitted):
@@ -52,7 +54,9 @@ def test_denied_capability_raises_before_payload() -> None:
 def test_sealed_payload_without_key_fails_closed() -> None:
     _, pub = generate_channel_keypair()
     req = PeerRequest(
-        chain=_chain(), requested_capability="read", record_id="rec-0",
+        chain=_chain(),
+        requested_capability="read",
+        record_id="rec-0",
         sealed_payload=SealedChannel(pub).seal(b"secret"),
     )
     with pytest.raises(SealedChannelError):
