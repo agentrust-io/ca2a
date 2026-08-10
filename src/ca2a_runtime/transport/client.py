@@ -13,12 +13,21 @@ import secrets
 import urllib.error
 import urllib.parse
 import urllib.request
+from dataclasses import dataclass
 from typing import Any
 
-from ca2a_runtime.attestation import VerifiedPeer, Verifier, seal_to_peer, verify_offer
+from ca2a_runtime.attestation import (
+    ChannelOffer,
+    VerifiedPeer,
+    Verifier,
+    offer_channel,
+    seal_to_peer,
+    verify_offer,
+)
 from ca2a_runtime.delegation.credential import DelegationCredential
-from ca2a_runtime.errors import CA2AError, TransportError
+from ca2a_runtime.errors import AttestationFailed, CA2AError, TransportError
 from ca2a_runtime.peer import PeerRequest
+from ca2a_runtime.tee.base import BaseProvider
 from ca2a_runtime.transport import a2a_adapter, wire
 from ca2a_runtime.transport.server import CHANNEL_PATH, TASK_PATH
 
@@ -59,11 +68,38 @@ def _post_json(url: str, body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
         return exc.code, json.loads(exc.read())
 
 
+@dataclass(frozen=True)
+class Handshake:
+    """What one round trip to the handshake endpoint yields.
+
+    ``peer`` is the appraised callee. ``challenge`` is the callee's half of a
+    mutual exchange, and is None when the callee issued none -- an older or
+    deliberately one-directional peer, which is still perfectly usable.
+    """
+
+    peer: VerifiedPeer
+    challenge: str | None
+
+
+def handshake(base_url: str, *, verifier: Verifier | None = None) -> Handshake:
+    """Fetch the peer's attested channel key, verify it, and keep its challenge.
+
+    One round trip serves both directions: the nonce is the caller's own and is
+    what makes the callee's report live, and the challenge that comes back is what
+    would make the caller's report live in the other direction.
+    """
+    nonce = secrets.token_hex(16)
+    body = _get_json(f"{base_url}{CHANNEL_PATH}?nonce={nonce}")
+    offer = wire.parse_channel_offer(body)
+    return Handshake(
+        peer=verify_offer(offer, expected_nonce=nonce, verifier=verifier),
+        challenge=wire.parse_challenge(body),
+    )
+
+
 def fetch_verified_peer(base_url: str, *, verifier: Verifier | None = None) -> VerifiedPeer:
     """Fetch the peer's attested channel key and verify it under a fresh nonce."""
-    nonce = secrets.token_hex(16)
-    offer = wire.parse_channel_offer(_get_json(f"{base_url}{CHANNEL_PATH}?nonce={nonce}"))
-    return verify_offer(offer, expected_nonce=nonce, verifier=verifier)
+    return handshake(base_url, verifier=verifier).peer
 
 
 def send_task(
@@ -75,22 +111,50 @@ def send_task(
     payload: bytes | None = None,
     verifier: Verifier | None = None,
     parent_record_hash: str | None = None,
+    caller_provider: BaseProvider | None = None,
 ) -> dict[str, Any]:
     """Run the caller side end to end: verify the peer, seal the payload, send the task.
+
+    Pass ``caller_provider`` to make the exchange mutual: the caller binds its own
+    channel key into a report under the challenge the callee issued, so the callee
+    learns what the caller is running rather than only what it is allowed to ask
+    for. Omit it and the call is one-directional, which is what every caller did
+    before and what most callees still accept.
 
     Returns the parsed response body on acceptance. Raises a :class:`CA2AError`
     carrying the peer's error code and message on any peer-side failure.
     """
     sealed: bytes | None = None
-    if payload is not None:
-        peer = fetch_verified_peer(base_url, verifier=verifier)
-        sealed = seal_to_peer(peer, payload)
+    caller_offer: ChannelOffer | None = None
+    if payload is not None or caller_provider is not None:
+        hello = handshake(base_url, verifier=verifier)
+        if payload is not None:
+            sealed = seal_to_peer(hello.peer, payload)
+        if caller_provider is not None:
+            if hello.challenge is None:
+                # Attesting under a nonce we picked ourselves would prove only
+                # that we can produce a report, not that we produced one for this
+                # exchange. Better to say the peer does not support this than to
+                # send something that looks like mutual attestation and is not.
+                raise AttestationFailed(
+                    "the peer issued no challenge, so the caller cannot attest to this exchange",
+                    detail="the callee's handshake response carried no 'challenge' field",
+                )
+            # The private half goes unused today: response sealing was withdrawn
+            # because nothing confidential comes back (the response is the
+            # provenance record, which has to stay readable). The key's job here
+            # is to be what the report binds, which is what makes the caller's
+            # measurement live rather than replayed.
+            _caller_private_key, caller_offer = offer_channel(
+                caller_provider, nonce=hello.challenge
+            )
     request = PeerRequest(
         chain=chain,
         requested_capability=requested_capability,
         record_id=record_id,
         sealed_payload=sealed,
         parent_record_hash=parent_record_hash,
+        caller_offer=caller_offer,
     )
     message = a2a_adapter.attach_ca2a_metadata({}, request)
     status, body = _post_json(f"{base_url}{TASK_PATH}", message)

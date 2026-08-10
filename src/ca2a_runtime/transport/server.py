@@ -65,8 +65,17 @@ class _PeerHandler(BaseHTTPRequestHandler):
         if not nonces:
             self._send_json(400, {"error": {"code": "BAD_REQUEST", "message": "nonce required"}})
             return
-        offer = self._node().offer(nonces[0])
-        self._send_json(200, wire.serialize_channel_offer(offer))
+        node = self._node()
+        offer = node.offer(nonces[0])
+        # The handshake is where both directions get what they need in one round
+        # trip: the caller gets the key to seal to, and the challenge it must bind
+        # its own key into if it wants to be appraised. Issuing one costs nothing
+        # and stores nothing, so it is offered unconditionally; a caller that
+        # ignores it is still served.
+        self._send_json(
+            200,
+            wire.serialize_channel_offer(offer, challenge=node.issue_challenge()),
+        )
 
     def do_POST(self) -> None:
         if urlparse(self.path).path != TASK_PATH:

@@ -1,10 +1,17 @@
 # Mutual Attestation
 
 ---
-Status: Proposal
+Status: Implemented in the reference transport
 Written: 2026-08-09
 Stability: Unstable
 ---
+
+> **State of this document.** The design below is built. The callee issues a
+> challenge on the handshake endpoint, the caller binds its own channel key into a
+> report under it, and the callee appraises that before it opens the sealed
+> payload. What is *not* done is a hardware run in both directions: see
+> [What this still does not give you](#what-this-still-does-not-give-you), which
+> has not moved.
 
 ## What is one-directional, and what is not
 
@@ -40,8 +47,8 @@ caller                                   callee
   │  appraise callee, seal payload
   │  attest own channel key under C
   │  POST /task + ChannelOffer(C)  ──────▶
-  │                                        appraise caller BEFORE acting
-  │  ◀────────────── response sealed to caller key
+  │                                        appraise caller BEFORE opening payload
+  │  ◀───── provenance record (readable, so it can be chained)
 ```
 
 Three properties fall out, and each is a requirement rather than a consequence:
@@ -71,6 +78,26 @@ that was wrong in this protocol.
    exactly-once. That weaker property is stated here rather than left implied.
 2. **Record the outcome, requirement configurable.** A callee does not demand
    attestation by default and can be configured to.
+   - The knob is a three-rung ladder, `require_caller_attestation`:
+     `"none"` (the default, demands nothing), `"any"` (an offer that appraises,
+     software assurance is enough), `"hardware"` (the assurance must be
+     hardware-backed). `"hardware"` without a `caller_verifier` is refused at
+     construction rather than on every call, because it could never succeed.
+   - The outcome is one of four values, not three: `not_offered`, `failed`,
+     `software-only`, `hardware`. A peer that offered nothing and a peer whose
+     offer did not appraise are different facts and neither may be readable as
+     the software-only case.
+   - **An offer that is present and does not appraise is refused at every rung,
+     including `"none"`.** Demanding nothing means accepting a caller that proves
+     nothing; it does not mean accepting a broken proof. Without this a
+     misconfigured attestation path is indistinguishable from a caller that never
+     had one, which is how a control ends up switched off without anyone deciding
+     to switch it off.
+   - The outcome is **in the hashed record body**, always, including
+     `not_offered`. Omitting it when nothing was appraised would leave an auditor
+     unable to tell a peer that checked and found nothing from a peer that never
+     checked. The cost is real and was accepted: it changes the hash of every
+     record ever emitted, and the example DAGs were regenerated for it.
 3. ~~The response is sealed to the caller's attested key.~~ **Withdrawn on
    2026-08-09, before implementation.** The argument for it was that an appraised
    key which is never used is ceremony. That was wrong on both halves.
@@ -119,6 +146,49 @@ The shape used everywhere else in this stack applies here: record the outcome,
 make the requirement configurable, and never let absence look like success. A
 callee should be able to say "hardware or nothing" and should not say it by
 default.
+
+## What was built
+
+```python
+from ca2a_runtime.node import PeerNode
+from ca2a_runtime.policy import LocalPolicy
+from ca2a_runtime.transport import client
+from ca2a_runtime.tee.software import SoftwareProvider
+
+# Callee: demands nothing, records everything (the default).
+node = PeerNode(LocalPolicy.of(["read"]))
+
+# Callee: opts in to strictness.
+node = PeerNode(LocalPolicy.of(["read"]), require_caller_attestation="any")
+
+# Caller: opts in to being appraised.
+client.send_task(base_url, chain, "read", "r0",
+                 payload=b"...", caller_provider=SoftwareProvider())
+```
+
+| Piece | Where |
+|---|---|
+| Stateless challenge (`v1.<expiry>.<random>.<mac>`) | `ca2a_runtime.challenge` |
+| Callee-side appraisal, challenge then offer | `attestation.appraise_caller` |
+| Requirement ladder and the refusal records | `peer.appraise_caller_runtime` |
+| Ordering: appraise before `open_sealed` | `peer.handle_peer_request` |
+| `caller_offer` on the wire | `transport.constants`, `transport.a2a_adapter` |
+| Challenge on the handshake response | `transport.server`, `transport.wire` |
+| Caller-side opt-in | `transport.client.send_task(caller_provider=...)` |
+
+Two consequences worth stating plainly, because neither is free:
+
+**Every record hash changed.** `caller_attestation` is in the hashed body of every
+`DelegationRecord`, so records emitted before this change do not hash to what they
+used to. The example DAGs under `examples/` were regenerated, and a record loaded
+without the field is read as `not_offered` -- the only thing its emitter could
+honestly have claimed.
+
+**A challenge does not cross instances.** The secret is per-process, so a callee
+behind a load balancer must pin the handshake and the task to one instance or
+share a secret between them. This is the stateless scheme's cost, chosen with
+open eyes over a challenge store; `test_a_challenge_from_another_instance_does_not_verify`
+holds the line.
 
 ## What this still does not give you
 

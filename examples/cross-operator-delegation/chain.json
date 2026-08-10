@@ -2,8 +2,8 @@
   "chain": [
     {
       "credential_id": "cred-0",
-      "issuer": "86ca3598c75129a1e14d6e6bbf0ae0ccc58ddee2aba7fe1df345d48172b4aad1",
-      "subject": "97e57072a0ee5ad5ca7886f5f8c8be313fc13e9fd1dfd38d18d019457bf15281",
+      "issuer": "522df0a349190a3cfabc4774b215a765180bd879abcdf9c67355b98e39266a44",
+      "subject": "826df306d5a746066527b46a2a232eaf37bfe6919ccef788db03143af6f54e26",
       "scope": [
         "task:admin",
         "task:read",
@@ -11,19 +11,19 @@
       ],
       "depth": 0,
       "parent_id": null,
-      "signature": "749c58ccc521821e08ade6d0c423a287fa0803daf1b2f26ed56ac037f41ab8e8f0dbee17d9f37d99129a0d88f5161df9dcf5ddba49012fc1ff5b9b88733bd002"
+      "signature": "5f0ba300b3437efbdcfb4aaa7b8126d4ad085d2f5db859aa361f95750e3909f42f5a983c3d08fccca096330c0245843d69c38c792bcb6d81fda0a7919e4cee07"
     },
     {
       "credential_id": "cred-1",
-      "issuer": "97e57072a0ee5ad5ca7886f5f8c8be313fc13e9fd1dfd38d18d019457bf15281",
-      "subject": "971c8fc1db051ad5ddf2884ce01cb1a8833b1c3eb1d1e14bb589ecbe8a9716fe",
+      "issuer": "826df306d5a746066527b46a2a232eaf37bfe6919ccef788db03143af6f54e26",
+      "subject": "d7b5aa81bca7bf963eb50c3f357bed5df10d94f0537310c45840ff41d094778e",
       "scope": [
         "task:read",
         "task:write"
       ],
       "depth": 1,
       "parent_id": "cred-0",
-      "signature": "56cea40981b23acef6035dbb54f4f3ec51dede9737743cb55aaa3a11e78f446724bd4a83f6c28232f96969ba6153ae8e716e740abbee0053da36805e8d483506"
+      "signature": "bd2de5b1b88cc783596bfefd062fa3e8e871b3af7bdbdd55073e4dce8d1bbec7443b341c3f97dc74a09dde3425256751abaf1cf8d6a77817b2777d256e45110f"
     }
   ]
 }

@@ -11,6 +11,7 @@ cA2A is a profile on A2A, not a competing transport. A2A moves tasks and context
 | Hand-off into `handle_peer_request` once a `PeerRequest` exists | Implemented in-process; callers invoke it after parsing |
 | Reference HTTP server/client (`ca2a_runtime.transport.server`/`client`) | Implemented, software mode. A reference transport, not part of the profile |
 | Live attestation handshake on an inbound call | Implemented in software mode (`ca2a_runtime.attestation`, `assurance="none"`) |
+| Callee appraises the caller (mutual attestation) | Implemented in software mode: challenge on the handshake, `caller_offer` on the request, appraised before the payload is opened. Off by default; see [mutual-attestation.md](mutual-attestation.md) |
 | Seal gated on the appraised channel key on a live call | Implemented in software mode |
 | Seal bound to a hardware-verified measurement | Not yet: needs a real quote via the `verifier` seam (Tier 3) |
 | `ca2a start` CLI listener | Implemented: builds a `PeerNode` from a config file and serves it over the reference transport |
@@ -44,8 +45,31 @@ Namespaced keys on A2A `metadata` (message and/or params):
 | `https://agentrust-io.com/extensions/ca2a/v0.1/record_id` | string | Provenance record id for this hop |
 | `https://agentrust-io.com/extensions/ca2a/v0.1/parent_record_hash` | string or `null` | Parent TRACE/provenance hash; `null` for a root hop |
 | `https://agentrust-io.com/extensions/ca2a/v0.1/sealed_payload` | string (base64url) or omitted | Opaque sealed ciphertext only, not a verified measurement binding |
+| `https://agentrust-io.com/extensions/ca2a/v0.1/caller_offer` | channel-offer object or omitted | The caller's own attested channel key, bound to a challenge the callee issued ([mutual attestation](mutual-attestation.md)) |
+
+`caller_offer` is **optional**, unlike `parent_record_hash`: a caller that cannot
+attest omits the key entirely rather than sending `null`, and a callee serves it
+by default. A key that is present but is not a well-formed offer is malformed and
+fails closed, so a caller cannot get itself treated as unattested by sending
+rubbish. Its object shape is the same one the handshake endpoint returns.
 
 Constants and helpers live in `ca2a_runtime.transport`.
+
+### Handshake response
+
+`GET /.well-known/ca2a/channel?nonce=<n>` returns the callee's attested channel
+key and, additively, the challenge for the other direction:
+
+```json
+{
+  "channel_public_key": "...",
+  "attestation": {"platform": "...", "measurement": "...", "public_key": "...", "nonce": "<n>"},
+  "challenge": "v1.<expiry>.<random>.<mac>"
+}
+```
+
+`challenge` is omitted by a callee that issues none, so a caller written against
+the older response sees exactly what it saw before and simply does not attest.
 
 ## Attachment points
 
