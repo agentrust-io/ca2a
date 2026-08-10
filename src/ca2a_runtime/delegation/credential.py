@@ -124,9 +124,7 @@ class DelegationCredential:
             raise InvalidCredential("malformed credential", detail=str(exc)) from exc
 
 
-def verify_chain(
-    chain: list[DelegationCredential], *, max_depth: int = 8
-) -> None:
+def verify_chain(chain: list[DelegationCredential], *, max_depth: int = 8) -> None:
     """Verify a root-to-leaf delegation chain, raising on the first violation.
 
     A well-formed chain of length N delegates from the root issuer down to the
@@ -147,9 +145,7 @@ def verify_chain(
         seen_ids.add(cred.credential_id)
 
         if cred.depth > max_depth:
-            raise DelegationDepthExceeded(
-                f"hop {i} depth {cred.depth} exceeds max {max_depth}"
-            )
+            raise DelegationDepthExceeded(f"hop {i} depth {cred.depth} exceeds max {max_depth}")
 
         if prev is None:
             if cred.parent_id is not None:
@@ -162,9 +158,7 @@ def verify_chain(
                     f"hop {i} parent_id does not match previous credential_id"
                 )
             if cred.issuer != prev.subject:
-                raise BrokenDelegationLink(
-                    f"hop {i} issuer is not the previous hop's subject"
-                )
+                raise BrokenDelegationLink(f"hop {i} issuer is not the previous hop's subject")
             if cred.depth != prev.depth + 1:
                 raise BrokenDelegationLink(f"hop {i} depth is not previous + 1")
             if not cred.scope.issubset(prev.scope):

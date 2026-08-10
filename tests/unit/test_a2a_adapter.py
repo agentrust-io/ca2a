@@ -49,9 +49,7 @@ def _ca2a_meta(
     meta = {
         KEY_DELEGATION_CHAIN: chain
         if chain is not None
-        else _cred_dicts(
-            [frozenset({"read", "write"}), frozenset({"read"})]
-        ),
+        else _cred_dicts([frozenset({"read", "write"}), frozenset({"read"})]),
         KEY_REQUESTED_CAPABILITY: capability,
         KEY_RECORD_ID: record_id,
         KEY_PARENT_RECORD_HASH: parent_record_hash,

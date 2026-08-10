@@ -54,6 +54,7 @@ def valid_chain() -> list[DelegationCredential]:
 
 # --- Synthetic SEV-SNP attestation vectors (test-only; not hardware) ---
 
+
 def make_ec_cert(
     subject: str,
     issuer: str,
@@ -81,8 +82,8 @@ def make_sev_snp_report(
     """Build a synthetic SEV-SNP report signed by ``vcek_key`` (algo=1)."""
     body = bytearray(SIG_OFFSET)
     struct.pack_into("<IIQ", body, 0, 2, 1, 0)  # version, guest_svn, policy
-    struct.pack_into("<I", body, 0x30, 0)       # vmpl
-    struct.pack_into("<I", body, 0x34, 1)       # signature_algo = ECDSA-P384/SHA384
+    struct.pack_into("<I", body, 0x30, 0)  # vmpl
+    struct.pack_into("<I", body, 0x34, 1)  # signature_algo = ECDSA-P384/SHA384
     body[0x50 : 0x50 + len(report_data)] = report_data
     body[0x90 : 0x90 + len(measurement)] = measurement
     der = vcek_key.sign(bytes(body), ec.ECDSA(SHA384()))

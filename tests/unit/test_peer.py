@@ -67,8 +67,9 @@ def test_enforce_rejects_invalid_chain() -> None:
 
 def test_enforce_record_links_to_parent() -> None:
     policy = LocalPolicy.of(["read"])
-    decision = enforce_peer_call(_chain(), "read", policy=policy, record_id="rec-1",
-                                 parent_record_hash="abc123")
+    decision = enforce_peer_call(
+        _chain(), "read", policy=policy, record_id="rec-1", parent_record_hash="abc123"
+    )
     assert decision.record.parent_record_hash == "abc123"
     assert decision.record.credential_id == _chain()[-1].credential_id
 

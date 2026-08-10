@@ -55,7 +55,7 @@ def build_quote(mrtd: bytes, report_data: bytes, *, root_key, root_name="test-in
     header = struct.pack("<HHI", 4, 2, 0x81) + b"\x00" * 40  # 48 bytes
     td_report = bytearray(584)
     td_report[MRTD_OFFSET - 48 : MRTD_OFFSET - 48 + 48] = mrtd
-    td_report[520:520 + 64] = report_data
+    td_report[520 : 520 + 64] = report_data
     signed = header + bytes(td_report)
 
     quote_sig = _sig_rs(att_key, signed)
@@ -70,11 +70,15 @@ def build_quote(mrtd: bytes, report_data: bytes, *, root_key, root_name="test-in
     # Intel DCAP v4 nests the QE material under a type-6 certification-data header;
     # the type-5 PCK chain sits inside it. Emitting the flat shape here is what let
     # the six-byte-early parse pass CI while every genuine quote was rejected.
-    cert_data = (bytes(qe_report) + qe_report_sig
-                 + struct.pack("<H", len(qe_auth)) + qe_auth
-                 + struct.pack("<HI", 5, len(pem)) + pem)
-    sig = (quote_sig + att_raw
-           + struct.pack("<HI", 6, len(cert_data)) + cert_data)
+    cert_data = (
+        bytes(qe_report)
+        + qe_report_sig
+        + struct.pack("<H", len(qe_auth))
+        + qe_auth
+        + struct.pack("<HI", 5, len(pem))
+        + pem
+    )
+    sig = quote_sig + att_raw + struct.pack("<HI", 6, len(cert_data)) + cert_data
     quote = signed + struct.pack("<I", len(sig)) + sig
     return quote, root
 
@@ -90,8 +94,10 @@ def quote_and_root():
 
 def test_valid_quote_verifies(quote_and_root) -> None:
     q = verify_tdx_quote(
-        quote_and_root["quote"], trusted_roots=[quote_and_root["root"]],
-        expected_mrtd=quote_and_root["mrtd"], expected_report_data=quote_and_root["rd"],
+        quote_and_root["quote"],
+        trusted_roots=[quote_and_root["root"]],
+        expected_mrtd=quote_and_root["mrtd"],
+        expected_report_data=quote_and_root["rd"],
     )
     assert q.measurement == quote_and_root["mrtd"]
     assert q.tee_type == 0x81
@@ -106,13 +112,17 @@ def test_tampered_mrtd_fails(quote_and_root) -> None:
 
 def test_wrong_expected_mrtd_fails(quote_and_root) -> None:
     with pytest.raises(AttestationFailed):
-        verify_tdx_quote(quote_and_root["quote"], trusted_roots=[quote_and_root["root"]],
-                         expected_mrtd=b"\x99" * 48)
+        verify_tdx_quote(
+            quote_and_root["quote"],
+            trusted_roots=[quote_and_root["root"]],
+            expected_mrtd=b"\x99" * 48,
+        )
 
 
 def test_untrusted_root_fails(quote_and_root) -> None:
-    stranger = make_ec_cert("x", "x", ec.generate_private_key(ec.SECP256R1()),
-                            ec.generate_private_key(ec.SECP256R1()))
+    stranger = make_ec_cert(
+        "x", "x", ec.generate_private_key(ec.SECP256R1()), ec.generate_private_key(ec.SECP256R1())
+    )
     with pytest.raises(AttestationFailed):
         verify_tdx_quote(quote_and_root["quote"], trusted_roots=[stranger])
 
@@ -143,8 +153,9 @@ def test_real_intel_root_accepted_and_stranger_rejected() -> None:
     intel_root = x509.load_pem_x509_certificates(FIXTURE.read_bytes())[0]
     # The genuine, self-signed Intel SGX Root CA is accepted as its own trust anchor.
     verify_cert_chain([intel_root], trusted_roots=[intel_root])
-    stranger = make_ec_cert("x", "x", ec.generate_private_key(ec.SECP256R1()),
-                            ec.generate_private_key(ec.SECP256R1()))
+    stranger = make_ec_cert(
+        "x", "x", ec.generate_private_key(ec.SECP256R1()), ec.generate_private_key(ec.SECP256R1())
+    )
     with pytest.raises(AttestationFailed):
         verify_cert_chain([intel_root], trusted_roots=[stranger])
 
@@ -167,7 +178,7 @@ def test_flat_signature_layout_rejected(quote_and_root) -> None:
     """
     off = 48 + 584 + 4 + 128  # header + TD report + sig_len + quote_sig + att_key
     flat = bytearray(quote_and_root["quote"])
-    flat[off:off + 2] = struct.pack("<H", 5)  # PCK chain where the QE report belongs
+    flat[off : off + 2] = struct.pack("<H", 5)  # PCK chain where the QE report belongs
     with pytest.raises(AttestationFailed, match="certification data type"):
         TdxQuote.parse(bytes(flat))
 

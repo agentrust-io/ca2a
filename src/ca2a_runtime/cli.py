@@ -94,16 +94,12 @@ def _load_records(path: str) -> list[DelegationRecord]:
                         else frozenset(str(s) for s in item["effective_scope"])
                     ),
                     denial_reason=(
-                        None
-                        if item.get("denial_reason") is None
-                        else str(item["denial_reason"])
+                        None if item.get("denial_reason") is None else str(item["denial_reason"])
                     ),
                     # A record written before this field existed hashes as
                     # "not_offered", which is what its emitter could honestly have
                     # claimed: it never appraised a caller.
-                    caller_attestation=str(
-                        item.get("caller_attestation", CALLER_NOT_OFFERED)
-                    ),
+                    caller_attestation=str(item.get("caller_attestation", CALLER_NOT_OFFERED)),
                 )
             )
         except (KeyError, TypeError, ValueError) as exc:
@@ -169,7 +165,7 @@ def _cmd_start(args: argparse.Namespace) -> int:
         # The callee cannot claim an assurance level; the caller appraises the
         # offer. Say what that appraisal will be so it is not a surprise.
         print(
-            'note: software-only provider, callers appraise this channel key as '
+            "note: software-only provider, callers appraise this channel key as "
             'assurance="none" and the seal carries no hardware guarantee',
             file=sys.stderr,
         )

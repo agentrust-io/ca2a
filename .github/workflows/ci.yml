@@ -36,6 +36,11 @@ jobs:
       - name: Lint
         run: ruff check src/ tests/
 
+      # Checked, not applied. Without this gate 34 of 77 files drifted out of
+      # format unnoticed, because `ruff check` does not cover formatting.
+      - name: Format
+        run: ruff format --check src/ tests/
+
       - name: Type check
         run: mypy src/ca2a_runtime/ src/ca2a_verify/
 

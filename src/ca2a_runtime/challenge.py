@@ -50,7 +50,9 @@ def _mac(secret: bytes, expiry: int, rand: str) -> str:
 def issue_challenge(secret: bytes, *, ttl_seconds: int = DEFAULT_TTL_SECONDS) -> str:
     """Issue a challenge that expires ``ttl_seconds`` from now."""
     if ttl_seconds <= 0:
-        raise ValueError("ttl_seconds must be positive; a challenge that never validates is not a challenge")
+        raise ValueError(
+            "ttl_seconds must be positive; a challenge that never validates is not a challenge"
+        )
     expiry = int(time.time()) + ttl_seconds
     rand = secrets.token_hex(_RANDOM_BYTES)
     return f"{_PREFIX}.{expiry}.{rand}.{_mac(secret, expiry, rand)}"

@@ -25,15 +25,20 @@ from ca2a_verify.tpm import verify_tpm_quote
 from tests.unit.conftest import make_ec_cert
 
 
-def build_attest(*, qualifying_data: bytes, pcr_digest: bytes,
-                 magic: int = TPM_GENERATED_VALUE, attest_type: int = TPM_ST_ATTEST_QUOTE) -> bytes:
+def build_attest(
+    *,
+    qualifying_data: bytes,
+    pcr_digest: bytes,
+    magic: int = TPM_GENERATED_VALUE,
+    attest_type: int = TPM_ST_ATTEST_QUOTE,
+) -> bytes:
     out = bytearray()
     out += struct.pack(">I", magic)
     out += struct.pack(">H", attest_type)
     out += struct.pack(">H", 0)  # qualifiedSigner TPM2B_NAME, empty
     out += struct.pack(">H", len(qualifying_data)) + qualifying_data  # extraData
     out += b"\x00" * 17  # clockInfo
-    out += b"\x00" * 8   # firmwareVersion
+    out += b"\x00" * 8  # firmwareVersion
     # TPML_PCR_SELECTION: 1 selection, SHA-256, 3 select bytes
     out += struct.pack(">I", 1) + struct.pack(">H", 0x000B) + bytes([3]) + b"\x03\x00\x00"
     out += struct.pack(">H", len(pcr_digest)) + pcr_digest
@@ -56,8 +61,14 @@ def test_valid_quote_verifies() -> None:
     ak_key, chain, root = _ak_chain()
     nonce, pcr = b"nonce-1234", b"\x11" * 32
     attest = build_attest(qualifying_data=nonce, pcr_digest=pcr)
-    q = verify_tpm_quote(attest, _signed(ak_key, attest), chain, trusted_roots=[root],
-                         expected_pcr_digest=pcr, expected_qualifying_data=nonce)
+    q = verify_tpm_quote(
+        attest,
+        _signed(ak_key, attest),
+        chain,
+        trusted_roots=[root],
+        expected_pcr_digest=pcr,
+        expected_qualifying_data=nonce,
+    )
     assert q.pcr_digest == pcr
     assert q.qualifying_data == nonce
 
@@ -66,16 +77,26 @@ def test_wrong_pcr_digest_fails() -> None:
     ak_key, chain, root = _ak_chain()
     attest = build_attest(qualifying_data=b"n", pcr_digest=b"\x11" * 32)
     with pytest.raises(AttestationFailed):
-        verify_tpm_quote(attest, _signed(ak_key, attest), chain, trusted_roots=[root],
-                         expected_pcr_digest=b"\x99" * 32)
+        verify_tpm_quote(
+            attest,
+            _signed(ak_key, attest),
+            chain,
+            trusted_roots=[root],
+            expected_pcr_digest=b"\x99" * 32,
+        )
 
 
 def test_wrong_nonce_fails() -> None:
     ak_key, chain, root = _ak_chain()
     attest = build_attest(qualifying_data=b"real", pcr_digest=b"\x11" * 32)
     with pytest.raises(AttestationFailed):
-        verify_tpm_quote(attest, _signed(ak_key, attest), chain, trusted_roots=[root],
-                         expected_qualifying_data=b"expected")
+        verify_tpm_quote(
+            attest,
+            _signed(ak_key, attest),
+            chain,
+            trusted_roots=[root],
+            expected_qualifying_data=b"expected",
+        )
 
 
 def test_tampered_attest_fails() -> None:
@@ -90,8 +111,9 @@ def test_tampered_attest_fails() -> None:
 def test_untrusted_root_fails() -> None:
     ak_key, chain, _ = _ak_chain()
     attest = build_attest(qualifying_data=b"n", pcr_digest=b"\x11" * 32)
-    stranger = make_ec_cert("s", "s", ec.generate_private_key(ec.SECP256R1()),
-                            ec.generate_private_key(ec.SECP256R1()))
+    stranger = make_ec_cert(
+        "s", "s", ec.generate_private_key(ec.SECP256R1()), ec.generate_private_key(ec.SECP256R1())
+    )
     with pytest.raises(AttestationFailed):
         verify_tpm_quote(attest, _signed(ak_key, attest), chain, trusted_roots=[stranger])
 

@@ -205,9 +205,7 @@ def verify_dag(records: list[DelegationRecord]) -> list[DelegationRecord]:
     return records
 
 
-def cross_check_chain(
-    records: list[DelegationRecord], chain: list[DelegationCredential]
-) -> None:
+def cross_check_chain(records: list[DelegationRecord], chain: list[DelegationCredential]) -> None:
     """Confirm a verified provenance chain lines up with a delegation chain.
 
     Ties provenance to authority: hop record ``i`` must reference credential

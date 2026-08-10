@@ -14,9 +14,7 @@ import yaml
 
 from ca2a_runtime.errors import ConfigError
 
-VALID_PROVIDERS = frozenset(
-    {"auto", "tpm", "sev-snp", "tdx", "opaque", "software-only"}
-)
+VALID_PROVIDERS = frozenset({"auto", "tpm", "sev-snp", "tdx", "opaque", "software-only"})
 VALID_ENFORCEMENT = frozenset({"enforcing", "advisory", "silent"})
 
 DEFAULT_LISTEN_ADDR = "127.0.0.1:8443"
@@ -93,9 +91,7 @@ class Ca2aConfig:
             if not isinstance(raw_local, list) or not all(
                 isinstance(item, str) and item for item in raw_local
             ):
-                raise ConfigError(
-                    "local_policy must be a list of non-empty capability strings"
-                )
+                raise ConfigError("local_policy must be a list of non-empty capability strings")
             local_policy = frozenset(raw_local)
 
         bundle = data.get("policy_bundle_path")

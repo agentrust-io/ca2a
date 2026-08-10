@@ -54,9 +54,7 @@ def serialize_error(err: CA2AError) -> dict[str, Any]:
     }
 
 
-def serialize_channel_offer(
-    offer: ChannelOffer, *, challenge: str | None = None
-) -> dict[str, Any]:
+def serialize_channel_offer(offer: ChannelOffer, *, challenge: str | None = None) -> dict[str, Any]:
     """Serialize a channel offer (a peer's attested channel key).
 
     Used in both directions, which is why it lives here rather than beside either

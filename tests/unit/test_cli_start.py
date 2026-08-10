@@ -93,8 +93,6 @@ def test_start_warns_that_software_mode_has_no_guarantee(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     monkeypatch.setattr(server, "serve", lambda node, host, port: _FakeServer(node))
-    config = _config(
-        tmp_path, "attestation:\n  provider: software-only\nlocal_policy:\n  - read\n"
-    )
+    config = _config(tmp_path, "attestation:\n  provider: software-only\nlocal_policy:\n  - read\n")
     assert cli.main(["start", "--config", config]) == 0
     assert 'assurance="none"' in capsys.readouterr().err

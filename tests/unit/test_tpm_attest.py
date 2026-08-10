@@ -110,9 +110,7 @@ def _tpmt_ecdsa(signature_der: bytes) -> bytes:
 
 def _tpmt_rsassa(signature: bytes) -> bytes:
     return (
-        struct.pack(">HH", _ALG_RSASSA, _ALG_SHA256)
-        + struct.pack(">H", len(signature))
-        + signature
+        struct.pack(">HH", _ALG_RSASSA, _ALG_SHA256) + struct.pack(">H", len(signature)) + signature
     )
 
 
@@ -159,8 +157,10 @@ def _ec_ak_chain() -> tuple[ec.EllipticCurvePrivateKey, bytes, bytes]:
     root = make_ec_cert("vendor-root", "vendor-root", root_key, root_key)
     ak_key = ec.generate_private_key(ec.SECP256R1())
     ak = make_ec_cert("AK", "vendor-root", ak_key, root_key)
-    return ak_key, ak.public_bytes(Encoding.PEM) + root.public_bytes(Encoding.PEM), (
-        root.public_bytes(Encoding.PEM)
+    return (
+        ak_key,
+        ak.public_bytes(Encoding.PEM) + root.public_bytes(Encoding.PEM),
+        (root.public_bytes(Encoding.PEM)),
     )
 
 
@@ -180,8 +180,10 @@ def _rsa_ak_chain() -> tuple[rsa.RSAPrivateKey, bytes, bytes]:
         .not_valid_after(now + timedelta(days=3650))
         .sign(root_key, SHA384())
     )
-    return ak_key, ak.public_bytes(Encoding.PEM) + root.public_bytes(Encoding.PEM), (
-        root.public_bytes(Encoding.PEM)
+    return (
+        ak_key,
+        ak.public_bytes(Encoding.PEM) + root.public_bytes(Encoding.PEM),
+        (root.public_bytes(Encoding.PEM)),
     )
 
 
@@ -202,15 +204,11 @@ def _report(
     if rsa_ak:
         rsa_key, chain_pem, root_pem = _rsa_ak_chain()
         sig_blob = _tpmt_rsassa(rsa_key.sign(attest, padding.PKCS1v15(), SHA256()))
-        ak_pem = rsa_key.public_key().public_bytes(
-            Encoding.PEM, PublicFormat.SubjectPublicKeyInfo
-        )
+        ak_pem = rsa_key.public_key().public_bytes(Encoding.PEM, PublicFormat.SubjectPublicKeyInfo)
     else:
         ec_key, chain_pem, root_pem = _ec_ak_chain()
         sig_blob = _tpmt_ecdsa(ec_key.sign(attest, ec.ECDSA(SHA256())))
-        ak_pem = ec_key.public_key().public_bytes(
-            Encoding.PEM, PublicFormat.SubjectPublicKeyInfo
-        )
+        ak_pem = ec_key.public_key().public_bytes(Encoding.PEM, PublicFormat.SubjectPublicKeyInfo)
 
     report = AttestationReport(
         platform="tpm",
@@ -304,9 +302,7 @@ def test_untrusted_root_is_rejected() -> None:
     stranger_key = ec.generate_private_key(ec.SECP256R1())
     stranger = make_ec_cert("stranger", "stranger", stranger_key, stranger_key)
     with pytest.raises(AttestationFailed):
-        verify_tpm_report(
-            report, NONCE, trusted_roots_pem=stranger.public_bytes(Encoding.PEM)
-        )
+        verify_tpm_report(report, NONCE, trusted_roots_pem=stranger.public_bytes(Encoding.PEM))
 
 
 def test_tampered_attest_is_rejected() -> None:
@@ -396,12 +392,8 @@ def test_read_pcrs_iterates_the_digest_list_once() -> None:
     against.
     """
     pcrs = [bytes([i]) * 32 for i in range(8)]
-    ectx = SimpleNamespace(
-        pcr_read=lambda _sel: (None, None, SimpleNamespace(digests=pcrs))
-    )
-    assert TpmProvider._read_pcrs(ectx, _FakeSelection) == hashlib.sha256(
-        b"".join(pcrs)
-    ).digest()
+    ectx = SimpleNamespace(pcr_read=lambda _sel: (None, None, SimpleNamespace(digests=pcrs)))
+    assert TpmProvider._read_pcrs(ectx, _FakeSelection) == hashlib.sha256(b"".join(pcrs)).digest()
 
 
 def test_read_pcrs_refuses_a_short_read() -> None:

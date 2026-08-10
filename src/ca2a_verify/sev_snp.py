@@ -28,9 +28,7 @@ from ca2a_runtime.tee.sev_snp import SEV_GUEST_DEVICE, SIG_ALGO_ECDSA_P384_SHA38
 __all__ = ["SEV_GUEST_DEVICE", "verify_cert_chain", "verify_sev_snp_report"]
 
 
-def verify_cert_chain(
-    chain: list[x509.Certificate], trusted_roots: list[x509.Certificate]
-) -> None:
+def verify_cert_chain(chain: list[x509.Certificate], trusted_roots: list[x509.Certificate]) -> None:
     """Verify a leaf-to-root certificate chain against a set of trusted roots.
 
     ``chain`` is ordered leaf first (VCEK), root last (ARK). Delegates to
@@ -46,9 +44,7 @@ def verify_cert_chain(
     try:
         _shared_verify_cert_chain(chain, trusted_roots)
     except CertChainError as exc:
-        raise AttestationFailed(
-            "certificate chain verification failed", detail=str(exc)
-        ) from exc
+        raise AttestationFailed("certificate chain verification failed", detail=str(exc)) from exc
 
 
 def verify_sev_snp_report(

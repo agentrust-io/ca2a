@@ -63,7 +63,9 @@ def _trusted(keys: list) -> list:
 
 
 def test_root_record_is_schema_valid_when_signed() -> None:
-    record = build_trace_record(subject="spiffe://ca2a.example/root", iat=_NOW, context=_software_context())
+    record = build_trace_record(
+        subject="spiffe://ca2a.example/root", iat=_NOW, context=_software_context()
+    )
     assert "delegation" not in record
     assert record["eat_profile"] == EAT_PROFILE
     signed = sign_trace_record(record, generate_key())
@@ -73,7 +75,9 @@ def test_root_record_is_schema_valid_when_signed() -> None:
 
 def test_non_root_record_carries_delegation_block() -> None:
     parent = sign_trace_record(
-        build_trace_record(subject="spiffe://ca2a.example/root", iat=_NOW, context=_software_context()),
+        build_trace_record(
+            subject="spiffe://ca2a.example/root", iat=_NOW, context=_software_context()
+        ),
         generate_key(),
     )
     child = build_trace_record(

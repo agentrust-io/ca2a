@@ -78,9 +78,7 @@ def snp_report_data(public_key: str, nonce: str) -> bytes:
     The 32-byte binding digest, zero-padded to the field width. See
     :mod:`ca2a_runtime.tee.binding` and ``docs/spec/attestation.md``.
     """
-    return pad_report_data(
-        derive_binding(SNP_PREFIX, public_key, nonce), TSM_REPORT_DATA_LEN
-    )
+    return pad_report_data(derive_binding(SNP_PREFIX, public_key, nonce), TSM_REPORT_DATA_LEN)
 
 
 @dataclass(frozen=True)

@@ -105,8 +105,11 @@ def test_cross_check_subject_mismatch() -> None:
     chain = build_chain([frozenset({"cap:a"}), frozenset({"cap:a"})])
     records = _records_from_chain(chain)
     bad = DelegationRecord(
-        records[1].record_id, records[1].credential_id, "WRONG-SUBJECT",
-        records[1].scope, records[1].parent_record_hash,
+        records[1].record_id,
+        records[1].credential_id,
+        "WRONG-SUBJECT",
+        records[1].scope,
+        records[1].parent_record_hash,
     )
     records[1] = bad
     with pytest.raises(ProvenanceLinkBroken):
