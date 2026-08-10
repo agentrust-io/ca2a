@@ -14,17 +14,20 @@ import copy
 import re
 from typing import Any
 
+from ca2a_runtime.attestation import ChannelOffer
 from ca2a_runtime.delegation.credential import DelegationCredential
 from ca2a_runtime.errors import InvalidCredential, TransportError
 from ca2a_runtime.peer import PeerRequest
 from ca2a_runtime.transport.constants import (
     CA2A_METADATA_KEYS,
+    KEY_CALLER_OFFER,
     KEY_DELEGATION_CHAIN,
     KEY_PARENT_RECORD_HASH,
     KEY_RECORD_ID,
     KEY_REQUESTED_CAPABILITY,
     KEY_SEALED_PAYLOAD,
 )
+from ca2a_runtime.transport.wire import parse_channel_offer, serialize_channel_offer
 
 # Unpadded base64url alphabet only; padding is added during decode, so an
 # embedded "=" (or any other character) is rejected as malformed.
@@ -178,12 +181,21 @@ def parse_peer_request(
             raise TransportError("sealed_payload must be a base64url string or null")
         sealed_payload = _b64url_decode(sealed_raw)
 
+    # Optional, unlike parent_record_hash: an absent key means a caller that does
+    # not attest, which is the common case and must parse. A key that is present
+    # but not an offer is malformed and fails closed rather than being dropped,
+    # so a caller cannot get itself treated as unattested by sending rubbish.
+    caller_offer: ChannelOffer | None = None
+    if KEY_CALLER_OFFER in meta and meta[KEY_CALLER_OFFER] is not None:
+        caller_offer = parse_channel_offer(meta[KEY_CALLER_OFFER])
+
     return PeerRequest(
         chain=chain,
         requested_capability=capability,
         record_id=record_id,
         sealed_payload=sealed_payload,
         parent_record_hash=parent_record_hash,
+        caller_offer=caller_offer,
     )
 
 
@@ -237,4 +249,8 @@ def attach_ca2a_metadata(
         meta.pop(KEY_SEALED_PAYLOAD, None)
     else:
         meta[KEY_SEALED_PAYLOAD] = _b64url_encode(request.sealed_payload)
+    if request.caller_offer is None:
+        meta.pop(KEY_CALLER_OFFER, None)
+    else:
+        meta[KEY_CALLER_OFFER] = serialize_channel_offer(request.caller_offer)
     return out

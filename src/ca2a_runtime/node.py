@@ -14,17 +14,33 @@ from __future__ import annotations
 
 from typing import Any
 
-from ca2a_runtime.attestation import ChannelOffer, attest_channel
+from ca2a_runtime.attestation import ChannelOffer, Verifier, attest_channel
+from ca2a_runtime.challenge import DEFAULT_TTL_SECONDS, generate_secret, issue_challenge
 from ca2a_runtime.channel import generate_channel_keypair
-from ca2a_runtime.errors import TransportError
-from ca2a_runtime.peer import PeerResult, handle_peer_request
+from ca2a_runtime.errors import ConfigError, TransportError
+from ca2a_runtime.peer import (
+    REQUIRE_HARDWARE,
+    REQUIRE_NONE,
+    REQUIREMENT_VALUES,
+    PeerResult,
+    handle_peer_request,
+)
 from ca2a_runtime.policy import Policy
 from ca2a_runtime.tee.base import BaseProvider
 from ca2a_runtime.tee.software import SoftwareProvider
 
 
 class PeerNode:
-    """A callee holding a stable enclave channel key, a policy, and a provider."""
+    """A callee holding a stable enclave channel key, a policy, and a provider.
+
+    Also holds the secret behind the challenges it issues for mutual attestation.
+    The secret is per-process and never persisted: a restarted node is a different
+    enclave, and a challenge it never issued should not verify.
+
+    ``require_caller_attestation`` defaults to demanding nothing of the caller (see
+    :data:`ca2a_runtime.peer.REQUIRE_NONE`). A deployment that wants "hardware or
+    nothing" can say so; it is not said for it.
+    """
 
     def __init__(
         self,
@@ -32,15 +48,40 @@ class PeerNode:
         *,
         provider: BaseProvider | None = None,
         max_depth: int = 8,
+        require_caller_attestation: str = REQUIRE_NONE,
+        caller_verifier: Verifier | None = None,
+        challenge_ttl_seconds: int = DEFAULT_TTL_SECONDS,
     ) -> None:
+        if require_caller_attestation not in REQUIREMENT_VALUES:
+            raise ConfigError(
+                f"require_caller_attestation must be one of {sorted(REQUIREMENT_VALUES)}, "
+                f"got {require_caller_attestation!r}"
+            )
+        if require_caller_attestation == REQUIRE_HARDWARE and caller_verifier is None:
+            # verify_offer already refuses a hardware report with no verifier, so
+            # this would fail on every call. Failing at construction turns a
+            # runtime surprise into a misconfiguration the operator sees at once.
+            raise ConfigError(
+                "require_caller_attestation='hardware' needs a caller_verifier",
+                detail="a hardware report cannot be appraised without one, so every "
+                "call would be refused",
+            )
         self.policy = policy
         self.provider: BaseProvider = provider if provider is not None else SoftwareProvider()
         self.max_depth = max_depth
+        self.require_caller_attestation = require_caller_attestation
+        self.caller_verifier = caller_verifier
+        self.challenge_ttl_seconds = challenge_ttl_seconds
         self._private_key, self.channel_public_key = generate_channel_keypair()
+        self._challenge_secret = generate_secret()
 
     def offer(self, nonce: str) -> ChannelOffer:
         """Re-attest the stable enclave channel key under a caller-supplied nonce."""
         return attest_channel(self.provider, self.channel_public_key, nonce)
+
+    def issue_challenge(self) -> str:
+        """Issue a challenge for the caller to bind its own channel key into."""
+        return issue_challenge(self._challenge_secret, ttl_seconds=self.challenge_ttl_seconds)
 
     def handle(self, message: dict[str, Any]) -> PeerResult:
         """Parse a cA2A-profile A2A message and run the full inbound pipeline."""
@@ -54,4 +95,7 @@ class PeerNode:
             policy=self.policy,
             enclave_private_key=self._private_key,
             max_depth=self.max_depth,
+            challenge_secret=self._challenge_secret,
+            require_caller_attestation=self.require_caller_attestation,
+            caller_verifier=self.caller_verifier,
         )

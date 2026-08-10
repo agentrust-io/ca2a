@@ -18,6 +18,19 @@ from typing import Any
 from ca2a_runtime.delegation.credential import DelegationCredential, canonical_bytes
 from ca2a_runtime.errors import ProvenanceLinkBroken
 
+#: What the callee learned about the *caller's* own runtime at this hop. Always
+#: present on a record, and deliberately four values rather than three: a peer
+#: that offered nothing and a peer whose offer did not appraise are different
+#: facts, and neither may be readable as the software-only case.
+CALLER_NOT_OFFERED = "not_offered"
+CALLER_FAILED = "failed"
+CALLER_SOFTWARE_ONLY = "software-only"
+CALLER_HARDWARE = "hardware"
+
+CALLER_ATTESTATION_VALUES = frozenset(
+    {CALLER_NOT_OFFERED, CALLER_FAILED, CALLER_SOFTWARE_ONLY, CALLER_HARDWARE}
+)
+
 
 @dataclass(frozen=True)
 class DelegationRecord:
@@ -29,6 +42,16 @@ class DelegationRecord:
     evidence. The denial fields are omitted from the hashed body on an allow
     record, so allow-record hashes are unchanged from records emitted before
     denial records existed.
+
+    ``caller_attestation`` is the exception to that omit-when-absent rule and is
+    always in the hashed body. It records what the callee established about the
+    caller's own runtime (see the ``CALLER_*`` values above). Omitting it when
+    nothing was appraised would mean an auditor could not tell a record emitted
+    by a peer that checked and found nothing from one emitted by a peer that
+    never checked, which is precisely the reading this field exists to prevent.
+    The cost is that it changes the hash of every record, including those emitted
+    before the field existed; the example DAGs in ``examples/`` were regenerated
+    for it.
     """
 
     record_id: str
@@ -40,6 +63,14 @@ class DelegationRecord:
     requested_capability: str | None = None
     effective_scope: frozenset[str] | None = None
     denial_reason: str | None = None
+    caller_attestation: str = CALLER_NOT_OFFERED
+
+    def __post_init__(self) -> None:
+        if self.caller_attestation not in CALLER_ATTESTATION_VALUES:
+            raise ValueError(
+                f"caller_attestation must be one of {sorted(CALLER_ATTESTATION_VALUES)}, "
+                f"got {self.caller_attestation!r}"
+            )
 
     def body(self) -> dict[str, Any]:
         """The hashed portion of the record."""
@@ -49,6 +80,7 @@ class DelegationRecord:
             "subject": self.subject,
             "scope": sorted(self.scope),
             "parent_record_hash": self.parent_record_hash,
+            "caller_attestation": self.caller_attestation,
         }
         if self.decision != "allow":
             body["decision"] = self.decision
@@ -74,14 +106,22 @@ def record_for(
     credential: DelegationCredential,
     record_id: str,
     parent_record_hash: str | None,
+    *,
+    caller_attestation: str = CALLER_NOT_OFFERED,
 ) -> DelegationRecord:
-    """Build the provenance record a hop emits for a delegation credential."""
+    """Build the provenance record a hop emits for a delegation credential.
+
+    ``caller_attestation`` defaults to ``"not_offered"``, which is the honest
+    value for every path that is not an inbound peer call over a transport: a
+    locally built chain was never offered an attestation to appraise.
+    """
     return DelegationRecord(
         record_id=record_id,
         credential_id=credential.credential_id,
         subject=credential.subject,
         scope=credential.scope,
         parent_record_hash=parent_record_hash,
+        caller_attestation=caller_attestation,
     )
 
 
@@ -93,6 +133,7 @@ def denial_record_for(
     requested_capability: str,
     effective_scope: frozenset[str],
     reason: str,
+    caller_attestation: str = CALLER_NOT_OFFERED,
 ) -> DelegationRecord:
     """Build the provenance record a hop emits when it refuses a call.
 
@@ -100,6 +141,10 @@ def denial_record_for(
     the chain sees the refusal in place rather than a gap. It states the
     capability that was requested and the effective scope it fell outside of,
     which is what makes the refusal checkable offline against the signed chain.
+
+    A refusal driven by the caller's attestation rather than by scope passes
+    ``caller_attestation="failed"``, so the record says which of the two checks
+    stopped the call.
     """
     return DelegationRecord(
         record_id=record_id,
@@ -111,6 +156,7 @@ def denial_record_for(
         requested_capability=requested_capability,
         effective_scope=effective_scope,
         denial_reason=reason,
+        caller_attestation=caller_attestation,
     )
 
 

@@ -3,43 +3,47 @@
     {
       "record_id": "rec-0-orchestrator",
       "credential_id": "cred-0-orchestrator",
-      "subject": "2e79eaa089777f566934b15ebd93af8f007f6bdad0a70047f7c21079b5771f31",
+      "subject": "15b96b4b80c8a1170faf3aef96f8686c43f0fc3113327e4e6c738870b9621ae4",
       "scope": [
         "task:read",
         "task:write",
         "tool:purchase",
         "tool:search"
       ],
-      "parent_record_hash": null
+      "parent_record_hash": null,
+      "caller_attestation": "not_offered"
     },
     {
       "record_id": "rec-1-researcher",
       "credential_id": "cred-1-researcher",
-      "subject": "cc141e5c3eca4d9fb361e78737c326ae71816a20408fb604414d5af0d7991203",
+      "subject": "68fef2e89c77143d686585c11207bc46218fa0934deaac76ea2520b5136cb3f6",
       "scope": [
         "task:read",
         "tool:purchase",
         "tool:search"
       ],
-      "parent_record_hash": "d7780be8f7359f0a544dc9ce46369f4a02ae91c65c5544149ed28bb42d0bf305"
+      "parent_record_hash": "fdb29e6fa794702a4777cb1be2c17210e5e9b79058115bac5d4303ce4acb5722",
+      "caller_attestation": "not_offered"
     },
     {
       "record_id": "rec-2-retriever",
       "credential_id": "cred-2-retriever",
-      "subject": "21911b98fd592dd3da353f25080bb93bc668d09e06fc8a5f133875064d73a96b",
+      "subject": "9b127317920239acf0e21df8fc12171bfc2f46e7ddd2fff92fd6928e76103da6",
       "scope": [
         "tool:search"
       ],
-      "parent_record_hash": "3c80a30e428bc0bb55fe53bea23a4f9676ebf4b7ea84d9018670791ddc49acff"
+      "parent_record_hash": "35b36816653f1a93a475cf218bcbec84c550e626bbd56169150daffb1ed33c68",
+      "caller_attestation": "not_offered"
     },
     {
       "record_id": "rec-denied-purchase",
       "credential_id": "cred-2-retriever",
-      "subject": "21911b98fd592dd3da353f25080bb93bc668d09e06fc8a5f133875064d73a96b",
+      "subject": "9b127317920239acf0e21df8fc12171bfc2f46e7ddd2fff92fd6928e76103da6",
       "scope": [
         "tool:search"
       ],
-      "parent_record_hash": "9064b60d017e4de781a5cdfdc196c5593e77ae4488dd4b91dbfc086d76ab1375",
+      "parent_record_hash": "2f96e5c7e151017fd6a7e278fa97f124d71f5d24c39b23a3b21b9e7f42588ebf",
+      "caller_attestation": "not_offered",
       "decision": "deny",
       "requested_capability": "tool:purchase",
       "effective_scope": [

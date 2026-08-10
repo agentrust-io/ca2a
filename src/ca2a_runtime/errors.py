@@ -58,8 +58,24 @@ class AttestationUnsupported(CA2AError):
 
 
 class AttestationFailed(CA2AError):
+    """An attestation report, challenge, or channel offer did not appraise.
+
+    Carries the provenance record for the refusal on ``record`` when it was
+    raised somewhere with enough context to build one (the callee refusing an
+    unattested or badly attested caller). Elsewhere ``record`` is None: the
+    challenge and offer primitives have no delegation chain to attribute a
+    refusal to. As with :class:`ScopeNotPermitted`, the call still fails closed
+    and the record is evidence of the refusal, not a way to continue.
+    """
+
     code = "ATTESTATION_FAILED"
     http_status = 412
+
+    def __init__(
+        self, message: str, *, detail: str | None = None, record: object | None = None
+    ) -> None:
+        super().__init__(message, detail=detail)
+        self.record = record
 
 
 class SealedChannelError(CA2AError):

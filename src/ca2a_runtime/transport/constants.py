@@ -16,6 +16,12 @@ KEY_RECORD_ID = f"{EXTENSION_URI}/record_id"
 KEY_PARENT_RECORD_HASH = f"{EXTENSION_URI}/parent_record_hash"
 KEY_SEALED_PAYLOAD = f"{EXTENSION_URI}/sealed_payload"
 
+#: The caller's own attested channel key, bound to a challenge the callee issued.
+#: Optional, unlike ``parent_record_hash``: a caller that cannot attest omits the
+#: key entirely rather than sending null, and is still served by default. Making it
+#: required would break every caller that exists today.
+KEY_CALLER_OFFER = f"{EXTENSION_URI}/caller_offer"
+
 CA2A_METADATA_KEYS = frozenset(
     {
         KEY_DELEGATION_CHAIN,
@@ -23,5 +29,6 @@ CA2A_METADATA_KEYS = frozenset(
         KEY_RECORD_ID,
         KEY_PARENT_RECORD_HASH,
         KEY_SEALED_PAYLOAD,
+        KEY_CALLER_OFFER,
     }
 )

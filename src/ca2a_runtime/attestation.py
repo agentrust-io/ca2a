@@ -11,6 +11,10 @@ the peer's measured enclave holds. This module is that handshake:
 - the caller calls :func:`verify_offer` to check the report binds the offered key
   to that nonce, then :func:`seal_to_peer` to seal a payload to it.
 
+The same primitives run the other direction: a callee that issued a challenge
+appraises the caller's own attested channel key with :func:`appraise_caller`. See
+``docs/spec/mutual-attestation.md`` for what that adds and what it still does not.
+
 Two assurance modes, never blended. In ``software-only`` mode there is no
 hardware guarantee: :func:`verify_offer` returns ``assurance="none"`` and the
 seal protects against a passive network observer only. On a confidential VM a
@@ -27,6 +31,7 @@ from dataclasses import dataclass
 
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 
+from ca2a_runtime.challenge import verify_challenge
 from ca2a_runtime.channel import SealedChannel, generate_channel_keypair
 from ca2a_runtime.errors import AttestationFailed
 from ca2a_runtime.tee.base import AttestationReport, BaseProvider
@@ -114,6 +119,34 @@ def verify_offer(
         assurance="hardware",
         measurement=measurement,
     )
+
+
+def appraise_caller(
+    offer: ChannelOffer,
+    *,
+    challenge_secret: bytes,
+    verifier: Verifier | None = None,
+) -> VerifiedPeer:
+    """Appraise a *caller's* offer against a challenge this peer issued.
+
+    The mirror image of :func:`verify_offer`, and the two differ in where the
+    expected nonce comes from. A caller appraising a callee remembers the nonce it
+    sent, so :func:`verify_offer` compares the report against a value the caller
+    already holds. A callee keeps no such state: the challenge scheme is
+    stateless by design (see :mod:`ca2a_runtime.challenge`), so the nonce arrives
+    inside the report and the callee re-derives whether it is one of its own.
+
+    That makes the order here load-bearing. ``verify_challenge`` runs first and is
+    the substantive check: it recomputes the MAC under this peer's secret and
+    rejects an expired window, which is what establishes that this peer issued
+    the nonce and issued it recently. Only then is the nonce trustworthy enough to
+    appraise the report against, so passing ``expected_nonce=offer.report.nonce``
+    into :func:`verify_offer` is not the circular check it looks like: by that
+    point the nonce is authenticated, and what remains for ``verify_offer`` to do
+    is bind the offered channel key to it and establish the assurance level.
+    """
+    verify_challenge(challenge_secret, offer.report.nonce)
+    return verify_offer(offer, expected_nonce=offer.report.nonce, verifier=verifier)
 
 
 def seal_to_peer(peer: VerifiedPeer, payload: bytes, *, aad: bytes = b"") -> bytes:

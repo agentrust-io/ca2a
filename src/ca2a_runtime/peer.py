@@ -5,15 +5,22 @@ When a peer presents a delegation chain and requests a capability, the callee:
 1. verifies the chain (signature, continuity, attenuation, depth, replay);
 2. computes the effective scope as the leaf's delegated scope intersected with
    the callee's local policy;
-3. enforces: the requested capability must be in the effective scope;
-4. emits a provenance record for the accepted hop, linked to its parent.
+3. appraises what the caller is *running*, if it offered an attestation bound to
+   a challenge this callee issued (see ``docs/spec/mutual-attestation.md``);
+4. enforces: the requested capability must be in the effective scope;
+5. emits a provenance record for the accepted hop, linked to its parent.
+
+Steps 1-2 are authorization and say what the caller is *allowed to ask for*; step
+3 is appraisal and says what the caller *is*. They are independent, and both run
+before the callee opens the sealed payload -- appraising afterwards would mean an
+unattested caller had already had its work done.
 
 `enforce_peer_call` is the enforcement decision core. `handle_peer_request`
-composes it into the full transport-agnostic inbound pipeline: verify, enforce,
-open any sealed payload with the enclave key, and emit a provenance record. A
-transport (an A2A server) parses its wire format into a `PeerRequest` and calls
-this; cA2A does not define the transport itself, only what the peer does with a
-parsed request.
+composes it into the full transport-agnostic inbound pipeline: verify, appraise,
+enforce, open any sealed payload with the enclave key, and emit a provenance
+record. A transport (an A2A server) parses its wire format into a `PeerRequest`
+and calls this; cA2A does not define the transport itself, only what the peer
+does with a parsed request.
 """
 
 from __future__ import annotations
@@ -22,11 +29,46 @@ from dataclasses import dataclass
 
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 
+from ca2a_runtime.attestation import ChannelOffer, Verifier, appraise_caller
 from ca2a_runtime.channel import open_sealed
 from ca2a_runtime.delegation.credential import DelegationCredential, verify_chain
-from ca2a_runtime.errors import ScopeNotPermitted, SealedChannelError
+from ca2a_runtime.errors import (
+    AttestationFailed,
+    ConfigError,
+    ScopeNotPermitted,
+    SealedChannelError,
+)
 from ca2a_runtime.policy import Policy
-from ca2a_runtime.provenance import DelegationRecord, denial_record_for, record_for
+from ca2a_runtime.provenance import (
+    CALLER_FAILED,
+    CALLER_HARDWARE,
+    CALLER_NOT_OFFERED,
+    CALLER_SOFTWARE_ONLY,
+    DelegationRecord,
+    denial_record_for,
+    record_for,
+)
+
+#: How much the callee demands of the caller's own runtime.
+#:
+#: ``"none"`` is the default and demands nothing: the outcome is recorded and the
+#: call proceeds. It is the default because cA2A is alpha and almost no caller can
+#: attest yet, so a callee that refused unattested callers out of the box would be
+#: a callee nobody could talk to -- and a control that breaks the common case gets
+#: switched off and never switched back on. Strictness is opt-in, one rung at a
+#: time: ``"any"`` requires an offer that appraises (software assurance is enough),
+#: ``"hardware"`` requires the assurance to be hardware-backed.
+#:
+#: An offer that is *present and does not appraise* is refused at every rung,
+#: including ``"none"``. Demanding nothing means accepting a caller that proves
+#: nothing; it does not mean accepting a broken proof, because then a
+#: misconfigured attestation path would look exactly like a caller that never had
+#: one.
+REQUIRE_NONE = "none"
+REQUIRE_ANY = "any"
+REQUIRE_HARDWARE = "hardware"
+
+REQUIREMENT_VALUES = frozenset({REQUIRE_NONE, REQUIRE_ANY, REQUIRE_HARDWARE})
 
 
 def effective_scope(
@@ -57,14 +99,51 @@ def enforce_peer_call(
     record_id: str,
     parent_record_hash: str | None = None,
     max_depth: int = 8,
+    caller_attestation: str = CALLER_NOT_OFFERED,
 ) -> PeerDecision:
     """Verify, intersect with local policy, enforce, and emit a provenance record.
 
     Raises ScopeNotPermitted if the requested capability is not in the effective
     scope, and the underlying CA2AError if the chain does not verify. On accept,
     returns a PeerDecision carrying the linked provenance record.
+
+    ``caller_attestation`` is stamped onto whichever record this emits. Callers
+    that appraise the peer's runtime pass the outcome they established;
+    :func:`handle_peer_request` does exactly that. The default is the honest value
+    for a path that appraised nothing.
     """
     effective = effective_scope(chain, policy, max_depth=max_depth)
+    return decide_capability(
+        chain,
+        requested_capability,
+        effective,
+        record_id=record_id,
+        parent_record_hash=parent_record_hash,
+        caller_attestation=caller_attestation,
+    )
+
+
+def decide_capability(
+    chain: list[DelegationCredential],
+    requested_capability: str,
+    effective: frozenset[str],
+    *,
+    record_id: str,
+    parent_record_hash: str | None = None,
+    caller_attestation: str = CALLER_NOT_OFFERED,
+) -> PeerDecision:
+    """Enforce the capability against an already-computed effective scope.
+
+    Split out of :func:`enforce_peer_call` so the inbound pipeline can appraise
+    the caller's runtime *between* verifying the chain and deciding the call,
+    without verifying the chain twice. That ordering is what lets every emitted
+    record -- allow or deny -- state the appraisal outcome accurately, rather than
+    a scope refusal claiming nothing was offered when something was.
+
+    The chain must already be verified: this function emits provenance, and a
+    record built from an unverified credential is a claim about authority nobody
+    checked.
+    """
     if requested_capability not in effective:
         reason = f"capability {requested_capability!r} is not in the effective scope"
         raise ScopeNotPermitted(
@@ -80,9 +159,15 @@ def enforce_peer_call(
                 requested_capability=requested_capability,
                 effective_scope=effective,
                 reason=reason,
+                caller_attestation=caller_attestation,
             ),
         )
-    record = record_for(chain[-1], record_id=record_id, parent_record_hash=parent_record_hash)
+    record = record_for(
+        chain[-1],
+        record_id=record_id,
+        parent_record_hash=parent_record_hash,
+        caller_attestation=caller_attestation,
+    )
     return PeerDecision(
         effective_scope=effective,
         granted_capability=requested_capability,
@@ -104,6 +189,10 @@ class PeerRequest:
     record_id: str
     sealed_payload: bytes | None = None
     parent_record_hash: str | None = None
+    caller_offer: ChannelOffer | None = None
+    """The caller's own attested channel key, bound to a challenge this callee
+    issued. Optional: a caller that cannot attest omits it and, by default, is
+    still served. Present-and-unappraisable is refused; see :data:`REQUIRE_NONE`."""
 
 
 @dataclass(frozen=True)
@@ -114,6 +203,91 @@ class PeerResult:
     granted_capability: str
     record: DelegationRecord
     payload: bytes | None
+    caller_attestation: str = CALLER_NOT_OFFERED
+    """What the callee established about the caller's runtime. Also on ``record``,
+    where it is part of the portable evidence rather than just this return value."""
+
+
+def appraise_caller_runtime(
+    request: PeerRequest,
+    effective: frozenset[str],
+    *,
+    requirement: str = REQUIRE_NONE,
+    challenge_secret: bytes | None = None,
+    caller_verifier: Verifier | None = None,
+) -> str:
+    """Appraise the caller's offer and return the recorded outcome, or refuse.
+
+    Returns one of the ``CALLER_*`` values. Raises :class:`AttestationFailed`,
+    carrying a linked denial record, when the caller does not meet
+    ``requirement`` or presents an offer that does not appraise. The chain must
+    already be verified, for the same reason as :func:`decide_capability`: this
+    can emit provenance.
+    """
+    if requirement not in REQUIREMENT_VALUES:
+        raise ConfigError(
+            f"require_caller_attestation must be one of {sorted(REQUIREMENT_VALUES)}, "
+            f"got {requirement!r}"
+        )
+
+    def refuse(reason: str, *, outcome: str, detail: str | None = None) -> AttestationFailed:
+        return AttestationFailed(
+            reason,
+            detail=detail,
+            record=denial_record_for(
+                request.chain[-1],
+                record_id=request.record_id,
+                parent_record_hash=request.parent_record_hash,
+                requested_capability=request.requested_capability,
+                effective_scope=effective,
+                reason=reason,
+                caller_attestation=outcome,
+            ),
+        )
+
+    if request.caller_offer is None:
+        if requirement == REQUIRE_NONE:
+            return CALLER_NOT_OFFERED
+        raise refuse(
+            "the callee requires caller attestation and the caller offered none",
+            outcome=CALLER_NOT_OFFERED,
+            detail=f"require_caller_attestation={requirement!r}",
+        )
+
+    if challenge_secret is None:
+        # The caller attested to a challenge, but this callee has no secret to
+        # check it against, so it cannot have issued that challenge. Refusing is
+        # the only honest answer: accepting would record an appraisal that never
+        # happened, and reporting "not offered" would discard a proof that was.
+        raise refuse(
+            "the caller offered an attestation but this callee issues no challenges",
+            outcome=CALLER_FAILED,
+            detail="no challenge secret is configured, so no offer can be appraised",
+        )
+
+    try:
+        peer = appraise_caller(
+            request.caller_offer,
+            challenge_secret=challenge_secret,
+            verifier=caller_verifier,
+        )
+    except AttestationFailed as exc:
+        raise refuse(
+            f"the caller's attestation did not appraise: {exc}",
+            outcome=CALLER_FAILED,
+            detail=exc.detail,
+        ) from exc
+
+    outcome = CALLER_HARDWARE if peer.assurance == "hardware" else CALLER_SOFTWARE_ONLY
+    if requirement == REQUIRE_HARDWARE and outcome != CALLER_HARDWARE:
+        # The appraisal succeeded, so record what was actually established rather
+        # than "failed"; the reason says it was the floor that refused the call.
+        raise refuse(
+            "the callee requires a hardware-attested caller",
+            outcome=outcome,
+            detail=f"the caller appraised at assurance {peer.assurance!r}",
+        )
+    return outcome
 
 
 def handle_peer_request(
@@ -122,22 +296,46 @@ def handle_peer_request(
     policy: Policy,
     enclave_private_key: X25519PrivateKey | None = None,
     max_depth: int = 8,
+    challenge_secret: bytes | None = None,
+    require_caller_attestation: str = REQUIRE_NONE,
+    caller_verifier: Verifier | None = None,
 ) -> PeerResult:
     """Run the full inbound pipeline for a parsed peer request.
 
     Verifies the delegation chain, intersects the delegated scope with the local
-    policy and enforces the requested capability, opens any sealed payload with
-    the enclave-bound key, and emits a linked provenance record. Fails closed:
-    any verification or authorization failure raises the relevant CA2AError and
-    no payload is returned.
+    policy, appraises what the caller is running, enforces the requested
+    capability, opens any sealed payload with the enclave-bound key, and emits a
+    linked provenance record. Fails closed: any verification, appraisal, or
+    authorization failure raises the relevant CA2AError and no payload is
+    returned.
+
+    **The step order is the security property, not an implementation detail.**
+    The payload is sealed to this callee's channel key, so the callee *could* read
+    it the instant it arrives; appraisal therefore has to happen before
+    :func:`~ca2a_runtime.channel.open_sealed`, not merely before the response is
+    written. Appraising afterwards would mean an unattested caller had already had
+    its work done, and every guarantee this function offers would be a report on
+    something that already happened. ``tests/unit/test_mutual_attestation.py``
+    asserts the payload is never opened when appraisal refuses, so swapping these
+    two calls fails the suite.
     """
-    decision = enforce_peer_call(
+    effective = effective_scope(request.chain, policy, max_depth=max_depth)
+
+    caller_attestation = appraise_caller_runtime(
+        request,
+        effective,
+        requirement=require_caller_attestation,
+        challenge_secret=challenge_secret,
+        caller_verifier=caller_verifier,
+    )
+
+    decision = decide_capability(
         request.chain,
         request.requested_capability,
-        policy=policy,
+        effective,
         record_id=request.record_id,
         parent_record_hash=request.parent_record_hash,
-        max_depth=max_depth,
+        caller_attestation=caller_attestation,
     )
 
     payload: bytes | None = None
@@ -151,4 +349,5 @@ def handle_peer_request(
         granted_capability=decision.granted_capability,
         record=decision.record,
         payload=payload,
+        caller_attestation=caller_attestation,
     )

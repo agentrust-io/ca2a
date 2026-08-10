@@ -5,7 +5,11 @@ via ``attach_ca2a_metadata`` to build real messages."""
 
 from __future__ import annotations
 
+import json
+import socket
 import threading
+import urllib.error
+import urllib.request
 
 import pytest
 
@@ -22,6 +26,22 @@ from ca2a_runtime.node import PeerNode
 from ca2a_runtime.peer import PeerRequest
 from ca2a_runtime.policy import LocalPolicy
 from ca2a_runtime.transport import a2a_adapter, client, server, wire
+
+
+def _post_bytes(url: str, raw: bytes) -> tuple[int, dict]:
+    """POST raw bytes, bypassing the client's JSON encoding.
+
+    The client only ever sends well-formed messages, so testing what the server
+    does with a body it should refuse needs to go around it.
+    """
+    req = urllib.request.Request(
+        url, data=raw, headers={"Content-Type": "application/json"}, method="POST"
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:  # noqa: S310
+            return resp.status, json.loads(resp.read())
+    except urllib.error.HTTPError as exc:
+        return exc.code, json.loads(exc.read())
 
 
 @pytest.mark.parametrize("url", ["file:///etc/passwd", "ftp://host/x", "gopher://host"])
@@ -142,6 +162,53 @@ def test_http_live_call_end_to_end() -> None:
         with pytest.raises(CA2AError) as exc_info:
             client.send_task(base, chain, "write", "r1")
         assert exc_info.value.code == "SCOPE_NOT_PERMITTED"
+    finally:
+        srv.shutdown()
+        srv.server_close()
+
+
+def test_oversized_body_is_refused_at_the_declared_bound() -> None:
+    """The 1 MiB cap, exercised rather than asserted in a comment.
+
+    A bound with no test above it is a bound nobody has ever crossed. This one
+    declares an oversized ``Content-Length`` and sends only a few bytes, which is
+    what the guard actually inspects: the server refuses on the declared length
+    *before* reading, so an oversized body is never buffered at all. That is also
+    why the check has to go through a raw socket -- sending a real 1 MiB body
+    races the server's early refusal and the client sees a connection abort
+    rather than the 400 it sent.
+    """
+    node = PeerNode(LocalPolicy.of({"read"}))
+    srv = server.serve(node, host="127.0.0.1", port=0)
+    port = srv.server_address[1]
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        request = (
+            f"POST {server.TASK_PATH} HTTP/1.1\r\n"
+            f"Host: 127.0.0.1:{port}\r\n"
+            "Content-Type: application/json\r\n"
+            f"Content-Length: {server._MAX_BODY + 1}\r\n"
+            "Connection: close\r\n\r\n"
+        ).encode() + b'{"a":1}'
+
+        with socket.create_connection(("127.0.0.1", port), timeout=10) as sock:
+            sock.sendall(request)
+            chunks = []
+            while True:
+                chunk = sock.recv(4096)
+                if not chunk:
+                    break
+                chunks.append(chunk)
+        response = b"".join(chunks)
+        assert b"400" in response.split(b"\r\n", 1)[0]
+        assert b"BAD_REQUEST" in response
+
+        # and the boundary still opens: a body under the cap is read and parsed,
+        # then fails for its own reasons rather than for its size
+        url = f"http://127.0.0.1:{port}{server.TASK_PATH}"
+        status, body = _post_bytes(url, b'{"not":"a ca2a message"}')
+        assert status == 400
+        assert body["error"]["code"] == "TRANSPORT_ERROR"
     finally:
         srv.shutdown()
         srv.server_close()

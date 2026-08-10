@@ -12,7 +12,12 @@ from ca2a_runtime import __version__
 from ca2a_runtime.config import Ca2aConfig
 from ca2a_runtime.delegation import DelegationCredential, verify_chain
 from ca2a_runtime.errors import CA2AError, ConfigError, InvalidCredential, ProvenanceLinkBroken
-from ca2a_runtime.provenance import DelegationRecord, cross_check_chain, verify_dag
+from ca2a_runtime.provenance import (
+    CALLER_NOT_OFFERED,
+    DelegationRecord,
+    cross_check_chain,
+    verify_dag,
+)
 from ca2a_verify import verify_chain_file
 
 
@@ -93,6 +98,12 @@ def _load_records(path: str) -> list[DelegationRecord]:
                         if item.get("denial_reason") is None
                         else str(item["denial_reason"])
                     ),
+                    # A record written before this field existed hashes as
+                    # "not_offered", which is what its emitter could honestly have
+                    # claimed: it never appraised a caller.
+                    caller_attestation=str(
+                        item.get("caller_attestation", CALLER_NOT_OFFERED)
+                    ),
                 )
             )
         except (KeyError, TypeError, ValueError) as exc:
@@ -117,6 +128,9 @@ def _cmd_verify_dag(args: argparse.Namespace) -> int:
         "verified": True,
         "records": len(records),
         "leaf_scope": sorted(leaf.scope),
+        # Printed always, including "not_offered". A verifier that only mentioned
+        # attestation when there was some would let a reader skim past its absence.
+        "leaf_caller_attestation": leaf.caller_attestation,
     }
     if leaf.denied:
         # The DAG verifies AND it documents a refusal. Both are true, and a

@@ -3,23 +3,25 @@
     {
       "record_id": "rec-0",
       "credential_id": "cred-0",
-      "subject": "97e57072a0ee5ad5ca7886f5f8c8be313fc13e9fd1dfd38d18d019457bf15281",
+      "subject": "826df306d5a746066527b46a2a232eaf37bfe6919ccef788db03143af6f54e26",
       "scope": [
         "task:admin",
         "task:read",
         "task:write"
       ],
-      "parent_record_hash": null
+      "parent_record_hash": null,
+      "caller_attestation": "not_offered"
     },
     {
       "record_id": "rec-1",
       "credential_id": "cred-1",
-      "subject": "971c8fc1db051ad5ddf2884ce01cb1a8833b1c3eb1d1e14bb589ecbe8a9716fe",
+      "subject": "d7b5aa81bca7bf963eb50c3f357bed5df10d94f0537310c45840ff41d094778e",
       "scope": [
         "task:read",
         "task:write"
       ],
-      "parent_record_hash": "8eb94950658787327af0ebb91930f6f1eaa0464e53eac35cb6d116fbaf6d95cc"
+      "parent_record_hash": "f42aca71a8e07f9663f62ea5bd8f5f30ba0bdaba4f37d72ef66dbe2be9f62242",
+      "caller_attestation": "not_offered"
     }
   ]
 }
