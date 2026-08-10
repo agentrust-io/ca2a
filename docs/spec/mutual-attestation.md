@@ -57,10 +57,12 @@ it arrives. Appraising afterwards means an unattested caller has already had its
 work done. This ordering is the whole value of the change and needs a test that
 fails if the calls are swapped.
 
-**The caller's key must be used, or it is ceremony.** An attested key that is
-appraised and then discarded adds a round trip and no property. Sealing the
-response to it makes it load-bearing: the callee's answer becomes readable only by
-the enclave it appraised.
+**The caller's key is the vehicle, not the payoff.** Binding it into a report
+under the callee's challenge is what makes the caller's measurement live rather
+than replayed. The callee learns what the caller is running, and that is the
+property. An earlier draft of this document claimed the key would be ceremonial
+unless the response were sealed to it; see the withdrawn decision below for why
+that was wrong in this protocol.
 
 ## Decisions taken 2026-08-09
 
@@ -69,8 +71,25 @@ the enclave it appraised.
    exactly-once. That weaker property is stated here rather than left implied.
 2. **Record the outcome, requirement configurable.** A callee does not demand
    attestation by default and can be configured to.
-3. **The response is sealed to the caller's attested key**, so that key is
-   load-bearing rather than ceremonial.
+3. ~~The response is sealed to the caller's attested key.~~ **Withdrawn on
+   2026-08-09, before implementation.** The argument for it was that an appraised
+   key which is never used is ceremony. That was wrong on both halves.
+
+   There is no confidential response to seal. `serialize_peer_result` never
+   echoes the opened payload, by design; the response carries the **provenance
+   record**, which exists to be chained by the caller and handed to a verifier.
+   Sealing it would produce a record only one enclave can read, which defeats the
+   point of portable evidence. It would encrypt the one artifact built to be
+   shareable.
+
+   And the key was never ceremonial. It is the *vehicle*: binding it into a report
+   under the callee's challenge is what makes the caller's measurement live rather
+   than replayed. The callee learns what the caller is running, which is the
+   property mutual attestation exists for. The key does its job at appraisal time
+   whether or not anything is later encrypted to it.
+
+   If a genuinely confidential response is ever added, sealing *that* to the
+   caller's key is the right move. Encrypting the provenance record is not.
 
 ## The state problem
 
