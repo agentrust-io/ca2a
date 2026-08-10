@@ -43,6 +43,12 @@ dependencies = [
 tpm = [
     "tpm2-pytss>=2.2; sys_platform == 'linux'",
 ]
+# Bridge to the official A2A SDK (ca2a_runtime.transport.a2a_sdk). Optional:
+# the reference transport and the profile itself need no A2A implementation, and
+# the base install stays dependency-light.
+a2a-sdk = [
+    "a2a-sdk>=1.1,<2",
+]
 dev = [
     "pytest>=8.0",
     "pytest-asyncio>=0.23",
@@ -54,6 +60,9 @@ dev = [
     "pip-audit>=2.6",
     # Conformance suite: asserts emitted records pass the TRACE Level checks.
     "agentrust-trace-tests>=0.4,<0.5",
+    # So tests/unit/test_a2a_sdk_bridge.py runs in CI rather than skipping. A
+    # bridge whose tests only ever skip is a bridge nobody has exercised.
+    "a2a-sdk>=1.1,<2",
 ]
 
 [project.scripts]

@@ -15,6 +15,7 @@ cA2A is a profile on A2A, not a competing transport. A2A moves tasks and context
 | Seal gated on the appraised channel key on a live call | Implemented in software mode |
 | Seal bound to a hardware-verified measurement | Not yet: needs a real quote via the `verifier` seam (Tier 3) |
 | `ca2a start` CLI listener | Implemented: builds a `PeerNode` from a config file and serves it over the reference transport |
+| Bridge to the official `a2a-sdk` | Implemented (`ca2a_runtime.transport.a2a_sdk`, optional extra `ca2a[a2a-sdk]`): converts the SDK's protobuf `metadata` Struct to the mapping the adapter already parses, so an SDK server adopts the profile without replacing its transport |
 
 The reference HTTP server/client run a live call end to end in software mode (`assurance="none"`). That is progress on Tier 2 transport wiring and a convenience for running the peer path off hardware. It is not evidence that cA2A is attested across trust domains: that needs the hardware `verifier` seam driven by a real quote. See [LIMITATIONS.md](../../LIMITATIONS.md) and [ROADMAP.md](../../ROADMAP.md).
 
