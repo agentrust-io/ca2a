@@ -47,6 +47,24 @@ A peer that does not implement this profile MUST ignore the cA2A extension field
 
 A callee MUST verify the presented delegation chain before acting: every credential's signature, the continuity of each parent link, and the attenuation rule that a child's scope is a subset of its parent's. A callee MUST reject a chain whose depth exceeds its configured maximum, and MUST reject a credential replayed from a different chain. Verification MUST be possible offline, without contacting the issuer.
 
+### P-4a Holder binding
+
+A callee MUST NOT act on a delegation chain until the presenter has proved it controls the private key of the leaf credential's `subject`. The callee MUST issue the challenge the proof answers, and MUST reject a proof that does not commit to the callee's own identity, that challenge, the leaf `credential_id` and `subject`, the requested capability, the `record_id`, the sealed payload if one is present, and the caller's own offered channel key if one is present. A chain presented without such a proof MUST be refused with `HOLDER_PROOF_INVALID`.
+
+Holder binding MUST be evaluated after chain verification, so the subject is a key someone was genuinely delegated rather than one the caller asserted, and before the effective scope is computed under P-5, so a caller that has proved nothing never reaches policy evaluation and never elicits a signed denial record.
+
+**This is not P-6.** Appraising a caller establishes what it is *running*; holder binding establishes *whose authority it holds*. The two are independent and neither implies the other: a caller can present a flawless `caller_offer`, appraise at hardware assurance, and still be exercising a chain issued to somebody else, because an attested runtime is not a claim to anyone's delegated authority. Without P-4a a chain is a bearer credential, and chains are published deliberately — handed to auditors for offline verification under P-8, embedded in provenance DAGs, and shipped as fixtures.
+
+The binding key is already in the credential and needs no new trust root: `subject` is an Ed25519 public key whose private half the delegate must hold in order to issue child credentials, and before this it was only ever compared as a string for continuity. The proof commits to the caller's offered channel key so that, when both mechanisms are in play, the attested runtime and the delegated principal are provably the same party — which neither mechanism establishes alone. This is the RFC 7800 `cnf` pattern, matching what the TRACE layer already applies to provenance records.
+
+A callee MAY accept a chain without a proof only for offline replay of recorded evidence, where no live caller exists to answer a challenge. It MUST NOT do so on a live peer path.
+
+A callee SHOULD honour each proof at most once. `ca2a_runtime.challenge` is stateless by design and so cannot be consumed, which means single-use has to come from remembering the proof rather than the challenge; `ProofReplayCache` does that, and `PeerNode` uses one by default with a TTL matching its own challenge TTL. A callee that remembers nothing degrades to at-most-once-per-window, where a captured proof stays usable until its challenge expires.
+
+Where a proof is remembered, it MUST be recorded only after it has verified. Recording earlier would let a party that holds none of the keys fill the store, or insert a signature to lock the real delegate out of its own proof.
+
+> The cache is bounded, and the bound is honest: past its capacity the oldest entry is evicted, so a flood of distinct valid proofs can push an earlier one out and let it be replayed inside its window. Refusing new calls instead would turn the same flood into an outage. So the property is exactly-once up to capacity, degrading to the challenge window under flood. A deployment across several instances wants a shared store or sticky routing, the same caveat the challenge secret already carries.
+
 ### P-5 Effective scope
 
 A callee MUST compute the effective scope as the leaf credential's delegated scope intersected with the callee's own local policy, and MUST refuse any requested capability outside that intersection. A capability the local policy permits but the chain did not delegate MUST be refused. Neither input alone is sufficient authority.
