@@ -77,17 +77,27 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install package and AGT
-        run: python -m pip install --upgrade pip && pip install -e "." "agent-governance-toolkit[full]>=4.1"
+      - name: Install package
+        run: python -m pip install --upgrade pip && pip install -e "."
+
+      # Isolate AGT's tooling dependencies from the release artifact. AGT 4.1
+      # constrains cryptography below 49; cA2A requires 50+ security fixes. The
+      # ephemeral scanner is upgraded too so the release gate runs no known-
+      # vulnerable cryptography build while that upstream bound is stale.
+      - name: Install governance tooling in an isolated environment
+        run: |
+          python -m venv .agt-venv
+          .agt-venv/bin/pip install "agent-governance-toolkit[full]>=4.1"
+          .agt-venv/bin/pip install --upgrade --no-deps "cryptography>=50.0"
 
       - name: Generate evidence file
         run: python scripts/gen_agt_evidence.py
 
       - name: AGT governance verify (strict)
-        run: agt verify --evidence agt-evidence.json
+        run: .agt-venv/bin/agt verify --evidence agt-evidence.json
 
       - name: Save attestation JSON
-        run: agt --json verify --evidence agt-evidence.json > agt-attestation.json
+        run: .agt-venv/bin/agt --json verify --evidence agt-evidence.json > agt-attestation.json
 
       - name: Attach evidence to release
         if: github.event_name == 'release'

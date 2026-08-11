@@ -44,6 +44,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `cryptography>=50.0` (PYSEC-2026-3552/3553/3554), `aiohttp>=3.14.3`
   (PYSEC-2026-3545/3546/3547) for the A2A SDK extra, and
   `pymdown-extensions>=11.0.1` (PYSEC-2026-3654) for documentation builds.
+- Isolated the AGT governance CLI in its own virtual environment. AGT 4.1
+  constrains `cryptography<49`, so installing it alongside cA2A could either
+  downgrade the runtime below the security floor or make releases unresolvable.
+  The ephemeral AGT environment also overrides that stale upper bound with
+  `cryptography>=50.0`; the strict verification path is tested against it.
 
 - **A delegation chain was a bearer credential: any party holding a copy was granted the leaf's authority.** The inbound path verified signatures, continuity, attenuation, depth and replay, then granted, without ever requiring the caller to demonstrate a relationship to the chain it presented. `PeerRequest` had no field that could carry such a proof, and `subject` — an Ed25519 public key — was only ever compared as a string for continuity, never used as a key.
 
