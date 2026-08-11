@@ -8,6 +8,18 @@ This walkthrough builds a delegation chain and verifies it offline. It needs no 
 pip install --pre ca2a-runtime
 ```
 
+Or run the published rootless container with a read-only configuration mount:
+
+```
+docker run --rm -p 8443:8443 \
+  --read-only --tmpfs /tmp:rw,noexec,nosuid,size=16m \
+  -v "$PWD/ca2a-config.yaml:/etc/ca2a/config.yaml:ro" \
+  ghcr.io/agentrust-io/ca2a-runtime:v0.1.0a1 \
+  start --config /etc/ca2a/config.yaml
+```
+
+The image runs as UID/GID 10001. Hardware-backed providers additionally need the relevant device passed through with permissions for that identity; do not run the whole container as root to obtain device access.
+
 cA2A is in alpha, so `--pre` is required to opt into the pre-release. Contributors working from a checkout can instead install from source: `pip install -e ".[dev]"`.
 
 ## Build an example chain
