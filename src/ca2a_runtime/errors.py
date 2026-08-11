@@ -26,6 +26,13 @@ class InvalidCredential(CA2AError):
     http_status = 400
 
 
+class UntrustedDelegationRoot(CA2AError):
+    """The chain is validly signed but its root issuer is not trusted locally."""
+
+    code = "UNTRUSTED_DELEGATION_ROOT"
+    http_status = 403
+
+
 class ScopeEscalation(CA2AError):
     """A child grant claims authority its parent did not hold."""
 

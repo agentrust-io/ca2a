@@ -11,7 +11,8 @@ import pytest
 
 from ca2a_runtime.channel import SealedChannel, generate_channel_keypair
 from ca2a_runtime.errors import ScopeEscalation, ScopeNotPermitted, SealedChannelError
-from ca2a_runtime.peer import PeerResult, handle_peer_request
+from ca2a_runtime.peer import PeerResult
+from ca2a_runtime.peer import handle_peer_request as _handle_peer_request
 from ca2a_runtime.policy import LocalPolicy
 from ca2a_runtime.provenance import verify_dag
 from tests.unit.conftest import (
@@ -33,6 +34,10 @@ def _handle(req, policy, **kwargs):
     return handle_peer_request(
         req, policy=policy, audience=TEST_AUDIENCE, challenge_secret=TEST_SECRET, **kwargs
     )
+
+
+def handle_peer_request(request, **kwargs):
+    return _handle_peer_request(request, trusted_root_issuers={request.chain[0].issuer}, **kwargs)
 
 
 def test_handles_request_without_payload() -> None:

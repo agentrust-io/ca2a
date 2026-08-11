@@ -12,6 +12,7 @@ transport-agnostic; :mod:`ca2a_runtime.transport.server` wraps it over HTTP.
 
 from __future__ import annotations
 
+from collections.abc import Collection
 from typing import Any
 
 from ca2a_runtime.attestation import ChannelOffer, Verifier, attest_channel
@@ -61,6 +62,7 @@ class PeerNode:
         challenge_ttl_seconds: int = DEFAULT_TTL_SECONDS,
         require_holder_proof: bool = True,
         seen_proofs: ProofReplayCache | None | _Unset = _UNSET,
+        trusted_root_issuers: Collection[str] = (),
     ) -> None:
         if require_caller_attestation not in REQUIREMENT_VALUES:
             raise ConfigError(
@@ -95,6 +97,7 @@ class PeerNode:
             self.seen_proofs = ProofReplayCache(ttl_seconds=challenge_ttl_seconds)
         else:
             self.seen_proofs = seen_proofs
+        self.trusted_root_issuers = frozenset(trusted_root_issuers)
         self._private_key, self.channel_public_key = generate_channel_keypair()
         self._challenge_secret = generate_secret()
 
@@ -124,4 +127,5 @@ class PeerNode:
             audience=self.channel_public_key,
             require_holder_proof=self.require_holder_proof,
             seen_proofs=self.seen_proofs,
+            trusted_root_issuers=self.trusted_root_issuers,
         )

@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- Runtime authorization now requires the delegation chain's root issuer to be
+  present in the callee's `trusted_root_issuers`. Previously, any party could
+  mint a self-consistent root chain granting itself a locally allowed capability;
+  every signature and attenuation check passed because no local trust anchor was
+  consulted. `ca2a start` now refuses to launch without at least one pinned root.
+
+### Security
+
 - **A delegation chain was a bearer credential: any party holding a copy was granted the leaf's authority.** The inbound path verified signatures, continuity, attenuation, depth and replay, then granted, without ever requiring the caller to demonstrate a relationship to the chain it presented. `PeerRequest` had no field that could carry such a proof, and `subject` — an Ed25519 public key — was only ever compared as a string for continuity, never used as a key.
 
   Chains are published deliberately: handed to auditors for offline verification, embedded in provenance DAGs, and shipped in `examples/`. So the credential intended for publication was the credential that granted authority. A chain lifted from any of those and replayed verbatim was accepted, and the provenance record emitted afterwards named the legitimate subject, so the audit trail attributed the call to the wrong party. Nothing was forged, so nothing failed a check and nothing anomalous reached a log; verbatim replay leaves no tamper evidence to find. `CREDENTIAL_REPLAY` does not cover it, catching only a duplicate `credential_id` inside one chain rather than replay of a whole valid chain by a different party.

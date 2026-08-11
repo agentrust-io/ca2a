@@ -99,7 +99,7 @@ def _delegation_chain() -> tuple[list[DelegationCredential], Ed25519PrivateKey]:
     return [cred], subject_priv
 
 
-def _write_config(tmp_path: Path) -> Path:
+def _write_config(tmp_path: Path, root_issuer: str = "test-root") -> Path:
     path = tmp_path / "ca2a-config.yaml"
     path.write_text(
         "attestation:\n"
@@ -108,7 +108,8 @@ def _write_config(tmp_path: Path) -> Path:
         "max_delegation_depth: 3\n"
         "local_policy:\n"
         "  - read\n"
-        "listen_addr: 127.0.0.1:8443\n",
+        "listen_addr: 127.0.0.1:8443\n"
+        f"trusted_root_issuers:\n  - {root_issuer}\n",
         encoding="utf-8",
     )
     return path
@@ -121,10 +122,18 @@ def test_build_peer_node_carries_config(tmp_path: Path) -> None:
     assert node.policy.allow == frozenset({"read"})
     assert isinstance(node.provider, SoftwareProvider)
     assert node.max_depth == 3
+    assert node.trusted_root_issuers == frozenset({"test-root"})
+
+
+def test_build_peer_node_refuses_missing_trust_anchors() -> None:
+    cfg = Ca2aConfig(provider="software-only", local_policy=frozenset({"read"}))
+    with pytest.raises(ConfigError, match="trusted_root_issuer"):
+        build_peer_node(cfg)
 
 
 def test_config_built_node_serves_a_live_call(tmp_path: Path) -> None:
-    cfg = Ca2aConfig.load(_write_config(tmp_path))
+    chain, leaf_key = _delegation_chain()
+    cfg = Ca2aConfig.load(_write_config(tmp_path, chain[0].issuer))
     host, _ = cfg.listen_host_port()
     # Port 0 rather than the configured one: the test needs a free port, and the
     # host is what the config contributes here.
@@ -133,8 +142,6 @@ def test_config_built_node_serves_a_live_call(tmp_path: Path) -> None:
     thread.start()
     try:
         base = f"http://{host}:{srv.server_address[1]}"
-        chain, leaf_key = _delegation_chain()
-
         body = client.send_task(
             base, chain, "read", "r0", holder_key=leaf_key, payload=b"from a config file"
         )

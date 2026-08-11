@@ -72,14 +72,22 @@ def _chain(hops: int = 1) -> list[DelegationCredential]:
     return _chain_with_keys(hops)[0]
 
 
-def _request(*, node: PeerNode | None = None, **kwargs) -> PeerRequest:
+def _request(
+    *, node: PeerNode | None = None, leaf_key: Ed25519PrivateKey | None = None, **kwargs
+) -> PeerRequest:
     """A request for the bridge round trip.
 
     Pass ``node`` when the request goes on to :meth:`PeerNode.handle`, which
     requires holder binding as it ships: the chain is then built with its leaf key
     retained so a proof can be signed against a challenge that node issued.
+
+    Pass ``chain`` and ``leaf_key`` together when the caller needs the chain
+    before the node exists, which it does whenever the node pins that chain's root
+    as its trusted issuer. The generated pair cannot serve both, since the trust
+    set has to be known at construction and the proof has to be signed afterwards.
     """
-    chain, leaf_key = _chain_with_keys()
+    chain, generated_key = _chain_with_keys()
+    signing_key = leaf_key if leaf_key is not None else generated_key
     base: dict = {
         "chain": chain,
         "requested_capability": "read",
@@ -89,7 +97,7 @@ def _request(*, node: PeerNode | None = None, **kwargs) -> PeerRequest:
     base.update(kwargs)
     if node is not None:
         base["holder_proof"] = build_holder_proof(
-            leaf_key,
+            signing_key,
             base["chain"][-1],
             audience=node.channel_public_key,
             challenge=node.issue_challenge(),
@@ -270,8 +278,9 @@ def test_opted_in(values: list[str] | None, expected: bool) -> None:
 
 def test_an_sdk_message_drives_the_full_inbound_pipeline() -> None:
     """What an adopter actually gets: enforcement from an SDK message."""
-    node = PeerNode(LocalPolicy.of({"read"}))
-    request = _request(node=node)
+    chain, leaf_key = _chain_with_keys()
+    node = PeerNode(LocalPolicy.of({"read"}), trusted_root_issuers={chain[0].issuer})
+    request = _request(node=node, chain=chain, leaf_key=leaf_key)
     message = a2a_sdk.attach_to_sdk_message(Message(message_id="m1"), request)
 
     parsed = a2a_sdk.parse_sdk_message(message)
@@ -283,7 +292,12 @@ def test_an_sdk_message_drives_the_full_inbound_pipeline() -> None:
 
 def test_mutual_attestation_works_over_the_sdk_bridge() -> None:
     """The newest part of the profile must reach SDK adopters too."""
-    node = PeerNode(LocalPolicy.of({"read"}), require_caller_attestation=REQUIRE_ANY)
+    chain, leaf_key = _chain_with_keys()
+    node = PeerNode(
+        LocalPolicy.of({"read"}),
+        require_caller_attestation=REQUIRE_ANY,
+        trusted_root_issuers={chain[0].issuer},
+    )
     challenge = node.issue_challenge()
     offer = ChannelOffer(
         channel_public_key="k" * 43,
@@ -295,7 +309,8 @@ def test_mutual_attestation_works_over_the_sdk_bridge() -> None:
         ),
     )
     message = a2a_sdk.attach_to_sdk_message(
-        Message(message_id="m1"), _request(caller_offer=offer, node=node)
+        Message(message_id="m1"),
+        _request(caller_offer=offer, node=node, chain=chain, leaf_key=leaf_key),
     )
     result = node.handle({"metadata": a2a_sdk.metadata_from_sdk_message(message)})
     assert result.caller_attestation == "software-only"
