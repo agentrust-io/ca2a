@@ -20,6 +20,8 @@ A `DelegationCredential` has the following signed body plus a detached signature
 
 The signed bytes are the RFC 8785 (JSON Canonicalization Scheme) encoding of the body: keys sorted by UTF-16 code units, JCS minimal string escaping, non-ASCII emitted literally as UTF-8, integers in shortest decimal form, `scope` as a sorted array. This is the byte string signed and verified. Using JCS makes cA2A signatures cross-verifiable with agent-manifest and any other conforming implementation. See `ca2a_runtime.canonical`.
 
+The wire object is strict: fields are not coerced, unknown fields are rejected, keys and signatures must use their exact lowercase hex encodings, `depth` must be a non-negative JSON integer (not a boolean or float), and `scope` must be a non-empty array of unique non-empty strings. This ensures the object accepted by one implementation is the same signed object another implementation sees.
+
 ## Verification invariants
 
 `verify_chain` raises the specific error for the first invariant that fails:
