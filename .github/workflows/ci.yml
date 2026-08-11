@@ -64,7 +64,17 @@ jobs:
           python-version: "3.12"
 
       - name: Install dependencies
-        run: python -m pip install --upgrade pip setuptools && pip install -e ".[dev]" "agent-governance-toolkit[full]>=4.1"
+        run: python -m pip install --upgrade pip setuptools && pip install -e ".[dev]"
+
+      # AGT 4.1 currently constrains cryptography below 49, while the runtime
+      # requires 50+ for published security fixes. Keep the scanner isolated
+      # so its tooling constraints cannot downgrade the package under test,
+      # then override that stale upper bound inside the ephemeral scanner too.
+      - name: Install governance tooling in an isolated environment
+        run: |
+          python -m venv .agt-venv
+          .agt-venv/bin/pip install "agent-governance-toolkit[full]>=4.1"
+          .agt-venv/bin/pip install --upgrade --no-deps "cryptography>=50.0"
 
       - name: Generate evidence file
         run: python scripts/gen_agt_evidence.py
@@ -73,10 +83,10 @@ jobs:
       # (10/10) and the evidence declares cA2A's governed capabilities, so strict
       # verify is COMPLETE. A regression that drops coverage or governance fails CI.
       - name: AGT governance verify (strict)
-        run: agt verify --evidence agt-evidence.json
+        run: .agt-venv/bin/agt verify --evidence agt-evidence.json
 
       - name: Save attestation JSON
-        run: agt --json verify --evidence agt-evidence.json > agt-attestation.json
+        run: .agt-venv/bin/agt --json verify --evidence agt-evidence.json > agt-attestation.json
 
       - name: Upload governance artifacts
         uses: actions/upload-artifact@v7
