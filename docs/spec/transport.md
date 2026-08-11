@@ -19,6 +19,12 @@ cA2A is a profile on A2A, not a competing transport. A2A moves tasks and context
 
 The reference HTTP server/client run a live call end to end in software mode (`assurance="none"`). That is progress on Tier 2 transport wiring and a convenience for running the peer path off hardware. It is not evidence that cA2A is attested across trust domains: that needs the hardware `verifier` seam driven by a real quote. See [LIMITATIONS.md](../../LIMITATIONS.md) and [ROADMAP.md](../../ROADMAP.md).
 
+The reference server bounds request bodies to 1 MiB, requires a decimal
+`Content-Length`, applies a ten-second body-read timeout, and rejects malformed
+JSON or UTF-8 with a structured 400 response. Its handshake accepts exactly one
+non-empty nonce of at most 256 characters. Production deployments should also
+apply their platform's connection and request-rate limits in front of it.
+
 ## Overlay, not fork
 
 cA2A does not define its own transport, message framing, or handshake. It rides inside A2A. Two pieces of cA2A data travel with a task:
