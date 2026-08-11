@@ -233,3 +233,57 @@ def test_oversized_body_is_refused_at_the_declared_bound() -> None:
     finally:
         srv.shutdown()
         srv.server_close()
+
+
+@pytest.mark.parametrize("content_length", ["not-a-number", "+1", "-1", "1.5"])
+def test_malformed_content_length_gets_a_bounded_error(content_length: str) -> None:
+    node = PeerNode(LocalPolicy.of({"read"}))
+    srv = server.serve(node, host="127.0.0.1", port=0)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        request = (
+            f"POST {server.TASK_PATH} HTTP/1.1\r\n"
+            f"Host: 127.0.0.1:{srv.server_address[1]}\r\n"
+            f"Content-Length: {content_length}\r\n"
+            "Connection: close\r\n\r\n{}"
+        ).encode()
+        with socket.create_connection(srv.server_address, timeout=10) as sock:
+            sock.sendall(request)
+            chunks = []
+            while chunk := sock.recv(4096):
+                chunks.append(chunk)
+            response = b"".join(chunks)
+        assert b" 400 " in response
+        assert b"invalid body length" in response
+    finally:
+        srv.shutdown()
+        srv.server_close()
+
+
+def test_invalid_utf8_gets_a_structured_error() -> None:
+    node = PeerNode(LocalPolicy.of({"read"}))
+    srv = server.serve(node, host="127.0.0.1", port=0)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        url = f"http://127.0.0.1:{srv.server_address[1]}{server.TASK_PATH}"
+        status, body = _post_bytes(url, b"\xff")
+        assert status == 400
+        assert body["error"]["code"] == "BAD_REQUEST"
+    finally:
+        srv.shutdown()
+        srv.server_close()
+
+
+@pytest.mark.parametrize("query", ["", "nonce=", "nonce=a&nonce=b", "nonce=" + "x" * 257])
+def test_handshake_requires_one_bounded_nonce(query: str) -> None:
+    node = PeerNode(LocalPolicy.of({"read"}))
+    srv = server.serve(node, host="127.0.0.1", port=0)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        url = f"http://127.0.0.1:{srv.server_address[1]}{server.CHANNEL_PATH}?{query}"
+        with pytest.raises(urllib.error.HTTPError) as exc:
+            urllib.request.urlopen(url, timeout=10)  # noqa: S310
+        assert exc.value.code == 400
+    finally:
+        srv.shutdown()
+        srv.server_close()

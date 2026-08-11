@@ -28,6 +28,8 @@ from ca2a_runtime.transport import wire
 CHANNEL_PATH = "/.well-known/ca2a/channel"
 TASK_PATH = "/ca2a/task"
 _MAX_BODY = 1 << 20  # 1 MiB; fail closed on larger bodies
+_MAX_NONCE = 256
+_READ_TIMEOUT_SECONDS = 10.0
 
 
 class PeerHTTPServer(ThreadingHTTPServer):
@@ -40,6 +42,13 @@ class PeerHTTPServer(ThreadingHTTPServer):
 
 class _PeerHandler(BaseHTTPRequestHandler):
     server_version = "ca2a-ref/0.1"
+
+    def setup(self) -> None:
+        super().setup()
+        # A client that declares a body and never sends it must not retain an
+        # unbounded worker thread. This is a reference server, but it still fails
+        # closed under slow or incomplete unauthenticated requests.
+        self.connection.settimeout(_READ_TIMEOUT_SECONDS)
 
     def _node(self) -> PeerNode:
         return cast(PeerHTTPServer, self.server).node
@@ -61,12 +70,27 @@ class _PeerHandler(BaseHTTPRequestHandler):
         if parsed.path != CHANNEL_PATH:
             self._send_json(404, {"error": {"code": "NOT_FOUND", "message": "unknown path"}})
             return
-        nonces = parse_qs(parsed.query).get("nonce", [])
-        if not nonces:
-            self._send_json(400, {"error": {"code": "BAD_REQUEST", "message": "nonce required"}})
+        try:
+            nonces = parse_qs(parsed.query, max_num_fields=1).get("nonce", [])
+        except ValueError:
+            nonces = []
+        if len(nonces) != 1 or not nonces[0] or len(nonces[0]) > _MAX_NONCE:
+            self._send_json(
+                400,
+                {
+                    "error": {
+                        "code": "BAD_REQUEST",
+                        "message": "exactly one bounded nonce is required",
+                    }
+                },
+            )
             return
         node = self._node()
-        offer = node.offer(nonces[0])
+        try:
+            offer = node.offer(nonces[0])
+        except CA2AError as exc:
+            self._send_json(exc.http_status, wire.serialize_error(exc))
+            return
         # The handshake is where both directions get what they need in one round
         # trip: the caller gets the key to seal to, and the challenge it must bind
         # its own key into if it wants to be appraised. Issuing one costs nothing
@@ -81,7 +105,13 @@ class _PeerHandler(BaseHTTPRequestHandler):
         if urlparse(self.path).path != TASK_PATH:
             self._send_json(404, {"error": {"code": "NOT_FOUND", "message": "unknown path"}})
             return
-        length = int(self.headers.get("Content-Length", "0") or "0")
+        raw_length = self.headers.get("Content-Length", "")
+        if not raw_length.isascii() or not raw_length.isdecimal():
+            self._send_json(
+                400, {"error": {"code": "BAD_REQUEST", "message": "invalid body length"}}
+            )
+            return
+        length = int(raw_length)
         if length <= 0 or length > _MAX_BODY:
             self._send_json(
                 400, {"error": {"code": "BAD_REQUEST", "message": "invalid body length"}}
@@ -89,7 +119,7 @@ class _PeerHandler(BaseHTTPRequestHandler):
             return
         try:
             message = json.loads(self.rfile.read(length))
-        except json.JSONDecodeError:
+        except (json.JSONDecodeError, UnicodeDecodeError, TimeoutError):
             self._send_json(400, {"error": {"code": "BAD_REQUEST", "message": "invalid JSON"}})
             return
         if not isinstance(message, dict):
