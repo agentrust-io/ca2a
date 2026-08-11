@@ -10,6 +10,7 @@ A capable adversary who may:
 - Present a valid A2A Signed Agent Card while running tampered or unmeasured code.
 - Sit on the network between two agents, or operate the host a peer runs on.
 - Attempt to widen a delegated grant, replay a credential into another chain, or reparent a provenance record.
+- Obtain a copy of a delegation chain issued to somebody else — from an audit bundle, a log, a published provenance DAG, or the wire — and present it as its own, including while honestly attesting its own runtime.
 
 Out of adversary scope: breaking the underlying cryptographic primitives (Ed25519, the hash function), or compromising TEE firmware or hardware microcode. Those are the trust anchors.
 
@@ -30,6 +31,7 @@ Out of adversary scope: breaking the underlying cryptographic primitives (Ed2551
 | Tampered peer wearing a valid Agent Card | Attestation: measurement must match an expected value before a task is accepted |
 | Operator or network reads the task payload | Sealing to the peer's measurement; the path sees ciphertext |
 | Credential replayed into another workflow | Unique `credential_id` and parent-link checks in chain verification |
+| A copied chain presented by a party it was not issued to | Holder binding: the presenter must answer a callee-issued challenge with a signature under the leaf `subject` key (profile P-4a). Appraising the caller does not cover this: an attested runtime is not a claim to anyone's delegated authority |
 | Reparented or forged provenance | Linked TRACE records; the DAG is verified offline against the chain |
 
 ## Residual risks in this release

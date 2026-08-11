@@ -3,17 +3,28 @@
 When a peer presents a delegation chain and requests a capability, the callee:
 
 1. verifies the chain (signature, continuity, attenuation, depth, replay);
-2. computes the effective scope as the leaf's delegated scope intersected with
+2. verifies holder binding: the presenter must prove, against a challenge this
+   callee issued, that it controls the leaf ``subject`` key
+   (see :mod:`ca2a_runtime.delegation.holder`);
+3. computes the effective scope as the leaf's delegated scope intersected with
    the callee's local policy;
-3. appraises what the caller is *running*, if it offered an attestation bound to
+4. appraises what the caller is *running*, if it offered an attestation bound to
    a challenge this callee issued (see ``docs/spec/mutual-attestation.md``);
-4. enforces: the requested capability must be in the effective scope;
-5. emits a provenance record for the accepted hop, linked to its parent.
+5. enforces: the requested capability must be in the effective scope;
+6. emits a provenance record for the accepted hop, linked to its parent.
 
-Steps 1-2 are authorization and say what the caller is *allowed to ask for*; step
-3 is appraisal and says what the caller *is*. They are independent, and both run
-before the callee opens the sealed payload -- appraising afterwards would mean an
-unattested caller had already had its work done.
+Steps 1 and 3 are authorization and say what the chain *allows*; step 2 is
+authentication and says whether the caller is the party it was allowed for; step
+4 is appraisal and says what the caller *is running*. All three are independent.
+A chain establishes authority without identifying its bearer, and an appraisal
+identifies a runtime without claiming anyone's authority, so neither substitutes
+for the other: without step 2 a caller can attest itself honestly and exercise a
+chain issued to somebody else.
+
+Step 2 runs before any authorization step, so a caller that has proved nothing
+never reaches policy evaluation and never elicits a signed denial record. Steps 2
+and 4 both run before the callee opens the sealed payload -- appraising or
+authenticating afterwards would mean the caller had already had its work done.
 
 `enforce_peer_call` is the enforcement decision core. `handle_peer_request`
 composes it into the full transport-agnostic inbound pipeline: verify, appraise,
@@ -32,9 +43,11 @@ from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 from ca2a_runtime.attestation import ChannelOffer, Verifier, appraise_caller
 from ca2a_runtime.channel import open_sealed
 from ca2a_runtime.delegation.credential import DelegationCredential, verify_chain
+from ca2a_runtime.delegation.holder import HolderProof, ProofReplayCache, verify_holder_proof
 from ca2a_runtime.errors import (
     AttestationFailed,
     ConfigError,
+    HolderProofInvalid,
     ScopeNotPermitted,
     SealedChannelError,
 )
@@ -193,6 +206,11 @@ class PeerRequest:
     """The caller's own attested channel key, bound to a challenge this callee
     issued. Optional: a caller that cannot attest omits it and, by default, is
     still served. Present-and-unappraisable is refused; see :data:`REQUIRE_NONE`."""
+    holder_proof: HolderProof | None = None
+    """The caller's proof that it controls ``chain[-1].subject``, against a
+    challenge this callee issued. Required by default, unlike ``caller_offer``:
+    attesting a runtime is a capability not every caller has, but holding the key
+    you were delegated is not optional -- it is what being the delegate means."""
 
 
 @dataclass(frozen=True)
@@ -290,6 +308,56 @@ def appraise_caller_runtime(
     return outcome
 
 
+def verify_caller_holds_leaf(
+    request: PeerRequest,
+    *,
+    audience: str | None,
+    challenge_secret: bytes | None,
+    seen_proofs: ProofReplayCache | None = None,
+) -> None:
+    """Bind the presented chain to the caller, or raise :class:`HolderProofInvalid`.
+
+    The chain must already be verified, so ``chain[-1].subject`` is a key someone
+    was genuinely delegated rather than one the caller asserted.
+
+    Unlike :func:`appraise_caller_runtime` this emits no provenance record. A
+    caller that has not shown it holds the credential has not earned a signed
+    statement about the credential, and a denial record naming a subject the
+    caller may have no relationship to would attribute a refusal to the wrong
+    party. It also keeps an unauthenticated caller from mining denial records for
+    what the callee permits.
+    """
+    if request.holder_proof is None:
+        raise HolderProofInvalid(
+            "no holder proof was presented with the delegation chain",
+            detail="a chain alone does not establish that the caller is its subject",
+        )
+    if audience is None or challenge_secret is None:
+        # Requiring the proof while having nothing to check it against would
+        # verify a signature over an audience and challenge the callee never
+        # chose, which is indistinguishable from not checking at all.
+        raise HolderProofInvalid(
+            "holder proof required but this callee has no challenge context",
+            detail="the callee must name itself as the audience and hold the "
+            "secret behind the challenge it issued",
+        )
+    verify_holder_proof(
+        request.holder_proof,
+        request.chain[-1],
+        audience=audience,
+        challenge_secret=challenge_secret,
+        requested_capability=request.requested_capability,
+        record_id=request.record_id,
+        sealed_payload=request.sealed_payload,
+        # Committed either way. A caller that attested cannot strip its offer and
+        # reuse the proof, and one that did not cannot bolt an offer on.
+        caller_channel_key=(
+            None if request.caller_offer is None else request.caller_offer.channel_public_key
+        ),
+        seen=seen_proofs,
+    )
+
+
 def handle_peer_request(
     request: PeerRequest,
     *,
@@ -299,6 +367,9 @@ def handle_peer_request(
     challenge_secret: bytes | None = None,
     require_caller_attestation: str = REQUIRE_NONE,
     caller_verifier: Verifier | None = None,
+    audience: str | None = None,
+    require_holder_proof: bool = True,
+    seen_proofs: ProofReplayCache | None = None,
 ) -> PeerResult:
     """Run the full inbound pipeline for a parsed peer request.
 
@@ -318,7 +389,27 @@ def handle_peer_request(
     something that already happened. ``tests/unit/test_mutual_attestation.py``
     asserts the payload is never opened when appraisal refuses, so swapping these
     two calls fails the suite.
+
+    ``audience`` is this callee's channel key, the identity a holder proof commits
+    to. With ``require_holder_proof`` set, it and ``challenge_secret`` are both
+    required, and their absence is a failure rather than a reason to skip the
+    check. ``require_holder_proof=False`` reproduces the pre-holder-binding
+    behaviour, in which any party holding a copy of the chain is granted the
+    leaf's authority; it exists for offline replay of recorded evidence, where
+    there is no live caller to challenge, and must not be used on a live peer
+    path.
     """
+    verify_chain(request.chain, max_depth=max_depth)
+    if require_holder_proof:
+        # Before the scope intersection, so an unauthenticated caller never
+        # reaches authorization and never elicits a denial record.
+        verify_caller_holds_leaf(
+            request,
+            audience=audience,
+            challenge_secret=challenge_secret,
+            seen_proofs=seen_proofs,
+        )
+
     effective = effective_scope(request.chain, policy, max_depth=max_depth)
 
     caller_attestation = appraise_caller_runtime(

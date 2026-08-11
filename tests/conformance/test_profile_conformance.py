@@ -9,10 +9,15 @@ from dataclasses import dataclass, replace
 
 import pytest
 from cryptography.hazmat.primitives.asymmetric import ec
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 
+from ca2a_runtime.attestation import ChannelOffer
+from ca2a_runtime.canonical import canonicalize
+from ca2a_runtime.challenge import generate_secret, issue_challenge
 from ca2a_runtime.channel import SealedChannel, generate_channel_keypair, open_sealed
 from ca2a_runtime.delegation import DelegationCredential, new_keypair, verify_chain
+from ca2a_runtime.delegation.holder import HolderProof, proof_body
 from ca2a_runtime.errors import (
     AttestationFailed,
     AttestationUnsupported,
@@ -20,21 +25,32 @@ from ca2a_runtime.errors import (
     CA2AError,
     CredentialReplay,
     DelegationDepthExceeded,
+    HolderProofInvalid,
     InvalidCredential,
     ProvenanceLinkBroken,
     ScopeEscalation,
     ScopeNotPermitted,
     SealedChannelError,
 )
-from ca2a_runtime.peer import PeerRequest, effective_scope, handle_peer_request
+from ca2a_runtime.peer import REQUIRE_ANY, PeerRequest, effective_scope, handle_peer_request
 from ca2a_runtime.policy import LocalPolicy
 from ca2a_runtime.provenance import DelegationRecord, cross_check_chain, record_for, verify_dag
+from ca2a_runtime.tee.base import AttestationReport
 from ca2a_runtime.tee.sev_snp import SevSnpProvider
+from ca2a_runtime.tee.software import SoftwareProvider
 from ca2a_runtime.tee.tdx import TdxProvider
 from ca2a_verify import verify_delegation_chain
 from ca2a_verify.sev_snp import verify_sev_snp_report
 from ca2a_verify.tdx import verify_tdx_quote
-from tests.unit.conftest import build_chain, make_ec_cert, make_sev_snp_report
+from tests.unit.conftest import (
+    TEST_AUDIENCE,
+    TEST_SECRET,
+    build_chain,
+    build_chain_with_keys,
+    make_ec_cert,
+    make_sev_snp_report,
+    proved_request,
+)
 from tests.unit.test_tdx import build_quote
 
 
@@ -50,6 +66,22 @@ class _ActionEvidence:
 class _ActionEvidenceResult:
     classification: str
     code: str
+
+
+def _narrowing_with_keys():
+    return build_chain_with_keys(
+        [frozenset({"read", "write", "admin"}), frozenset({"read", "write"})]
+    )
+
+
+def _handle_proved(chain, leaf_key, capability, record_id, policy, **kw):
+    """Run the inbound pipeline with a valid holder proof: the shipping path."""
+    return handle_peer_request(
+        proved_request(chain, leaf_key, capability, record_id, **kw),
+        policy=policy,
+        audience=TEST_AUDIENCE,
+        challenge_secret=TEST_SECRET,
+    )
 
 
 def _narrowing():
@@ -115,6 +147,11 @@ def _verify_action_evidence(
         return _ActionEvidenceResult("provenance_invalid", ProvenanceLinkBroken.code)
 
     try:
+        # Offline replay of recorded evidence: the auditor is re-deciding an
+        # action that already happened, so there is no live caller to answer a
+        # challenge. Holder binding is what the callee checked at the time; it is
+        # not recoverable from the record, and asserting it here would be
+        # asserting something the evidence never carried.
         handle_peer_request(
             PeerRequest(
                 chain=chain,
@@ -123,6 +160,7 @@ def _verify_action_evidence(
                 parent_record_hash=leaf.record_hash(),
             ),
             policy=policy,
+            require_holder_proof=False,
         )
     except ScopeNotPermitted as exc:
         return _ActionEvidenceResult("authorization_invalid", exc.code)
@@ -189,15 +227,15 @@ def test_policy_001_intersection() -> None:
 
 
 def test_policy_002_delegated_not_allowed_denied() -> None:
-    req = PeerRequest(chain=_narrowing(), requested_capability="write", record_id="r0")
+    chain, keys = _narrowing_with_keys()
     with pytest.raises(ScopeNotPermitted):
-        handle_peer_request(req, policy=LocalPolicy.of(["read"]))
+        _handle_proved(chain, keys[-1], "write", "r0", LocalPolicy.of(["read"]))
 
 
 def test_policy_003_allowed_not_delegated_denied() -> None:
-    req = PeerRequest(chain=_narrowing(), requested_capability="audit", record_id="r0")
+    chain, keys = _narrowing_with_keys()
     with pytest.raises(ScopeNotPermitted):
-        handle_peer_request(req, policy=LocalPolicy.of(["read", "audit"]))
+        _handle_proved(chain, keys[-1], "audit", "r0", LocalPolicy.of(["read", "audit"]))
 
 
 # --- Group 3: Attestation ---
@@ -323,22 +361,24 @@ def test_prov_003_bound_to_authority() -> None:
 
 
 def test_pipe_001_grants_and_records() -> None:
-    req = PeerRequest(chain=_narrowing(), requested_capability="read", record_id="r0")
-    result = handle_peer_request(req, policy=LocalPolicy.of(["read", "audit"]))
+    chain, keys = _narrowing_with_keys()
+    result = _handle_proved(chain, keys[-1], "read", "r0", LocalPolicy.of(["read", "audit"]))
     assert result.granted_capability == "read"
     assert verify_dag([result.record]) == [result.record]
 
 
 def test_pipe_002_sealed_without_key_fails_closed() -> None:
+    chain, keys = _narrowing_with_keys()
     _, pub = generate_channel_keypair()
-    req = PeerRequest(
-        chain=_narrowing(),
-        requested_capability="read",
-        record_id="r0",
-        sealed_payload=SealedChannel(pub).seal(b"x"),
-    )
     with pytest.raises(SealedChannelError):
-        handle_peer_request(req, policy=LocalPolicy.of(["read"]))
+        _handle_proved(
+            chain,
+            keys[-1],
+            "read",
+            "r0",
+            LocalPolicy.of(["read"]),
+            sealed_payload=SealedChannel(pub).seal(b"x"),
+        )
 
 
 def test_pipe_003_invalid_chain_rejected_first() -> None:
@@ -527,3 +567,109 @@ def test_action_011_delegatee_mismatch_is_provenance_invalid() -> None:
         LocalPolicy.of(["robot.move"]),
     )
     assert result == _ActionEvidenceResult("provenance_invalid", "PROVENANCE_LINK_BROKEN")
+
+
+# --- Group 8: Holder binding ---
+
+
+def _holder_offer(challenge: str) -> ChannelOffer:
+    key = SoftwareProvider().attest("x", "y").public_key
+    return ChannelOffer(
+        channel_public_key=key,
+        report=AttestationReport(
+            platform="software-only", measurement="caller", public_key=key, nonce=challenge
+        ),
+    )
+
+
+def test_hold_001_chain_without_a_proof_is_refused() -> None:
+    chain, _keys = _narrowing_with_keys()
+    with pytest.raises(HolderProofInvalid):
+        handle_peer_request(
+            PeerRequest(chain=chain, requested_capability="read", record_id="r0"),
+            policy=LocalPolicy.of(["read"]),
+            audience=TEST_AUDIENCE,
+            challenge_secret=TEST_SECRET,
+        )
+
+
+def test_hold_002_proof_by_a_non_holder_is_refused() -> None:
+    chain, _keys = _narrowing_with_keys()
+    challenge = issue_challenge(TEST_SECRET)
+    body = proof_body(
+        audience=TEST_AUDIENCE,
+        challenge=challenge,
+        credential_id=chain[-1].credential_id,
+        subject=chain[-1].subject,
+        requested_capability="read",
+        record_id="r0",
+        sealed_payload=None,
+        caller_channel_key=None,
+    )
+    forged = HolderProof(
+        challenge=challenge,
+        signature=Ed25519PrivateKey.generate().sign(canonicalize(body)).hex(),
+    )
+    with pytest.raises(HolderProofInvalid):
+        handle_peer_request(
+            PeerRequest(
+                chain=chain,
+                requested_capability="read",
+                record_id="r0",
+                holder_proof=forged,
+            ),
+            policy=LocalPolicy.of(["read"]),
+            audience=TEST_AUDIENCE,
+            challenge_secret=TEST_SECRET,
+        )
+
+
+def test_hold_003_proof_answering_an_unissued_challenge_is_refused() -> None:
+    chain, keys = _narrowing_with_keys()
+    with pytest.raises(HolderProofInvalid):
+        _handle_proved(
+            chain, keys[-1], "read", "r0", LocalPolicy.of(["read"]), secret=generate_secret()
+        )
+
+
+def test_hold_004_proof_for_another_audience_is_refused() -> None:
+    chain, keys = _narrowing_with_keys()
+    with pytest.raises(HolderProofInvalid):
+        _handle_proved(
+            chain, keys[-1], "read", "r0", LocalPolicy.of(["read"]), audience="another-peer"
+        )
+
+
+def test_hold_005_proof_does_not_transfer_across_capabilities() -> None:
+    chain, keys = _narrowing_with_keys()
+    proof = proved_request(chain, keys[-1], "read", "r0").holder_proof
+    with pytest.raises(HolderProofInvalid):
+        handle_peer_request(
+            PeerRequest(
+                chain=chain,
+                requested_capability="write",
+                record_id="r0",
+                holder_proof=proof,
+            ),
+            policy=LocalPolicy.of(["read", "write"]),
+            audience=TEST_AUDIENCE,
+            challenge_secret=TEST_SECRET,
+        )
+
+
+def test_hold_006_an_attested_caller_cannot_use_another_partys_chain() -> None:
+    """Appraisal is not authentication of authority: both are required."""
+    chain, _keys = _narrowing_with_keys()
+    with pytest.raises(HolderProofInvalid):
+        handle_peer_request(
+            PeerRequest(
+                chain=chain,
+                requested_capability="read",
+                record_id="r0",
+                caller_offer=_holder_offer(issue_challenge(TEST_SECRET)),
+            ),
+            policy=LocalPolicy.of(["read"]),
+            audience=TEST_AUDIENCE,
+            challenge_secret=TEST_SECRET,
+            require_caller_attestation=REQUIRE_ANY,
+        )

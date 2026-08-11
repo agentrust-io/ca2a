@@ -52,6 +52,24 @@ class CredentialReplay(CA2AError):
     http_status = 409
 
 
+class HolderProofInvalid(CA2AError):
+    """The presenter of a delegation chain did not prove it holds the leaf key.
+
+    Raised when a holder proof is absent, malformed, answers a challenge this
+    callee did not issue or which has expired, or does not verify under
+    ``chain[-1].subject``. 401 rather than 403: the chain may well carry the
+    authority requested, but the caller has not shown it is the party that
+    authority was delegated to.
+
+    Distinct from :class:`AttestationFailed`, which is about what the caller is
+    *running*. A caller can appraise perfectly and still fail this, because an
+    attested runtime is not a claim to anybody's delegated authority.
+    """
+
+    code = "HOLDER_PROOF_INVALID"
+    http_status = 401
+
+
 class AttestationUnsupported(CA2AError):
     code = "ATTESTATION_UNSUPPORTED"
     http_status = 500

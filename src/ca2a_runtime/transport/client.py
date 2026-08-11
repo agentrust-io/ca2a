@@ -16,6 +16,8 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Any
 
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
 from ca2a_runtime.attestation import (
     ChannelOffer,
     VerifiedPeer,
@@ -25,6 +27,7 @@ from ca2a_runtime.attestation import (
     verify_offer,
 )
 from ca2a_runtime.delegation.credential import DelegationCredential
+from ca2a_runtime.delegation.holder import build_holder_proof
 from ca2a_runtime.errors import AttestationFailed, CA2AError, TransportError
 from ca2a_runtime.peer import PeerRequest
 from ca2a_runtime.tee.base import BaseProvider
@@ -108,46 +111,59 @@ def send_task(
     requested_capability: str,
     record_id: str,
     *,
+    holder_key: Ed25519PrivateKey,
     payload: bytes | None = None,
     verifier: Verifier | None = None,
     parent_record_hash: str | None = None,
     caller_provider: BaseProvider | None = None,
 ) -> dict[str, Any]:
-    """Run the caller side end to end: verify the peer, seal the payload, send the task.
+    """Run the caller side end to end: verify the peer, prove holdership, seal, send.
 
-    Pass ``caller_provider`` to make the exchange mutual: the caller binds its own
-    channel key into a report under the challenge the callee issued, so the callee
-    learns what the caller is running rather than only what it is allowed to ask
-    for. Omit it and the call is one-directional, which is what every caller did
-    before and what most callees still accept.
+    ``holder_key`` is the private half of ``chain[-1].subject``. Without it the
+    caller cannot answer the callee's challenge, which is the point: a chain
+    copied from a log or an audit bundle is not enough to make a call.
+
+    Pass ``caller_provider`` to also make the *attestation* exchange mutual: the
+    caller binds its own channel key into a report under the same challenge, so
+    the callee learns what the caller is running as well as that it is the
+    delegate. The two are independent, and the holder proof commits to the offer's
+    channel key when one is sent, which is what ties the attested runtime and the
+    delegated principal into a single statement.
 
     Returns the parsed response body on acceptance. Raises a :class:`CA2AError`
     carrying the peer's error code and message on any peer-side failure.
     """
     sealed: bytes | None = None
     caller_offer: ChannelOffer | None = None
-    if payload is not None or caller_provider is not None:
-        hello = handshake(base_url, verifier=verifier)
-        if payload is not None:
-            sealed = seal_to_peer(hello.peer, payload)
-        if caller_provider is not None:
-            if hello.challenge is None:
-                # Attesting under a nonce we picked ourselves would prove only
-                # that we can produce a report, not that we produced one for this
-                # exchange. Better to say the peer does not support this than to
-                # send something that looks like mutual attestation and is not.
-                raise AttestationFailed(
-                    "the peer issued no challenge, so the caller cannot attest to this exchange",
-                    detail="the callee's handshake response carried no 'challenge' field",
-                )
-            # The private half goes unused today: response sealing was withdrawn
-            # because nothing confidential comes back (the response is the
-            # provenance record, which has to stay readable). The key's job here
-            # is to be what the report binds, which is what makes the caller's
-            # measurement live rather than replayed.
-            _caller_private_key, caller_offer = offer_channel(
-                caller_provider, nonce=hello.challenge
-            )
+    # Always: the holder proof needs the callee's identity as its audience and a
+    # challenge the callee issued, and both arrive in this one round trip.
+    hello = handshake(base_url, verifier=verifier)
+    if hello.challenge is None:
+        raise AttestationFailed(
+            "the peer issued no challenge, so the caller cannot prove it holds the leaf key",
+            detail="the callee's handshake response carried no 'challenge' field",
+        )
+    if payload is not None:
+        sealed = seal_to_peer(hello.peer, payload)
+    if caller_provider is not None:
+        # The private half goes unused today: response sealing was withdrawn
+        # because nothing confidential comes back (the response is the
+        # provenance record, which has to stay readable). The key's job here
+        # is to be what the report binds, which is what makes the caller's
+        # measurement live rather than replayed.
+        _caller_private_key, caller_offer = offer_channel(caller_provider, nonce=hello.challenge)
+
+    # After sealing and after the offer, because the proof commits to both.
+    holder_proof = build_holder_proof(
+        holder_key,
+        chain[-1],
+        audience=hello.peer.public_key,
+        challenge=hello.challenge,
+        requested_capability=requested_capability,
+        record_id=record_id,
+        sealed_payload=sealed,
+        caller_channel_key=(None if caller_offer is None else caller_offer.channel_public_key),
+    )
     request = PeerRequest(
         chain=chain,
         requested_capability=requested_capability,
@@ -155,6 +171,7 @@ def send_task(
         sealed_payload=sealed,
         parent_record_hash=parent_record_hash,
         caller_offer=caller_offer,
+        holder_proof=holder_proof,
     )
     message = a2a_adapter.attach_ca2a_metadata({}, request)
     status, body = _post_json(f"{base_url}{TASK_PATH}", message)

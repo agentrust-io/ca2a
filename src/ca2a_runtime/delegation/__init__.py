@@ -11,10 +11,18 @@ from ca2a_runtime.delegation.credential import (
     new_keypair,
     verify_chain,
 )
+from ca2a_runtime.delegation.holder import (
+    HolderProof,
+    build_holder_proof,
+    verify_holder_proof,
+)
 
 __all__ = [
     "DelegationCredential",
+    "HolderProof",
+    "build_holder_proof",
     "canonical_bytes",
     "new_keypair",
     "verify_chain",
+    "verify_holder_proof",
 ]

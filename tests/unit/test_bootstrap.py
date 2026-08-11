@@ -12,6 +12,7 @@ import threading
 from pathlib import Path
 
 import pytest
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from ca2a_runtime.bootstrap import build_peer_node, load_policy, select_provider
 from ca2a_runtime.cedar import CedarPolicy
@@ -84,17 +85,18 @@ def test_unimplemented_provider_rejected() -> None:
         select_provider(Ca2aConfig(provider="opaque"))
 
 
-def _delegation_chain() -> list[DelegationCredential]:
+def _delegation_chain() -> tuple[list[DelegationCredential], Ed25519PrivateKey]:
+    """A one-hop chain plus the leaf subject's key, which the caller must hold."""
     root_priv, root_pub = new_keypair()
-    callee_pub = new_keypair()[1]
+    subject_priv, subject_pub = new_keypair()
     cred = DelegationCredential(
         credential_id="c0",
         issuer=root_pub,
-        subject=callee_pub,
+        subject=subject_pub,
         scope=frozenset({"read", "write"}),
         depth=0,
     ).sign(root_priv)
-    return [cred]
+    return [cred], subject_priv
 
 
 def _write_config(tmp_path: Path) -> Path:
@@ -131,14 +133,16 @@ def test_config_built_node_serves_a_live_call(tmp_path: Path) -> None:
     thread.start()
     try:
         base = f"http://{host}:{srv.server_address[1]}"
-        chain = _delegation_chain()
+        chain, leaf_key = _delegation_chain()
 
-        body = client.send_task(base, chain, "read", "r0", payload=b"from a config file")
+        body = client.send_task(
+            base, chain, "read", "r0", holder_key=leaf_key, payload=b"from a config file"
+        )
         assert body["accepted"] is True
         assert body["granted_capability"] == "read"
 
         with pytest.raises(CA2AError) as exc_info:
-            client.send_task(base, chain, "write", "r1")
+            client.send_task(base, chain, "write", "r1", holder_key=leaf_key)
         assert exc_info.value.code == "SCOPE_NOT_PERMITTED"
     finally:
         srv.shutdown()
