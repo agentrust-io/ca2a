@@ -94,8 +94,15 @@ def select_provider(config: Ca2aConfig) -> BaseProvider:
 
 def build_peer_node(config: Ca2aConfig, *, config_dir: Path | None = None) -> PeerNode:
     """Build the node ``ca2a start`` serves: policy, provider, and depth limit."""
+    policy = load_policy(config, config_dir=config_dir)
+    if not config.trusted_root_issuers:
+        raise ConfigError(
+            "ca2a start requires at least one trusted_root_issuer",
+            detail="pin the Ed25519 public key of each authority allowed to originate delegation chains",
+        )
     return PeerNode(
-        load_policy(config, config_dir=config_dir),
+        policy,
         provider=select_provider(config),
         max_depth=config.max_delegation_depth,
+        trusted_root_issuers=config.trusted_root_issuers,
     )

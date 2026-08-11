@@ -32,7 +32,9 @@ from ca2a_runtime.errors import (
     ScopeNotPermitted,
     SealedChannelError,
 )
-from ca2a_runtime.peer import REQUIRE_ANY, PeerRequest, effective_scope, handle_peer_request
+from ca2a_runtime.peer import REQUIRE_ANY, PeerRequest
+from ca2a_runtime.peer import effective_scope as _effective_scope
+from ca2a_runtime.peer import handle_peer_request as _handle_peer_request
 from ca2a_runtime.policy import LocalPolicy
 from ca2a_runtime.provenance import DelegationRecord, cross_check_chain, record_for, verify_dag
 from ca2a_runtime.tee.base import AttestationReport
@@ -86,6 +88,14 @@ def _handle_proved(chain, leaf_key, capability, record_id, policy, **kw):
 
 def _narrowing():
     return build_chain([frozenset({"read", "write", "admin"}), frozenset({"read", "write"})])
+
+
+def effective_scope(chain, policy):
+    return _effective_scope(chain, policy, trusted_root_issuers={chain[0].issuer})
+
+
+def handle_peer_request(request, **kwargs):
+    return _handle_peer_request(request, trusted_root_issuers={request.chain[0].issuer}, **kwargs)
 
 
 def _deep3():

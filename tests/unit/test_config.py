@@ -16,6 +16,18 @@ def test_defaults_from_empty_dict() -> None:
     assert cfg.enforcement_mode == "enforcing"
     assert cfg.max_delegation_depth == 8
     assert cfg.listen_host_port() == ("127.0.0.1", 8443)
+    assert cfg.trusted_root_issuers == frozenset()
+
+
+def test_trusted_root_issuers_are_loaded() -> None:
+    cfg = Ca2aConfig.from_dict({"trusted_root_issuers": ["root-a", "root-b"]})
+    assert cfg.trusted_root_issuers == frozenset({"root-a", "root-b"})
+
+
+@pytest.mark.parametrize("value", ["root-a", [""], [1], {}])
+def test_malformed_trusted_root_issuers_are_rejected(value: object) -> None:
+    with pytest.raises(ConfigError, match="trusted_root_issuers"):
+        Ca2aConfig.from_dict({"trusted_root_issuers": value})
 
 
 def test_unknown_provider_rejected() -> None:

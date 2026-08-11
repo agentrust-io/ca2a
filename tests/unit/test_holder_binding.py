@@ -28,7 +28,8 @@ from ca2a_runtime.delegation import DelegationCredential, build_holder_proof
 from ca2a_runtime.delegation.holder import HolderProof, ProofReplayCache, proof_body
 from ca2a_runtime.errors import HolderProofInvalid
 from ca2a_runtime.node import PeerNode
-from ca2a_runtime.peer import REQUIRE_ANY, PeerRequest, handle_peer_request
+from ca2a_runtime.peer import REQUIRE_ANY, PeerRequest
+from ca2a_runtime.peer import handle_peer_request as _handle_peer_request
 from ca2a_runtime.policy import LocalPolicy
 from ca2a_runtime.tee.base import AttestationReport
 from ca2a_runtime.tee.software import SoftwareProvider
@@ -45,6 +46,18 @@ POLICY = LocalPolicy.of(["read", "write"])
 
 def _chain():
     return build_chain_with_keys([frozenset({"read", "write"})])
+
+
+def handle_peer_request(request, **kwargs):
+    """The handler with this request's own root trusted.
+
+    Each test here mints a fresh chain, so there is no single root to pin at
+    module level. Trusting the presented root is right for these tests and only
+    these: root trust is what ``test_delegation_roots.py`` covers, and holding it
+    fixed here keeps a holder-binding failure from being reported as an
+    untrusted-root one.
+    """
+    return _handle_peer_request(request, trusted_root_issuers={request.chain[0].issuer}, **kwargs)
 
 
 def _handle(req, **kwargs):
@@ -344,9 +357,9 @@ def test_cache_is_bounded_and_says_what_that_costs() -> None:
 
 def test_a_node_remembers_proofs_by_default() -> None:
     """The default posture, over the transport, not just the handler."""
-    node = PeerNode(POLICY)
-    assert node.seen_proofs is not None
     chain, keys = _chain()
+    node = PeerNode(POLICY, trusted_root_issuers={chain[0].issuer})
+    assert node.seen_proofs is not None
     message = a2a_adapter.attach_ca2a_metadata(
         {},
         PeerRequest(
@@ -437,13 +450,12 @@ def test_a_malformed_holder_proof_on_the_wire_fails_closed() -> None:
 
 def test_replay_over_http_is_refused() -> None:
     """Bob calls legitimately; every route Mallory has is refused."""
-    node = PeerNode(POLICY)
+    chain, keys = _chain()
+    node = PeerNode(POLICY, trusted_root_issuers={chain[0].issuer})
     srv = server.serve(node, host="127.0.0.1", port=0)
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     base = f"http://127.0.0.1:{srv.server_address[1]}"
     try:
-        chain, keys = _chain()
-
         # Bob, who holds the leaf key, gets through.
         ok = client.send_task(base, chain, "write", "r0", holder_key=keys[-1])
         assert ok["accepted"] is True
@@ -495,8 +507,9 @@ def test_replay_over_http_is_refused() -> None:
 
 
 def test_a_node_can_opt_out_for_offline_replay() -> None:
-    node = PeerNode(POLICY, require_holder_proof=False)
+    chain, _keys = _chain()
+    node = PeerNode(POLICY, require_holder_proof=False, trusted_root_issuers={chain[0].issuer})
     message = a2a_adapter.attach_ca2a_metadata(
-        {}, PeerRequest(chain=_chain()[0], requested_capability="write", record_id="r0")
+        {}, PeerRequest(chain=chain, requested_capability="write", record_id="r0")
     )
     assert node.handle(message).granted_capability == "write"

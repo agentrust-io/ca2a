@@ -59,6 +59,7 @@ class Ca2aConfig:
     policy_bundle_path: str | None = None
     local_policy: frozenset[str] | None = None
     listen_addr: str = DEFAULT_LISTEN_ADDR
+    trusted_root_issuers: frozenset[str] = frozenset()
 
     def listen_host_port(self) -> tuple[str, int]:
         """Return ``listen_addr`` split into the host and port to bind."""
@@ -101,6 +102,12 @@ class Ca2aConfig:
         listen_addr = data.get("listen_addr", DEFAULT_LISTEN_ADDR)
         split_listen_addr(listen_addr)
 
+        raw_roots = data.get("trusted_root_issuers", [])
+        if not isinstance(raw_roots, list) or not all(
+            isinstance(item, str) and item for item in raw_roots
+        ):
+            raise ConfigError("trusted_root_issuers must be a list of non-empty public-key strings")
+
         return cls(
             provider=provider,
             enforcement_mode=enforcement,
@@ -108,6 +115,7 @@ class Ca2aConfig:
             policy_bundle_path=bundle,
             local_policy=local_policy,
             listen_addr=listen_addr,
+            trusted_root_issuers=frozenset(raw_roots),
         )
 
     @classmethod

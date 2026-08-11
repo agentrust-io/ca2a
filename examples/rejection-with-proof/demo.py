@@ -122,6 +122,7 @@ def main() -> int:
         policy=CALLEE_POLICY,
         record_id="rec-check",
         parent_record_hash=parent_hash,
+        trusted_root_issuers={chain[0].issuer},
     )
     print(f"ALLOW  tool:search    effective scope {sorted(granted.effective_scope)}")
 
@@ -133,6 +134,7 @@ def main() -> int:
             policy=CALLEE_POLICY,
             record_id="rec-denied-purchase",
             parent_record_hash=parent_hash,
+            trusted_root_issuers={chain[0].issuer},
         )
     except ScopeNotPermitted as exc:
         denial = exc.record

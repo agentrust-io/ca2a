@@ -46,6 +46,7 @@ def test_start_serves_the_configured_address(
     config = _config(
         tmp_path,
         "attestation:\n  provider: software-only\nlocal_policy:\n  - read\n"
+        "trusted_root_issuers:\n  - test-root\n"
         "listen_addr: 127.0.0.1:9443\n",
     )
 
@@ -66,7 +67,11 @@ def test_start_refuses_a_config_with_no_policy(
 def test_start_refuses_auto_provider_off_hardware(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    config = _config(tmp_path, "attestation:\n  provider: auto\nlocal_policy:\n  - read\n")
+    config = _config(
+        tmp_path,
+        "attestation:\n  provider: auto\nlocal_policy:\n  - read\n"
+        "trusted_root_issuers:\n  - test-root\n",
+    )
     assert cli.main(["start", "--config", config]) == 1
     assert "no hardware attestation provider" in capsys.readouterr().err
 
@@ -81,6 +86,7 @@ def test_start_reports_a_bind_failure_instead_of_raising(
     config = _config(
         tmp_path,
         "attestation:\n  provider: software-only\nlocal_policy:\n  - read\n"
+        "trusted_root_issuers:\n  - test-root\n"
         "listen_addr: 127.0.0.1:9443\n",
     )
     assert cli.main(["start", "--config", config]) == 1
@@ -93,6 +99,10 @@ def test_start_warns_that_software_mode_has_no_guarantee(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     monkeypatch.setattr(server, "serve", lambda node, host, port: _FakeServer(node))
-    config = _config(tmp_path, "attestation:\n  provider: software-only\nlocal_policy:\n  - read\n")
+    config = _config(
+        tmp_path,
+        "attestation:\n  provider: software-only\nlocal_policy:\n  - read\n"
+        "trusted_root_issuers:\n  - test-root\n",
+    )
     assert cli.main(["start", "--config", config]) == 0
     assert 'assurance="none"' in capsys.readouterr().err

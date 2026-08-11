@@ -5,3 +5,7 @@ attestation:
 max_delegation_depth: 8
 listen_addr: "127.0.0.1:8443"
 local_policy: ["read", "write"]
+trusted_root_issuers:
+  # Pin authorities allowed to originate delegation chains. This example key
+  # matches examples/minimal/chain.json; replace it in a real deployment.
+  - "eda38c446da3db3eba68852ca9869260c36badd48b2cab16ec8d8faf607eb162"

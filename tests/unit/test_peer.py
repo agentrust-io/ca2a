@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import pytest
 
-from ca2a_runtime.errors import ScopeEscalation, ScopeNotPermitted
-from ca2a_runtime.peer import PeerDecision, effective_scope, enforce_peer_call
+from ca2a_runtime.errors import ScopeEscalation, ScopeNotPermitted, UntrustedDelegationRoot
+from ca2a_runtime.peer import PeerDecision
+from ca2a_runtime.peer import effective_scope as _effective_scope
+from ca2a_runtime.peer import enforce_peer_call as _enforce_peer_call
 from ca2a_runtime.policy import LocalPolicy
 from ca2a_runtime.provenance import verify_dag
 from tests.unit.conftest import build_chain
@@ -14,6 +16,25 @@ from tests.unit.conftest import build_chain
 def _chain():
     # leaf scope is {read, write}; local policy will further constrain it.
     return build_chain([frozenset({"read", "write", "admin"}), frozenset({"read", "write"})])
+
+
+def effective_scope(chain, policy):
+    return _effective_scope(chain, policy, trusted_root_issuers={chain[0].issuer})
+
+
+def enforce_peer_call(chain, capability, **kwargs):
+    return _enforce_peer_call(chain, capability, trusted_root_issuers={chain[0].issuer}, **kwargs)
+
+
+def test_runtime_rejects_a_valid_chain_from_an_untrusted_root() -> None:
+    attacker_chain = _chain()
+    with pytest.raises(UntrustedDelegationRoot):
+        _enforce_peer_call(
+            attacker_chain,
+            "read",
+            policy=LocalPolicy.of(["read"]),
+            record_id="attack",
+        )
 
 
 def test_local_policy_helpers() -> None:

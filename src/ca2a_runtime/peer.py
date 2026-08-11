@@ -36,6 +36,7 @@ does with a parsed request.
 
 from __future__ import annotations
 
+from collections.abc import Collection
 from dataclasses import dataclass
 
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
@@ -85,13 +86,17 @@ REQUIREMENT_VALUES = frozenset({REQUIRE_NONE, REQUIRE_ANY, REQUIRE_HARDWARE})
 
 
 def effective_scope(
-    chain: list[DelegationCredential], policy: Policy, *, max_depth: int = 8
+    chain: list[DelegationCredential],
+    policy: Policy,
+    *,
+    max_depth: int = 8,
+    trusted_root_issuers: Collection[str] = (),
 ) -> frozenset[str]:
     """Verify the chain and return the effective scope (delegated ∩ local policy).
 
     Raises the relevant CA2AError if the chain does not verify.
     """
-    verify_chain(chain, max_depth=max_depth)
+    verify_chain(chain, max_depth=max_depth, trusted_root_issuers=trusted_root_issuers)
     return policy.intersect(chain[-1].scope)
 
 
@@ -113,6 +118,7 @@ def enforce_peer_call(
     parent_record_hash: str | None = None,
     max_depth: int = 8,
     caller_attestation: str = CALLER_NOT_OFFERED,
+    trusted_root_issuers: Collection[str] = (),
 ) -> PeerDecision:
     """Verify, intersect with local policy, enforce, and emit a provenance record.
 
@@ -125,7 +131,12 @@ def enforce_peer_call(
     :func:`handle_peer_request` does exactly that. The default is the honest value
     for a path that appraised nothing.
     """
-    effective = effective_scope(chain, policy, max_depth=max_depth)
+    effective = effective_scope(
+        chain,
+        policy,
+        max_depth=max_depth,
+        trusted_root_issuers=trusted_root_issuers,
+    )
     return decide_capability(
         chain,
         requested_capability,
@@ -370,6 +381,7 @@ def handle_peer_request(
     audience: str | None = None,
     require_holder_proof: bool = True,
     seen_proofs: ProofReplayCache | None = None,
+    trusted_root_issuers: Collection[str] = (),
 ) -> PeerResult:
     """Run the full inbound pipeline for a parsed peer request.
 
@@ -399,7 +411,14 @@ def handle_peer_request(
     there is no live caller to challenge, and must not be used on a live peer
     path.
     """
-    verify_chain(request.chain, max_depth=max_depth)
+    # The trust set is supplied here as well as in the scope intersection below,
+    # so an untrusted root is refused before the caller is challenged for a proof
+    # about a credential this peer was never going to honour.
+    verify_chain(
+        request.chain,
+        max_depth=max_depth,
+        trusted_root_issuers=trusted_root_issuers,
+    )
     if require_holder_proof:
         # Before the scope intersection, so an unauthenticated caller never
         # reaches authorization and never elicits a denial record.
@@ -410,7 +429,12 @@ def handle_peer_request(
             seen_proofs=seen_proofs,
         )
 
-    effective = effective_scope(request.chain, policy, max_depth=max_depth)
+    effective = effective_scope(
+        request.chain,
+        policy,
+        max_depth=max_depth,
+        trusted_root_issuers=trusted_root_issuers,
+    )
 
     caller_attestation = appraise_caller_runtime(
         request,

@@ -18,6 +18,7 @@ are cross-verifiable with agent-manifest. See ca2a_runtime.canonical.
 
 from __future__ import annotations
 
+from collections.abc import Collection
 from dataclasses import dataclass
 from typing import Any
 
@@ -34,6 +35,7 @@ from ca2a_runtime.errors import (
     DelegationDepthExceeded,
     InvalidCredential,
     ScopeEscalation,
+    UntrustedDelegationRoot,
 )
 
 
@@ -124,7 +126,12 @@ class DelegationCredential:
             raise InvalidCredential("malformed credential", detail=str(exc)) from exc
 
 
-def verify_chain(chain: list[DelegationCredential], *, max_depth: int = 8) -> None:
+def verify_chain(
+    chain: list[DelegationCredential],
+    *,
+    max_depth: int = 8,
+    trusted_root_issuers: Collection[str] | None = None,
+) -> None:
     """Verify a root-to-leaf delegation chain, raising on the first violation.
 
     A well-formed chain of length N delegates from the root issuer down to the
@@ -133,6 +140,15 @@ def verify_chain(chain: list[DelegationCredential], *, max_depth: int = 8) -> No
     """
     if not chain:
         raise BrokenDelegationLink("empty delegation chain")
+
+    # ``None`` deliberately means structural/offline verification only. Runtime
+    # authorization always supplies its local trust set, including an empty set,
+    # so a self-consistent chain minted by an attacker cannot authorize a call.
+    if trusted_root_issuers is not None and chain[0].issuer not in trusted_root_issuers:
+        raise UntrustedDelegationRoot(
+            "delegation root issuer is not trusted by this peer",
+            detail=f"root_issuer={chain[0].issuer}",
+        )
 
     seen_ids: set[str] = set()
     prev: DelegationCredential | None = None

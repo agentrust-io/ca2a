@@ -98,7 +98,7 @@ def _message(
 
 def test_live_inbound_flow_software_mode() -> None:
     chain, leaf_key = _chain()
-    node = PeerNode(LocalPolicy.of({"read"}))
+    node = PeerNode(LocalPolicy.of({"read"}), trusted_root_issuers={chain[0].issuer})
 
     nonce = "nonce-abc"
     peer = verify_offer(node.offer(nonce), expected_nonce=nonce)
@@ -116,18 +116,22 @@ def test_live_inbound_flow_software_mode() -> None:
 
 
 def test_over_scope_capability_is_denied() -> None:
-    node = PeerNode(LocalPolicy.of({"read"}))  # policy does not allow "write"
+    chain, leaf_key = _chain()
+    node = PeerNode(
+        LocalPolicy.of({"read"}), trusted_root_issuers={chain[0].issuer}
+    )  # policy does not allow "write"
     with pytest.raises(ScopeNotPermitted):
-        node.handle(_message(node, *_chain(), "write", "r1"))
+        node.handle(_message(node, chain, leaf_key, "write", "r1"))
 
 
 def test_tampered_sealed_payload_fails_closed() -> None:
-    node = PeerNode(LocalPolicy.of({"read"}))
+    chain, leaf_key = _chain()
+    node = PeerNode(LocalPolicy.of({"read"}), trusted_root_issuers={chain[0].issuer})
     peer = verify_offer(node.offer("n"), expected_nonce="n")
     sealed = bytearray(seal_to_peer(peer, b"payload"))
     sealed[-1] ^= 0x01
     with pytest.raises(SealedChannelError):
-        node.handle(_message(node, *_chain(), "read", "r2", sealed=bytes(sealed)))
+        node.handle(_message(node, chain, leaf_key, "read", "r2", sealed=bytes(sealed)))
 
 
 def test_stale_offer_nonce_is_rejected() -> None:
@@ -146,8 +150,9 @@ def test_channel_offer_wire_roundtrip() -> None:
 
 
 def test_serialize_result_shape() -> None:
-    node = PeerNode(LocalPolicy.of({"read"}))
-    result = node.handle(_message(node, *_chain(), "read", "r0"))
+    chain, leaf_key = _chain()
+    node = PeerNode(LocalPolicy.of({"read"}), trusted_root_issuers={chain[0].issuer})
+    result = node.handle(_message(node, chain, leaf_key, "read", "r0"))
     body = wire.serialize_peer_result(result)
     assert body["accepted"] is True
     assert body["granted_capability"] == "read"
@@ -160,15 +165,14 @@ def test_serialize_result_shape() -> None:
 
 
 def test_http_live_call_end_to_end() -> None:
-    node = PeerNode(LocalPolicy.of({"read"}))
+    chain, leaf_key = _chain()
+    node = PeerNode(LocalPolicy.of({"read"}), trusted_root_issuers={chain[0].issuer})
     srv = server.serve(node, host="127.0.0.1", port=0)
     port = srv.server_address[1]
     thread = threading.Thread(target=srv.serve_forever, daemon=True)
     thread.start()
     try:
         base = f"http://127.0.0.1:{port}"
-        chain, leaf_key = _chain()
-
         body = client.send_task(
             base, chain, "read", "r0", holder_key=leaf_key, payload=b"hello over the wire"
         )

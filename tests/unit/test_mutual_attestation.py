@@ -22,7 +22,7 @@ from ca2a_runtime.attestation import ChannelOffer, appraise_caller, seal_to_peer
 from ca2a_runtime.delegation.credential import DelegationCredential, new_keypair
 from ca2a_runtime.delegation.holder import build_holder_proof
 from ca2a_runtime.errors import AttestationFailed, CA2AError, ConfigError, TransportError
-from ca2a_runtime.node import PeerNode
+from ca2a_runtime.node import PeerNode as _PeerNode
 from ca2a_runtime.peer import (
     REQUIRE_ANY,
     REQUIRE_HARDWARE,
@@ -43,20 +43,6 @@ from ca2a_runtime.transport import a2a_adapter, client, server, wire
 from ca2a_runtime.transport.constants import KEY_CALLER_OFFER
 
 POLICY = LocalPolicy.of({"read"})
-
-
-def handle_peer_request(*args: object, **kwargs: object) -> object:
-    """``handle_peer_request`` with holder binding off, for this file only.
-
-    Appraisal ("what is the caller running") and holder binding ("is the caller
-    the delegate") are independent, and holder binding is covered in
-    ``test_holder_binding.py``. Several tests here deliberately hand the callee a
-    challenge secret the offer was not issued under; since holder binding is
-    checked first and reads the same secret, leaving it on would surface as a
-    holder-proof failure and mask the appraisal outcome each test asserts.
-    """
-    kwargs.setdefault("require_holder_proof", False)
-    return _handle_peer_request(*args, **kwargs)  # type: ignore[arg-type]
 
 
 def _build_chain() -> tuple[list[DelegationCredential], Ed25519PrivateKey]:
@@ -80,6 +66,24 @@ _CHAIN, LEAF_KEY = _build_chain()
 
 def _chain() -> list[DelegationCredential]:
     return _CHAIN
+
+
+def handle_peer_request(request, **kwargs):
+    """``handle_peer_request`` with this file's trust set, and holder binding off.
+
+    Appraisal ("what is the caller running") and holder binding ("is the caller
+    the delegate") are independent, and holder binding is covered in
+    ``test_holder_binding.py``. Several tests here deliberately hand the callee a
+    challenge secret the offer was not issued under; since holder binding is
+    checked first and reads the same secret, leaving it on would surface as a
+    holder-proof failure and mask the appraisal outcome each test asserts.
+    """
+    kwargs.setdefault("require_holder_proof", False)
+    return _handle_peer_request(request, trusted_root_issuers={request.chain[0].issuer}, **kwargs)
+
+
+def PeerNode(policy, **kwargs):
+    return _PeerNode(policy, trusted_root_issuers={_CHAIN[0].issuer}, **kwargs)
 
 
 def _caller_offer(challenge: str, *, platform: str = "software-only") -> ChannelOffer:

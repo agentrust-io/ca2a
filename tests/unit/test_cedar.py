@@ -8,7 +8,8 @@ import pytest
 
 from ca2a_runtime.cedar import CedarPolicy
 from ca2a_runtime.errors import ScopeNotPermitted
-from ca2a_runtime.peer import effective_scope, enforce_peer_call
+from ca2a_runtime.peer import effective_scope as _effective_scope
+from ca2a_runtime.peer import enforce_peer_call as _enforce_peer_call
 from ca2a_runtime.policy import Policy
 from tests.unit.conftest import build_chain
 
@@ -23,6 +24,14 @@ EXAMPLE_POLICY = (
 
 def _chain():
     return build_chain([frozenset({"read", "write", "admin"}), frozenset({"read", "write"})])
+
+
+def effective_scope(chain, policy):
+    return _effective_scope(chain, policy, trusted_root_issuers={chain[0].issuer})
+
+
+def enforce_peer_call(chain, capability, **kwargs):
+    return _enforce_peer_call(chain, capability, trusted_root_issuers={chain[0].issuer}, **kwargs)
 
 
 def test_cedar_policy_satisfies_protocol() -> None:

@@ -14,6 +14,8 @@ attestation:
 
 max_delegation_depth: 8     # reject chains deeper than this
 listen_addr: "127.0.0.1:8443"
+trusted_root_issuers:
+  - "<root Ed25519 public key as raw hex>"
 
 local_policy: ["read", "write"]   # allow-set for scope intersection (or use Cedar below)
 # policy_bundle_path: policy.cedar
@@ -27,6 +29,7 @@ local_policy: ["read", "write"]   # allow-set for scope intersection (or use Ced
 | `attestation.enforcement_mode` | `enforcing` | Intended mode. The peer path always fails closed on cA2A denials today; advisory and silent are accepted in config but not applied on the wire. |
 | `max_delegation_depth` | `8` | Chains deeper than this are rejected with `DELEGATION_DEPTH_EXCEEDED`. |
 | `listen_addr` | `127.0.0.1:8443` | Address `ca2a start` binds. The host is never defaulted, so serving on every interface has to be written out. |
+| `trusted_root_issuers` | none | Ed25519 public keys allowed to originate delegation chains. At least one is required by `ca2a start`; an internally valid chain from any other root is denied before policy evaluation. |
 | `local_policy` | none | Capability allow set for `LocalPolicy`. Required for `ca2a start` unless `policy_bundle_path` is set. |
 | `policy_bundle_path` | none | Path to a Cedar policy file, resolved relative to the config file. When set, used instead of `local_policy`. |
 
