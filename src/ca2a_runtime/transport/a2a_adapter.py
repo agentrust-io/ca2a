@@ -16,12 +16,14 @@ from typing import Any
 
 from ca2a_runtime.attestation import ChannelOffer
 from ca2a_runtime.delegation.credential import DelegationCredential
+from ca2a_runtime.delegation.holder import HolderProof
 from ca2a_runtime.errors import InvalidCredential, TransportError
 from ca2a_runtime.peer import PeerRequest
 from ca2a_runtime.transport.constants import (
     CA2A_METADATA_KEYS,
     KEY_CALLER_OFFER,
     KEY_DELEGATION_CHAIN,
+    KEY_HOLDER_PROOF,
     KEY_PARENT_RECORD_HASH,
     KEY_RECORD_ID,
     KEY_REQUESTED_CAPABILITY,
@@ -189,6 +191,13 @@ def parse_peer_request(
     if KEY_CALLER_OFFER in meta and meta[KEY_CALLER_OFFER] is not None:
         caller_offer = parse_channel_offer(meta[KEY_CALLER_OFFER])
 
+    # Absent parses to None so the handler decides whether a proof was required;
+    # present-but-malformed raises HolderProofInvalid rather than TransportError,
+    # because the metadata parsed and the proof inside it did not hold up.
+    holder_proof: HolderProof | None = None
+    if KEY_HOLDER_PROOF in meta and meta[KEY_HOLDER_PROOF] is not None:
+        holder_proof = HolderProof.from_dict(meta[KEY_HOLDER_PROOF])
+
     return PeerRequest(
         chain=chain,
         requested_capability=capability,
@@ -196,6 +205,7 @@ def parse_peer_request(
         sealed_payload=sealed_payload,
         parent_record_hash=parent_record_hash,
         caller_offer=caller_offer,
+        holder_proof=holder_proof,
     )
 
 
@@ -253,4 +263,8 @@ def attach_ca2a_metadata(
         meta.pop(KEY_CALLER_OFFER, None)
     else:
         meta[KEY_CALLER_OFFER] = serialize_channel_offer(request.caller_offer)
+    if request.holder_proof is None:
+        meta.pop(KEY_HOLDER_PROOF, None)
+    else:
+        meta[KEY_HOLDER_PROOF] = request.holder_proof.to_dict()
     return out

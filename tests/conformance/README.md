@@ -105,3 +105,18 @@ Spec: [trace-a2a-profile.md](../../docs/spec/trace-a2a-profile.md), [provenance-
 | ACTION-009 | MUST | A delegated action with a strictly attenuating multi-hop credential chain verifies. | `verified`. |
 | ACTION-010 | MUST | An action evidence chain with scope widening at an intermediate hop is rejected as provenance-invalid. | `SCOPE_ESCALATION`. |
 | ACTION-011 | MUST | Action evidence whose delegatee differs from the subject of the referenced credential is rejected as provenance-invalid. | `PROVENANCE_LINK_BROKEN`. |
+
+## Group 8: Holder binding
+
+Spec: [profile.md](../../docs/spec/profile.md) P-4a, [delegation-chain.md](../../docs/spec/delegation-chain.md)
+
+Holder binding is independent of caller attestation (Group 3). Appraisal establishes what the caller is running; these establish whose authority it holds. HOLD-006 is the one that says why both are needed.
+
+| ID | Level | Requirement | Expected outcome |
+|---|---|---|---|
+| HOLD-001 | MUST | A delegation chain presented without a holder proof is refused. | `HOLDER_PROOF_INVALID`. |
+| HOLD-002 | MUST | A proof signed by a key other than the leaf `subject` is refused. | `HOLDER_PROOF_INVALID`. |
+| HOLD-003 | MUST | A proof answering a challenge this callee did not issue is refused. | `HOLDER_PROOF_INVALID`. |
+| HOLD-004 | MUST | A proof naming a different audience is refused, so a proof made for one peer cannot be presented to another. | `HOLDER_PROOF_INVALID`. |
+| HOLD-005 | MUST | A proof does not transfer across requested capabilities. | `HOLDER_PROOF_INVALID`. |
+| HOLD-006 | MUST | A caller whose own attestation appraises successfully is still refused when it presents a chain issued to another party. | `HOLDER_PROOF_INVALID`. |

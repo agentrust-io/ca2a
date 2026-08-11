@@ -19,6 +19,7 @@ pytest.importorskip("a2a", reason="install 'ca2a[a2a-sdk]' to exercise the SDK b
 
 from a2a.extensions.common import HTTP_EXTENSION_HEADER  # noqa: E402
 from a2a.types import Message  # noqa: E402
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey  # noqa: E402
 from google.protobuf import json_format  # noqa: E402
 
 from ca2a_runtime.attestation import ChannelOffer  # noqa: E402
@@ -28,6 +29,7 @@ from ca2a_runtime.delegation.credential import (  # noqa: E402
     new_keypair,
     verify_chain,
 )
+from ca2a_runtime.delegation.holder import build_holder_proof  # noqa: E402
 from ca2a_runtime.errors import InvalidCredential, TransportError  # noqa: E402
 from ca2a_runtime.node import PeerNode  # noqa: E402
 from ca2a_runtime.peer import REQUIRE_ANY, PeerRequest  # noqa: E402
@@ -37,8 +39,8 @@ from ca2a_runtime.transport import a2a_sdk  # noqa: E402
 from ca2a_runtime.transport.constants import EXTENSION_URI  # noqa: E402
 
 
-def _chain(hops: int = 1) -> list[DelegationCredential]:
-    """A verifiable chain of ``hops`` credentials, depths 0..hops-1.
+def _chain_with_keys(hops: int = 1) -> tuple[list[DelegationCredential], Ed25519PrivateKey]:
+    """A verifiable chain of ``hops`` credentials, plus the leaf subject's key.
 
     Built for real rather than with a hand-set depth: a root must be depth 0 and
     each hop must chain to its parent, so a synthetic non-zero depth on a
@@ -49,6 +51,7 @@ def _chain(hops: int = 1) -> list[DelegationCredential]:
     scope = frozenset({"read", "write"})
     issuer_priv, issuer_pub = root_priv, root_pub
     chain: list[DelegationCredential] = []
+    subject_priv = root_priv
     for depth in range(hops):
         subject_priv, subject_pub = new_keypair()
         chain.append(
@@ -62,17 +65,43 @@ def _chain(hops: int = 1) -> list[DelegationCredential]:
             ).sign(issuer_priv)
         )
         issuer_priv, issuer_pub = subject_priv, subject_pub
-    return chain
+    return chain, subject_priv
 
 
-def _request(**kwargs) -> PeerRequest:
-    base = {
-        "chain": _chain(),
+def _chain(hops: int = 1) -> list[DelegationCredential]:
+    return _chain_with_keys(hops)[0]
+
+
+def _request(*, node: PeerNode | None = None, **kwargs) -> PeerRequest:
+    """A request for the bridge round trip.
+
+    Pass ``node`` when the request goes on to :meth:`PeerNode.handle`, which
+    requires holder binding as it ships: the chain is then built with its leaf key
+    retained so a proof can be signed against a challenge that node issued.
+    """
+    chain, leaf_key = _chain_with_keys()
+    base: dict = {
+        "chain": chain,
         "requested_capability": "read",
         "record_id": "r0",
         "parent_record_hash": None,
     }
     base.update(kwargs)
+    if node is not None:
+        base["holder_proof"] = build_holder_proof(
+            leaf_key,
+            base["chain"][-1],
+            audience=node.channel_public_key,
+            challenge=node.issue_challenge(),
+            requested_capability=base["requested_capability"],
+            record_id=base["record_id"],
+            sealed_payload=base.get("sealed_payload"),
+            caller_channel_key=(
+                None
+                if base.get("caller_offer") is None
+                else base["caller_offer"].channel_public_key
+            ),
+        )
     return PeerRequest(**base)
 
 
@@ -242,7 +271,7 @@ def test_opted_in(values: list[str] | None, expected: bool) -> None:
 def test_an_sdk_message_drives_the_full_inbound_pipeline() -> None:
     """What an adopter actually gets: enforcement from an SDK message."""
     node = PeerNode(LocalPolicy.of({"read"}))
-    request = _request()
+    request = _request(node=node)
     message = a2a_sdk.attach_to_sdk_message(Message(message_id="m1"), request)
 
     parsed = a2a_sdk.parse_sdk_message(message)
@@ -265,6 +294,8 @@ def test_mutual_attestation_works_over_the_sdk_bridge() -> None:
             nonce=challenge,
         ),
     )
-    message = a2a_sdk.attach_to_sdk_message(Message(message_id="m1"), _request(caller_offer=offer))
+    message = a2a_sdk.attach_to_sdk_message(
+        Message(message_id="m1"), _request(caller_offer=offer, node=node)
+    )
     result = node.handle({"metadata": a2a_sdk.metadata_from_sdk_message(message)})
     assert result.caller_attestation == "software-only"

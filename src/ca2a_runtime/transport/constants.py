@@ -22,6 +22,12 @@ KEY_SEALED_PAYLOAD = f"{EXTENSION_URI}/sealed_payload"
 #: required would break every caller that exists today.
 KEY_CALLER_OFFER = f"{EXTENSION_URI}/caller_offer"
 
+#: The caller's proof that it controls the leaf credential's ``subject``, against
+#: a challenge the callee issued. Required by default on the inbound path, unlike
+#: ``caller_offer``: a caller that cannot attest its runtime is common, but a
+#: caller that cannot sign for the key it was delegated is not the delegate.
+KEY_HOLDER_PROOF = f"{EXTENSION_URI}/holder_proof"
+
 CA2A_METADATA_KEYS = frozenset(
     {
         KEY_DELEGATION_CHAIN,
@@ -30,5 +36,6 @@ CA2A_METADATA_KEYS = frozenset(
         KEY_PARENT_RECORD_HASH,
         KEY_SEALED_PAYLOAD,
         KEY_CALLER_OFFER,
+        KEY_HOLDER_PROOF,
     }
 )

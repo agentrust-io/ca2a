@@ -14,11 +14,13 @@ import threading
 import time
 
 import pytest
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 from ca2a_runtime import challenge as challenge_mod
 from ca2a_runtime import peer as peer_mod
 from ca2a_runtime.attestation import ChannelOffer, appraise_caller, seal_to_peer, verify_offer
 from ca2a_runtime.delegation.credential import DelegationCredential, new_keypair
+from ca2a_runtime.delegation.holder import build_holder_proof
 from ca2a_runtime.errors import AttestationFailed, CA2AError, ConfigError, TransportError
 from ca2a_runtime.node import PeerNode
 from ca2a_runtime.peer import (
@@ -26,8 +28,8 @@ from ca2a_runtime.peer import (
     REQUIRE_HARDWARE,
     REQUIRE_NONE,
     PeerRequest,
-    handle_peer_request,
 )
+from ca2a_runtime.peer import handle_peer_request as _handle_peer_request
 from ca2a_runtime.policy import LocalPolicy
 from ca2a_runtime.provenance import (
     CALLER_FAILED,
@@ -43,9 +45,23 @@ from ca2a_runtime.transport.constants import KEY_CALLER_OFFER
 POLICY = LocalPolicy.of({"read"})
 
 
-def _chain() -> list[DelegationCredential]:
+def handle_peer_request(*args: object, **kwargs: object) -> object:
+    """``handle_peer_request`` with holder binding off, for this file only.
+
+    Appraisal ("what is the caller running") and holder binding ("is the caller
+    the delegate") are independent, and holder binding is covered in
+    ``test_holder_binding.py``. Several tests here deliberately hand the callee a
+    challenge secret the offer was not issued under; since holder binding is
+    checked first and reads the same secret, leaving it on would surface as a
+    holder-proof failure and mask the appraisal outcome each test asserts.
+    """
+    kwargs.setdefault("require_holder_proof", False)
+    return _handle_peer_request(*args, **kwargs)  # type: ignore[arg-type]
+
+
+def _build_chain() -> tuple[list[DelegationCredential], Ed25519PrivateKey]:
     root_priv, root_pub = new_keypair()
-    subject_pub = new_keypair()[1]
+    subject_priv, subject_pub = new_keypair()
     return [
         DelegationCredential(
             credential_id="c0",
@@ -54,7 +70,16 @@ def _chain() -> list[DelegationCredential]:
             scope=frozenset({"read", "write"}),
             depth=0,
         ).sign(root_priv)
-    ]
+    ], subject_priv
+
+
+#: One chain for the file, so a holder proof can be built for it where a test
+#: needs the live path rather than the appraisal ladder in isolation.
+_CHAIN, LEAF_KEY = _build_chain()
+
+
+def _chain() -> list[DelegationCredential]:
+    return _CHAIN
 
 
 def _caller_offer(challenge: str, *, platform: str = "software-only") -> ChannelOffer:
@@ -76,13 +101,34 @@ def _request(
     capability: str = "read",
     sealed: bytes | None = None,
     caller_offer: ChannelOffer | None = None,
+    node: PeerNode | None = None,
 ) -> PeerRequest:
+    """A request for the appraisal ladder.
+
+    Pass ``node`` when the request goes through :meth:`PeerNode.handle`, which
+    requires holder binding as it ships; the proof is then built against that
+    node's audience and a challenge it issued. Omit it for the direct-handler
+    tests, where the module-level wrapper turns holder binding off.
+    """
+    holder_proof = None
+    if node is not None:
+        holder_proof = build_holder_proof(
+            LEAF_KEY,
+            _chain()[-1],
+            audience=node.channel_public_key,
+            challenge=node.issue_challenge(),
+            requested_capability=capability,
+            record_id="r0",
+            sealed_payload=sealed,
+            caller_channel_key=(None if caller_offer is None else caller_offer.channel_public_key),
+        )
     return PeerRequest(
         chain=_chain(),
         requested_capability=capability,
         record_id="r0",
         sealed_payload=sealed,
         caller_offer=caller_offer,
+        holder_proof=holder_proof,
     )
 
 
@@ -282,7 +328,7 @@ def test_a_challenge_from_another_instance_does_not_verify() -> None:
     """
     node_a, node_b = PeerNode(POLICY), PeerNode(POLICY)
     offer = _caller_offer(node_a.issue_challenge())
-    message = a2a_adapter.attach_ca2a_metadata({}, _request(caller_offer=offer))
+    message = a2a_adapter.attach_ca2a_metadata({}, _request(caller_offer=offer, node=node_b))
     node_b.require_caller_attestation = REQUIRE_ANY
     with pytest.raises(AttestationFailed):
         node_b.handle(message)
@@ -411,6 +457,7 @@ def test_http_mutual_call_end_to_end() -> None:
             _chain(),
             "read",
             "r0",
+            holder_key=LEAF_KEY,
             payload=b"confidential",
             caller_provider=SoftwareProvider(),
         )
@@ -426,7 +473,9 @@ def test_http_unattested_caller_is_refused_by_a_callee_that_requires_one() -> No
     srv, base = _serve(node)
     try:
         with pytest.raises(CA2AError) as exc_info:
-            client.send_task(base, _chain(), "read", "r0", payload=b"confidential")
+            client.send_task(
+                base, _chain(), "read", "r0", holder_key=LEAF_KEY, payload=b"confidential"
+            )
         assert exc_info.value.code == "ATTESTATION_FAILED"
         assert exc_info.value.http_status == 412
     finally:
@@ -438,7 +487,9 @@ def test_http_unattested_caller_is_served_by_default() -> None:
     """The adoption case: an old caller against a new callee, unchanged."""
     srv, base = _serve(PeerNode(POLICY))
     try:
-        body = client.send_task(base, _chain(), "read", "r0", payload=b"confidential")
+        body = client.send_task(
+            base, _chain(), "read", "r0", holder_key=LEAF_KEY, payload=b"confidential"
+        )
         assert body["accepted"] is True
         assert body["caller_attestation"] == CALLER_NOT_OFFERED
     finally:
@@ -461,7 +512,14 @@ def test_client_refuses_to_fake_mutuality_against_a_silent_callee() -> None:
     try:
         wire.serialize_channel_offer = _no_challenge  # type: ignore[assignment]
         with pytest.raises(AttestationFailed, match="issued no challenge"):
-            client.send_task(base, _chain(), "read", "r0", caller_provider=SoftwareProvider())
+            client.send_task(
+                base,
+                _chain(),
+                "read",
+                "r0",
+                holder_key=LEAF_KEY,
+                caller_provider=SoftwareProvider(),
+            )
     finally:
         wire.serialize_channel_offer = original  # type: ignore[assignment]
         srv.shutdown()
@@ -475,7 +533,7 @@ def test_sealed_payload_still_reaches_a_callee_that_appraises_the_caller() -> No
     sealed = seal_to_peer(peer, b"confidential task input")
     offer = _caller_offer(node.issue_challenge())
     result = node.handle(
-        a2a_adapter.attach_ca2a_metadata({}, _request(sealed=sealed, caller_offer=offer))
+        a2a_adapter.attach_ca2a_metadata({}, _request(sealed=sealed, caller_offer=offer, node=node))
     )
     assert result.payload == b"confidential task input"
     assert result.caller_attestation == CALLER_SOFTWARE_ONLY
