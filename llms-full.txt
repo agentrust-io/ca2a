@@ -279,6 +279,8 @@ attestation:
 
 max_delegation_depth: 8     # reject chains deeper than this
 listen_addr: "127.0.0.1:8443"
+trusted_root_issuers:
+  - "<root Ed25519 public key as raw hex>"
 
 local_policy: ["read", "write"]   # allow-set for scope intersection (or use Cedar below)
 # policy_bundle_path: policy.cedar
@@ -292,6 +294,7 @@ local_policy: ["read", "write"]   # allow-set for scope intersection (or use Ced
 | `attestation.enforcement_mode` | `enforcing`      | Intended mode. The peer path always fails closed on cA2A denials today; advisory and silent are accepted in config but not applied on the wire.                                                                   |
 | `max_delegation_depth`         | `8`              | Chains deeper than this are rejected with `DELEGATION_DEPTH_EXCEEDED`.                                                                                                                                            |
 | `listen_addr`                  | `127.0.0.1:8443` | Address `ca2a start` binds. The host is never defaulted, so serving on every interface has to be written out.                                                                                                     |
+| `trusted_root_issuers`         | none             | Ed25519 public keys allowed to originate delegation chains. At least one is required by `ca2a start`; an internally valid chain from any other root is denied before policy evaluation.                           |
 | `local_policy`                 | none             | Capability allow set for `LocalPolicy`. Required for `ca2a start` unless `policy_bundle_path` is set.                                                                                                             |
 | `policy_bundle_path`           | none             | Path to a Cedar policy file, resolved relative to the config file. When set, used instead of `local_policy`.                                                                                                      |
 
@@ -478,15 +481,18 @@ The signed bytes are the RFC 8785 (JSON Canonicalization Scheme) encoding of the
 
 `verify_chain` raises the specific error for the first invariant that fails:
 
-| Invariant                                                  | Error on violation                                     |
-| ---------------------------------------------------------- | ------------------------------------------------------ |
-| Every hop's signature verifies against its issuer          | `INVALID_CREDENTIAL`                                   |
-| Root has no parent and depth 0                             | `BROKEN_DELEGATION_LINK`                               |
-| Each hop's `parent_id` equals the previous `credential_id` | `BROKEN_DELEGATION_LINK`                               |
-| Each hop's issuer equals the previous hop's subject        | `BROKEN_DELEGATION_LINK`                               |
-| Each hop's depth is previous + 1, and at most `max_depth`  | `BROKEN_DELEGATION_LINK` / `DELEGATION_DEPTH_EXCEEDED` |
-| Each hop's scope is a subset of its parent's scope         | `SCOPE_ESCALATION`                                     |
-| No `credential_id` repeats                                 | `CREDENTIAL_REPLAY`                                    |
+| Invariant                                                         | Error on violation                                     |
+| ----------------------------------------------------------------- | ------------------------------------------------------ |
+| Every hop's signature verifies against its issuer                 | `INVALID_CREDENTIAL`                                   |
+| Root has no parent and depth 0                                    | `BROKEN_DELEGATION_LINK`                               |
+| Each hop's `parent_id` equals the previous `credential_id`        | `BROKEN_DELEGATION_LINK`                               |
+| Each hop's issuer equals the previous hop's subject               | `BROKEN_DELEGATION_LINK`                               |
+| Each hop's depth is previous + 1, and at most `max_depth`         | `BROKEN_DELEGATION_LINK` / `DELEGATION_DEPTH_EXCEEDED` |
+| Each hop's scope is a subset of its parent's scope                | `SCOPE_ESCALATION`                                     |
+| No `credential_id` repeats                                        | `CREDENTIAL_REPLAY`                                    |
+| The root issuer is pinned by the callee for runtime authorization | `UNTRUSTED_DELEGATION_ROOT`                            |
+
+Signature validity establishes who issued a chain; it does not establish that the issuer is trusted. A live callee therefore supplies its local `trusted_root_issuers` set when verifying a request and fails closed when the root is absent. Offline tooling may omit that set when it only needs to check a chain's internal structure, but structural verification alone does not authorize work.
 
 ## Attenuation is the whole point
 
@@ -656,6 +662,7 @@ Out of adversary scope: breaking the underlying cryptographic primitives (Ed2551
 | Operator or network reads the task payload               | Sealing to the peer's measurement; the path sees ciphertext                                                                                                                                                                                     |
 | Credential replayed into another workflow                | Unique `credential_id` and parent-link checks in chain verification                                                                                                                                                                             |
 | A copied chain presented by a party it was not issued to | Holder binding: the presenter must answer a callee-issued challenge with a signature under the leaf `subject` key (profile P-4a). Appraising the caller does not cover this: an attested runtime is not a claim to anyone's delegated authority |
+| Attacker mints a self-consistent chain from its own root | Callee pins locally trusted root issuer keys before policy evaluation                                                                                                                                                                           |
 | Reparented or forged provenance                          | Linked TRACE records; the DAG is verified offline against the chain                                                                                                                                                                             |
 
 ## Residual risks in this release

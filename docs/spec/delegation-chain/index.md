@@ -24,15 +24,18 @@ The signed bytes are the RFC 8785 (JSON Canonicalization Scheme) encoding of the
 
 `verify_chain` raises the specific error for the first invariant that fails:
 
-| Invariant                                                  | Error on violation                                     |
-| ---------------------------------------------------------- | ------------------------------------------------------ |
-| Every hop's signature verifies against its issuer          | `INVALID_CREDENTIAL`                                   |
-| Root has no parent and depth 0                             | `BROKEN_DELEGATION_LINK`                               |
-| Each hop's `parent_id` equals the previous `credential_id` | `BROKEN_DELEGATION_LINK`                               |
-| Each hop's issuer equals the previous hop's subject        | `BROKEN_DELEGATION_LINK`                               |
-| Each hop's depth is previous + 1, and at most `max_depth`  | `BROKEN_DELEGATION_LINK` / `DELEGATION_DEPTH_EXCEEDED` |
-| Each hop's scope is a subset of its parent's scope         | `SCOPE_ESCALATION`                                     |
-| No `credential_id` repeats                                 | `CREDENTIAL_REPLAY`                                    |
+| Invariant                                                         | Error on violation                                     |
+| ----------------------------------------------------------------- | ------------------------------------------------------ |
+| Every hop's signature verifies against its issuer                 | `INVALID_CREDENTIAL`                                   |
+| Root has no parent and depth 0                                    | `BROKEN_DELEGATION_LINK`                               |
+| Each hop's `parent_id` equals the previous `credential_id`        | `BROKEN_DELEGATION_LINK`                               |
+| Each hop's issuer equals the previous hop's subject               | `BROKEN_DELEGATION_LINK`                               |
+| Each hop's depth is previous + 1, and at most `max_depth`         | `BROKEN_DELEGATION_LINK` / `DELEGATION_DEPTH_EXCEEDED` |
+| Each hop's scope is a subset of its parent's scope                | `SCOPE_ESCALATION`                                     |
+| No `credential_id` repeats                                        | `CREDENTIAL_REPLAY`                                    |
+| The root issuer is pinned by the callee for runtime authorization | `UNTRUSTED_DELEGATION_ROOT`                            |
+
+Signature validity establishes who issued a chain; it does not establish that the issuer is trusted. A live callee therefore supplies its local `trusted_root_issuers` set when verifying a request and fails closed when the root is absent. Offline tooling may omit that set when it only needs to check a chain's internal structure, but structural verification alone does not authorize work.
 
 ## Attenuation is the whole point
 
