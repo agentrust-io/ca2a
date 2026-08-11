@@ -24,7 +24,7 @@ classifiers = [
 ]
 requires-python = ">=3.11"
 dependencies = [
-    "cryptography>=42.0",
+    "cryptography>=50.0",
     "pyyaml>=6.0",
     "cedarpy==4.8.7",
     # TRACE record models + RFC 8785 signing, reused rather than reimplemented
@@ -48,6 +48,7 @@ tpm = [
 # the base install stays dependency-light.
 a2a-sdk = [
     "a2a-sdk>=1.1,<2",
+    "aiohttp>=3.14.3",
 ]
 dev = [
     "pytest>=8.0",
@@ -63,6 +64,7 @@ dev = [
     # So tests/unit/test_a2a_sdk_bridge.py runs in CI rather than skipping. A
     # bridge whose tests only ever skip is a bridge nobody has exercised.
     "a2a-sdk>=1.1,<2",
+    "aiohttp>=3.14.3",
 ]
 
 [project.scripts]

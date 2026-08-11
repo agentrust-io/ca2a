@@ -40,6 +40,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   version and `latest` tags, keyless signing, and provenance attestation. All
   third-party container actions are pinned to immutable commits.
 
+- Raised dependency floors past newly disclosed vulnerable releases:
+  `cryptography>=50.0` (PYSEC-2026-3552/3553/3554), `aiohttp>=3.14.3`
+  (PYSEC-2026-3545/3546/3547) for the A2A SDK extra, and
+  `pymdown-extensions>=11.0.1` (PYSEC-2026-3654) for documentation builds.
+
 - **A delegation chain was a bearer credential: any party holding a copy was granted the leaf's authority.** The inbound path verified signatures, continuity, attenuation, depth and replay, then granted, without ever requiring the caller to demonstrate a relationship to the chain it presented. `PeerRequest` had no field that could carry such a proof, and `subject` — an Ed25519 public key — was only ever compared as a string for continuity, never used as a key.
 
   Chains are published deliberately: handed to auditors for offline verification, embedded in provenance DAGs, and shipped in `examples/`. So the credential intended for publication was the credential that granted authority. A chain lifted from any of those and replayed verbatim was accepted, and the provenance record emitted afterwards named the legitimate subject, so the audit trail attributed the call to the wrong party. Nothing was forged, so nothing failed a check and nothing anomalous reached a log; verbatim replay leaves no tamper evidence to find. `CREDENTIAL_REPLAY` does not cover it, catching only a duplicate `credential_id` inside one chain rather than replay of a whole valid chain by a different party.
