@@ -127,3 +127,39 @@ def test_from_dict_roundtrip(valid_chain: list[DelegationCredential]) -> None:
 def test_from_dict_malformed() -> None:
     with pytest.raises(InvalidCredential):
         DelegationCredential.from_dict({"issuer": "x"})
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("credential_id", 7),
+        ("issuer", "00"),
+        ("subject", "not-a-key"),
+        ("scope", "read"),
+        ("scope", ["read", "read"]),
+        ("scope", ["read", 1]),
+        ("depth", 0.9),
+        ("depth", True),
+        ("depth", -1),
+        ("parent_id", 7),
+        ("signature", "00"),
+    ],
+)
+def test_from_dict_rejects_type_coercion_and_invalid_crypto_fields(
+    valid_chain: list[DelegationCredential], field: str, value: object
+) -> None:
+    raw = valid_chain[0].body() | {"signature": valid_chain[0].signature}
+    raw[field] = value
+    with pytest.raises(InvalidCredential):
+        DelegationCredential.from_dict(raw)
+
+
+def test_from_dict_rejects_unsigned_extra_semantics(
+    valid_chain: list[DelegationCredential],
+) -> None:
+    raw = valid_chain[0].body() | {
+        "signature": valid_chain[0].signature,
+        "admin": True,
+    }
+    with pytest.raises(InvalidCredential, match="fields"):
+        DelegationCredential.from_dict(raw)

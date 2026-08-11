@@ -15,7 +15,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   every signature and attenuation check passed because no local trust anchor was
   consulted. `ca2a start` now refuses to launch without at least one pinned root.
 
-### Security
+- Delegation credential parsing now rejects type coercion, unknown fields,
+  malformed key/signature encodings, duplicate or invalid scopes, and non-integer
+  depths. Previously a different JSON representation (for example `0.9`) could
+  normalize to the signed model (`0`) and verify, creating cross-implementation
+  ambiguity about what the issuer signed.
 
 - **A delegation chain was a bearer credential: any party holding a copy was granted the leaf's authority.** The inbound path verified signatures, continuity, attenuation, depth and replay, then granted, without ever requiring the caller to demonstrate a relationship to the chain it presented. `PeerRequest` had no field that could carry such a proof, and `subject` — an Ed25519 public key — was only ever compared as a string for continuity, never used as a key.
 

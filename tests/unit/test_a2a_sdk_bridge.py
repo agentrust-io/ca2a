@@ -30,7 +30,7 @@ from ca2a_runtime.delegation.credential import (  # noqa: E402
     verify_chain,
 )
 from ca2a_runtime.delegation.holder import build_holder_proof  # noqa: E402
-from ca2a_runtime.errors import InvalidCredential, TransportError  # noqa: E402
+from ca2a_runtime.errors import TransportError  # noqa: E402
 from ca2a_runtime.node import PeerNode  # noqa: E402
 from ca2a_runtime.peer import REQUIRE_ANY, PeerRequest  # noqa: E402
 from ca2a_runtime.policy import LocalPolicy  # noqa: E402
@@ -153,13 +153,7 @@ def test_a_chain_still_verifies_after_the_struct_round_trip(hops: int) -> None:
 
 
 def test_a_tampered_depth_does_not_verify() -> None:
-    """A float cannot be smuggled past the signature.
-
-    The leaf of a two-hop chain is signed at depth 1. Rewriting it to ``2.5``
-    coerces to ``2``, so the bytes that get canonicalized are not the bytes that
-    were signed and the signature fails. Deliberately not ``1.5``, which would
-    coerce back to the signed ``1`` and prove nothing.
-    """
+    """A non-integral Struct number is rejected instead of truncated."""
     message = a2a_sdk.attach_to_sdk_message(Message(message_id="m1"), _request(chain=_chain(2)))
 
     meta = a2a_sdk.metadata_from_sdk_message(message)
@@ -168,11 +162,8 @@ def test_a_tampered_depth_does_not_verify() -> None:
     message.metadata.Clear()
     json_format.ParseDict(meta, message.metadata)
 
-    parsed = a2a_sdk.parse_sdk_message(message)
-    assert parsed is not None
-    assert parsed.chain[1].depth == 2  # int(2.5), not the signed 1
-    with pytest.raises(InvalidCredential):
-        verify_chain(parsed.chain)
+    with pytest.raises(TransportError, match="hop 1 is malformed"):
+        a2a_sdk.parse_sdk_message(message)
 
 
 # --------------------------------------------------------------------------

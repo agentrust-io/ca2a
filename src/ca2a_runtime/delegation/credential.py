@@ -18,6 +18,7 @@ are cross-verifiable with agent-manifest. See ca2a_runtime.canonical.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Collection
 from dataclasses import dataclass
 from typing import Any
@@ -36,6 +37,12 @@ from ca2a_runtime.errors import (
     InvalidCredential,
     ScopeEscalation,
     UntrustedDelegationRoot,
+)
+
+_HEX_32_RE = re.compile(r"[0-9a-f]{64}")
+_HEX_64_RE = re.compile(r"[0-9a-f]{128}")
+_CREDENTIAL_FIELDS = frozenset(
+    {"credential_id", "issuer", "subject", "scope", "depth", "parent_id", "signature"}
 )
 
 
@@ -112,18 +119,53 @@ class DelegationCredential:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> DelegationCredential:
-        try:
-            return cls(
-                credential_id=str(data["credential_id"]),
-                issuer=str(data["issuer"]),
-                subject=str(data["subject"]),
-                scope=frozenset(str(s) for s in data["scope"]),
-                depth=int(data["depth"]),
-                parent_id=(None if data.get("parent_id") is None else str(data["parent_id"])),
-                signature=str(data.get("signature", "")),
+        unknown = set(data) - _CREDENTIAL_FIELDS
+        missing = _CREDENTIAL_FIELDS - set(data)
+        if unknown or missing:
+            raise InvalidCredential(
+                "malformed credential fields",
+                detail=f"missing={sorted(missing)} unknown={sorted(unknown)}",
             )
-        except (KeyError, TypeError, ValueError) as exc:
-            raise InvalidCredential("malformed credential", detail=str(exc)) from exc
+
+        credential_id = data["credential_id"]
+        issuer = data["issuer"]
+        subject = data["subject"]
+        scope = data["scope"]
+        depth = data["depth"]
+        parent_id = data["parent_id"]
+        signature = data["signature"]
+
+        if not isinstance(credential_id, str) or not credential_id:
+            raise InvalidCredential("credential_id must be a non-empty string")
+        if not isinstance(issuer, str) or not _HEX_32_RE.fullmatch(issuer):
+            raise InvalidCredential("issuer must be a lowercase 32-byte Ed25519 key in hex")
+        if not isinstance(subject, str) or not _HEX_32_RE.fullmatch(subject):
+            raise InvalidCredential("subject must be a lowercase 32-byte Ed25519 key in hex")
+        if (
+            not isinstance(scope, list)
+            or not scope
+            or not all(isinstance(item, str) and item for item in scope)
+            or len(set(scope)) != len(scope)
+        ):
+            raise InvalidCredential("scope must be a non-empty array of unique non-empty strings")
+        if isinstance(depth, bool) or not isinstance(depth, int) or depth < 0:
+            raise InvalidCredential("depth must be a non-negative integer")
+        if parent_id is not None and (not isinstance(parent_id, str) or not parent_id):
+            raise InvalidCredential("parent_id must be a non-empty string or null")
+        if not isinstance(signature, str) or not _HEX_64_RE.fullmatch(signature):
+            raise InvalidCredential(
+                "signature must be a lowercase 64-byte Ed25519 signature in hex"
+            )
+
+        return cls(
+            credential_id=credential_id,
+            issuer=issuer,
+            subject=subject,
+            scope=frozenset(scope),
+            depth=depth,
+            parent_id=parent_id,
+            signature=signature,
+        )
 
 
 def verify_chain(

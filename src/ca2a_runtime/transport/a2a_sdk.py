@@ -12,16 +12,11 @@ mapping hands the existing adapter exactly what it already parses. One parser,
 one set of tests, and the profile stays transport-agnostic. Nothing here
 verifies, enforces, or appraises; it converts and delegates.
 
-**The Struct round trip loses integer-ness, and that is safe here for a reason
-worth stating.** ``Struct`` has no integer type, so a credential's ``depth`` of
-``0`` comes back as ``0.0``. That matters because a credential's signature covers
-the RFC 8785 canonical bytes of its body and
-:func:`ca2a_runtime.canonical.canonicalize` *refuses floats outright*. The chain
-still verifies because ``DelegationCredential.from_dict`` coerces ``depth`` with
-``int()`` before anything is canonicalized, so the bytes that get verified are
-the integer form the signer signed. A float that is not integral cannot be
-smuggled through either: it would coerce to a different integer and the
-signature would then fail. ``tests/unit/test_a2a_sdk_bridge.py`` holds that.
+**The Struct round trip loses integer-ness.** ``Struct`` has no integer type, so
+a credential's ``depth`` of ``0`` comes back as ``0.0``. This bridge restores
+only finite integral depth values before handing metadata to the strict parser.
+A non-integral value remains a float and is rejected rather than truncated.
+``tests/unit/test_a2a_sdk_bridge.py`` holds both sides of that boundary.
 
 Install with the extra::
 
@@ -35,7 +30,7 @@ from typing import Any
 from ca2a_runtime.errors import TransportError
 from ca2a_runtime.peer import PeerRequest
 from ca2a_runtime.transport import a2a_adapter
-from ca2a_runtime.transport.constants import EXTENSION_URI
+from ca2a_runtime.transport.constants import EXTENSION_URI, KEY_DELEGATION_CHAIN
 
 try:  # pragma: no cover - exercised by whichever branch the environment takes
     from google.protobuf import json_format
@@ -79,7 +74,16 @@ def metadata_from_sdk_message(message: Any) -> dict[str, Any]:
     metadata = getattr(message, "metadata", None)
     if metadata is None:
         return {}
-    return dict(json_format.MessageToDict(metadata))
+    result = dict(json_format.MessageToDict(metadata))
+    chain = result.get(KEY_DELEGATION_CHAIN)
+    if isinstance(chain, list):
+        for credential in chain:
+            if not isinstance(credential, dict):
+                continue
+            depth = credential.get("depth")
+            if isinstance(depth, float) and depth.is_integer():
+                credential["depth"] = int(depth)
+    return result
 
 
 def parse_sdk_message(message: Any) -> PeerRequest | None:
