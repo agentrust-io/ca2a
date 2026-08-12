@@ -97,6 +97,7 @@ def proved_request(
             caller_channel_key=(
                 None if caller_offer is None else caller_offer.channel_public_key  # type: ignore[attr-defined]
             ),
+            parent_record_hash=parent_record_hash,
         ),
     )
 

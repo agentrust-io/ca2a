@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **The holder proof now commits to `parent_record_hash` (#106).** It committed every other request field that reaches the emitted provenance record, and missed this one, so a party on the path could alter where the hop linked in the DAG while the proof still verified. The result was a record attached to the wrong parent: a misattributed hop rather than forged authority or widened scope, which is why it was rated low, but it was inconsistent on its own terms. The proof already commits to `record_id`, so committing a record's own identifier while leaving its parent link open was half a commitment. Committed either way, so a root hop cannot have a parent bolted onto it. The rule is now stated in P-4a and guarded by a test: every field of the request that reaches the record is committed.
+
+- **Removed `ProofReplayCache`, keeping the holder-proof path stateless (#104).** It made a proof single-use by remembering it, but bought that with per-node state in a design that is deliberately stateless, and its expiry pass walked every entry on each call, so it degraded quadratically as it filled. Holder binding is now at-most-once-per-window, bounded by the challenge TTL, which is the same guarantee `ca2a_runtime.challenge` documents for itself. A deployment that needs exactly-once supplies state at the challenge rather than at the proof, so the codebase carries one such decision instead of two. `PeerNode` no longer takes `seen_proofs`, and `verify_holder_proof` no longer takes `seen`.
+
 ### Security
 
 - Runtime authorization now requires the delegation chain's root issuer to be

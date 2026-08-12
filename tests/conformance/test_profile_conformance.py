@@ -615,6 +615,7 @@ def test_hold_002_proof_by_a_non_holder_is_refused() -> None:
         record_id="r0",
         sealed_payload=None,
         caller_channel_key=None,
+        parent_record_hash=None,
     )
     forged = HolderProof(
         challenge=challenge,

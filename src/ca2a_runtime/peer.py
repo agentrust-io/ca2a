@@ -44,7 +44,7 @@ from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 from ca2a_runtime.attestation import ChannelOffer, Verifier, appraise_caller
 from ca2a_runtime.channel import open_sealed
 from ca2a_runtime.delegation.credential import DelegationCredential, verify_chain
-from ca2a_runtime.delegation.holder import HolderProof, ProofReplayCache, verify_holder_proof
+from ca2a_runtime.delegation.holder import HolderProof, verify_holder_proof
 from ca2a_runtime.errors import (
     AttestationFailed,
     ConfigError,
@@ -324,7 +324,6 @@ def verify_caller_holds_leaf(
     *,
     audience: str | None,
     challenge_secret: bytes | None,
-    seen_proofs: ProofReplayCache | None = None,
 ) -> None:
     """Bind the presented chain to the caller, or raise :class:`HolderProofInvalid`.
 
@@ -365,7 +364,7 @@ def verify_caller_holds_leaf(
         caller_channel_key=(
             None if request.caller_offer is None else request.caller_offer.channel_public_key
         ),
-        seen=seen_proofs,
+        parent_record_hash=request.parent_record_hash,
     )
 
 
@@ -380,7 +379,6 @@ def handle_peer_request(
     caller_verifier: Verifier | None = None,
     audience: str | None = None,
     require_holder_proof: bool = True,
-    seen_proofs: ProofReplayCache | None = None,
     trusted_root_issuers: Collection[str] = (),
 ) -> PeerResult:
     """Run the full inbound pipeline for a parsed peer request.
@@ -426,7 +424,6 @@ def handle_peer_request(
             request,
             audience=audience,
             challenge_secret=challenge_secret,
-            seen_proofs=seen_proofs,
         )
 
     effective = effective_scope(
