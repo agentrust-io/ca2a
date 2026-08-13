@@ -30,10 +30,15 @@ class ChainResult:
 
 
 def verify_delegation_chain(
-    chain: list[DelegationCredential], *, max_depth: int = 8
+    chain: list[DelegationCredential], *, max_depth: int = 8, at_time: int | None = None
 ) -> ChainResult:
-    """Verify a root-to-leaf chain and summarize it. Raises on any violation."""
-    verify_chain(chain, max_depth=max_depth)
+    """Verify a root-to-leaf chain and summarize it. Raises on any violation.
+
+    ``at_time`` is the Unix time validity windows are evaluated at; ``None``
+    means the current time. An auditor replaying recorded evidence passes the
+    time the action was decided, not its own.
+    """
+    verify_chain(chain, max_depth=max_depth, at_time=at_time)
     root = chain[0]
     leaf = chain[-1]
     return ChainResult(
@@ -52,7 +57,9 @@ def _parse_chain(data: Any) -> list[DelegationCredential]:
     return [DelegationCredential.from_dict(item) for item in data]
 
 
-def verify_chain_file(path: str | Path, *, max_depth: int = 8) -> ChainResult:
+def verify_chain_file(
+    path: str | Path, *, max_depth: int = 8, at_time: int | None = None
+) -> ChainResult:
     """Load a delegation chain from a JSON file and verify it."""
     p = Path(path)
     if not p.is_file():
@@ -61,4 +68,4 @@ def verify_chain_file(path: str | Path, *, max_depth: int = 8) -> ChainResult:
         data = json.loads(p.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
         raise InvalidCredential(f"invalid JSON in {p}", detail=str(exc)) from exc
-    return verify_delegation_chain(_parse_chain(data), max_depth=max_depth)
+    return verify_delegation_chain(_parse_chain(data), max_depth=max_depth, at_time=at_time)

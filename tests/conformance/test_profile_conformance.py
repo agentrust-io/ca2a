@@ -23,6 +23,8 @@ from ca2a_runtime.errors import (
     AttestationUnsupported,
     BrokenDelegationLink,
     CA2AError,
+    CredentialExpired,
+    CredentialNotYetValid,
     CredentialReplay,
     DelegationDepthExceeded,
     HolderProofInvalid,
@@ -111,12 +113,16 @@ def _records(chain):
     return recs
 
 
-def _action_chain() -> list[DelegationCredential]:
+def _action_chain(
+    *, not_before: int | None = None, not_after: int | None = None
+) -> list[DelegationCredential]:
     return build_chain(
         [
             frozenset({"robot.move", "robot.inspect", "robot.stop"}),
             frozenset({"robot.move", "robot.inspect"}),
-        ]
+        ],
+        not_before=not_before,
+        not_after=not_after,
     )
 
 
@@ -227,6 +233,22 @@ def test_deleg_005_replay() -> None:
 
 def test_deleg_006_valid_chain_accepted() -> None:
     verify_chain(_narrowing())
+
+
+def test_deleg_007_expired_credential_rejected() -> None:
+    chain = build_chain([frozenset({"a"})], not_before=1_000, not_after=2_000)
+    with pytest.raises(CredentialExpired):
+        verify_chain(chain, at_time=3_000)
+
+
+def test_deleg_008_not_yet_valid_credential_rejected() -> None:
+    chain = build_chain([frozenset({"a"})], not_before=1_000, not_after=2_000)
+    with pytest.raises(CredentialNotYetValid):
+        verify_chain(chain, at_time=500)
+
+
+def test_deleg_009_chain_within_validity_window_accepted() -> None:
+    verify_chain(build_chain([frozenset({"a"})], not_before=1_000, not_after=2_000), at_time=1_500)
 
 
 # --- Group 2: Scope-policy intersection ---
@@ -577,6 +599,37 @@ def test_action_011_delegatee_mismatch_is_provenance_invalid() -> None:
         LocalPolicy.of(["robot.move"]),
     )
     assert result == _ActionEvidenceResult("provenance_invalid", "PROVENANCE_LINK_BROKEN")
+
+
+# 2001-09-09 and 2100-01-01. The action-evidence helper replays through the
+# offline verifier at the current time, so bounds this far out keep the
+# expired / not-yet-valid classification unambiguous on any sane clock.
+_PAST_EPOCH = 1_000_000_000
+_FUTURE_EPOCH = 4_102_444_800
+
+
+def test_action_012_expired_delegation_credential_is_provenance_invalid() -> None:
+    chain = _action_chain(not_after=_PAST_EPOCH)
+    records = _records(chain)
+    result = _verify_action_evidence(
+        chain,
+        records,
+        _action_evidence(records),
+        LocalPolicy.of(["robot.move", "robot.inspect"]),
+    )
+    assert result == _ActionEvidenceResult("provenance_invalid", "CREDENTIAL_EXPIRED")
+
+
+def test_action_013_not_yet_valid_delegation_credential_is_provenance_invalid() -> None:
+    chain = _action_chain(not_before=_FUTURE_EPOCH)
+    records = _records(chain)
+    result = _verify_action_evidence(
+        chain,
+        records,
+        _action_evidence(records),
+        LocalPolicy.of(["robot.move", "robot.inspect"]),
+    )
+    assert result == _ActionEvidenceResult("provenance_invalid", "CREDENTIAL_NOT_YET_VALID")
 
 
 # --- Group 8: Holder binding ---

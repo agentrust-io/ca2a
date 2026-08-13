@@ -33,7 +33,7 @@ def _cmd_validate_config(args: argparse.Namespace) -> int:
 
 def _cmd_verify_chain(args: argparse.Namespace) -> int:
     try:
-        result = verify_chain_file(Path(args.chain), max_depth=args.max_depth)
+        result = verify_chain_file(Path(args.chain), max_depth=args.max_depth, at_time=args.at_time)
     except CA2AError as exc:
         print(json.dumps({"verified": False, "code": exc.code, "error": str(exc)}))
         return 1
@@ -113,7 +113,7 @@ def _cmd_verify_dag(args: argparse.Namespace) -> int:
         cross_checked = False
         if args.chain:
             chain = _load_chain(args.chain)
-            verify_chain(chain, max_depth=args.max_depth)
+            verify_chain(chain, max_depth=args.max_depth, at_time=args.at_time)
             cross_check_chain(records, chain)
             cross_checked = True
     except CA2AError as exc:
@@ -200,6 +200,12 @@ def build_parser() -> argparse.ArgumentParser:
     vch = sub.add_parser("verify-chain", help="Verify a delegation chain offline")
     vch.add_argument("--chain", required=True)
     vch.add_argument("--max-depth", type=int, default=8)
+    vch.add_argument(
+        "--at-time",
+        type=int,
+        default=None,
+        help="Unix time validity windows are evaluated at (default: now)",
+    )
     vch.set_defaults(func=_cmd_verify_chain)
 
     vd = sub.add_parser("verify-dag", help="Verify a provenance DAG offline")
@@ -209,6 +215,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Optional delegation chain to cross-check the DAG against",
     )
     vd.add_argument("--max-depth", type=int, default=8)
+    vd.add_argument(
+        "--at-time",
+        type=int,
+        default=None,
+        help="Unix time validity windows are evaluated at (default: now)",
+    )
     vd.set_defaults(func=_cmd_verify_dag)
 
     st = sub.add_parser(

@@ -3,13 +3,15 @@
 A delegation credential is a signed statement that ``issuer`` grants ``subject``
 a set of capability strings (``scope``), optionally as a child of ``parent_id``.
 A chain is a list of credentials ordered from root to leaf. Verification enforces
-four invariants:
+five invariants:
 
 1. Signature: each credential verifies against its issuer's Ed25519 public key.
 2. Continuity: each hop's issuer is the previous hop's subject.
 3. Attenuation: each hop's scope is a subset of its parent's scope.
 4. Anti-replay: parent_id links to the previous credential_id and every
    credential_id in the chain is unique.
+5. Validity: each hop's validity window, when present, contains the
+   evaluation time.
 
 Canonicalization uses RFC 8785 (JSON Canonicalization Scheme), so the signed
 byte string is identical across conforming implementations and cA2A signatures
@@ -19,8 +21,9 @@ are cross-verifiable with agent-manifest. See ca2a_runtime.canonical.
 from __future__ import annotations
 
 import re
+import time
 from collections.abc import Collection
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
 from cryptography.exceptions import InvalidSignature
@@ -32,6 +35,8 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
 from ca2a_runtime.canonical import canonicalize
 from ca2a_runtime.errors import (
     BrokenDelegationLink,
+    CredentialExpired,
+    CredentialNotYetValid,
     CredentialReplay,
     DelegationDepthExceeded,
     InvalidCredential,
@@ -41,9 +46,12 @@ from ca2a_runtime.errors import (
 
 _HEX_32_RE = re.compile(r"[0-9a-f]{64}")
 _HEX_64_RE = re.compile(r"[0-9a-f]{128}")
-_CREDENTIAL_FIELDS = frozenset(
+_REQUIRED_CREDENTIAL_FIELDS = frozenset(
     {"credential_id", "issuer", "subject", "scope", "depth", "parent_id", "signature"}
 )
+# Validity bounds are optional on the wire: absent means unbounded on that side,
+# and a credential issued before these fields existed keeps its exact signed bytes.
+_OPTIONAL_CREDENTIAL_FIELDS = frozenset({"not_before", "not_after"})
 
 
 def new_keypair() -> tuple[Ed25519PrivateKey, str]:
@@ -74,10 +82,18 @@ class DelegationCredential:
     depth: int
     parent_id: str | None = None
     signature: str = ""  # Ed25519 signature over canonical_bytes(body), hex
+    not_before: int | None = None  # Unix epoch seconds, inclusive
+    not_after: int | None = None  # Unix epoch seconds, inclusive
 
     def body(self) -> dict[str, Any]:
-        """The signed portion of the credential (everything but the signature)."""
-        return {
+        """The signed portion of the credential (everything but the signature).
+
+        An absent validity bound is omitted rather than encoded as null:
+        emitting nulls would change the canonical bytes of every credential
+        signed before the fields existed. A bound that is present is signed,
+        so it cannot be stripped without invalidating the signature.
+        """
+        payload: dict[str, Any] = {
             "credential_id": self.credential_id,
             "issuer": self.issuer,
             "subject": self.subject,
@@ -85,6 +101,11 @@ class DelegationCredential:
             "depth": self.depth,
             "parent_id": self.parent_id,
         }
+        if self.not_before is not None:
+            payload["not_before"] = self.not_before
+        if self.not_after is not None:
+            payload["not_after"] = self.not_after
+        return payload
 
     def sign(self, private_key: Ed25519PrivateKey) -> DelegationCredential:
         """Return a copy signed by ``private_key`` (must match ``issuer``)."""
@@ -94,16 +115,11 @@ class DelegationCredential:
                 "signing key does not match credential issuer",
                 detail=f"issuer={self.issuer} key={expected}",
             )
+        # dataclasses.replace rather than field-by-field reconstruction: a field
+        # added to the model but forgotten here would be silently dropped from
+        # every credential this ever signs.
         sig = private_key.sign(canonical_bytes(self.body())).hex()
-        return DelegationCredential(
-            credential_id=self.credential_id,
-            issuer=self.issuer,
-            subject=self.subject,
-            scope=self.scope,
-            depth=self.depth,
-            parent_id=self.parent_id,
-            signature=sig,
-        )
+        return replace(self, signature=sig)
 
     def verify_signature(self) -> None:
         """Raise InvalidCredential if the signature does not verify."""
@@ -119,8 +135,8 @@ class DelegationCredential:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> DelegationCredential:
-        unknown = set(data) - _CREDENTIAL_FIELDS
-        missing = _CREDENTIAL_FIELDS - set(data)
+        unknown = set(data) - _REQUIRED_CREDENTIAL_FIELDS - _OPTIONAL_CREDENTIAL_FIELDS
+        missing = _REQUIRED_CREDENTIAL_FIELDS - set(data)
         if unknown or missing:
             raise InvalidCredential(
                 "malformed credential fields",
@@ -134,6 +150,8 @@ class DelegationCredential:
         depth = data["depth"]
         parent_id = data["parent_id"]
         signature = data["signature"]
+        not_before = data.get("not_before")
+        not_after = data.get("not_after")
 
         if not isinstance(credential_id, str) or not credential_id:
             raise InvalidCredential("credential_id must be a non-empty string")
@@ -156,6 +174,19 @@ class DelegationCredential:
             raise InvalidCredential(
                 "signature must be a lowercase 64-byte Ed25519 signature in hex"
             )
+        # A present bound must be a real integer; an explicit null is rejected
+        # because the signed body never carries one (absent bounds are omitted),
+        # so null would be a second wire form for the same signed object.
+        for name, bound in (("not_before", not_before), ("not_after", not_after)):
+            if name in data and (
+                isinstance(bound, bool) or not isinstance(bound, int) or bound < 0
+            ):
+                raise InvalidCredential(f"{name} must be a non-negative integer when present")
+        if not_before is not None and not_after is not None and not_before > not_after:
+            raise InvalidCredential(
+                "validity window is inverted",
+                detail=f"not_before={not_before} > not_after={not_after}",
+            )
 
         return cls(
             credential_id=credential_id,
@@ -165,6 +196,8 @@ class DelegationCredential:
             depth=depth,
             parent_id=parent_id,
             signature=signature,
+            not_before=not_before,
+            not_after=not_after,
         )
 
 
@@ -173,15 +206,24 @@ def verify_chain(
     *,
     max_depth: int = 8,
     trusted_root_issuers: Collection[str] | None = None,
+    at_time: int | None = None,
 ) -> None:
     """Verify a root-to-leaf delegation chain, raising on the first violation.
 
     A well-formed chain of length N delegates from the root issuer down to the
     leaf subject with monotonically narrowing scope. Raises the specific
     CA2AError subtype for the invariant that failed.
+
+    ``at_time`` is the Unix time validity windows are evaluated at; ``None``
+    means the current time. Live authorization always evaluates now. An auditor
+    replaying recorded evidence passes the time the action was decided, since a
+    window that has lapsed by audit time says nothing about validity at
+    decision time.
     """
     if not chain:
         raise BrokenDelegationLink("empty delegation chain")
+
+    now = int(time.time()) if at_time is None else at_time
 
     # ``None`` deliberately means structural/offline verification only. Runtime
     # authorization always supplies its local trust set, including an empty set,
@@ -197,6 +239,29 @@ def verify_chain(
 
     for i, cred in enumerate(chain):
         cred.verify_signature()
+
+        # Window checks come after the signature so the bounds being judged are
+        # the ones the issuer signed, and before the structural checks so an
+        # expired hop is named as expired rather than as some downstream break.
+        if (
+            cred.not_before is not None
+            and cred.not_after is not None
+            and cred.not_before > cred.not_after
+        ):
+            raise InvalidCredential(
+                f"hop {i} validity window is inverted",
+                detail=f"not_before={cred.not_before} > not_after={cred.not_after}",
+            )
+        if cred.not_before is not None and now < cred.not_before:
+            raise CredentialNotYetValid(
+                f"hop {i} credential is not yet valid",
+                detail=f"not_before={cred.not_before} at_time={now}",
+            )
+        if cred.not_after is not None and now > cred.not_after:
+            raise CredentialExpired(
+                f"hop {i} credential has expired",
+                detail=f"not_after={cred.not_after} at_time={now}",
+            )
 
         if cred.credential_id in seen_ids:
             raise CredentialReplay(f"duplicate credential_id at hop {i}: {cred.credential_id}")
