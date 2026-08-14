@@ -49,7 +49,9 @@ A callee MUST verify the presented delegation chain before acting: every credent
 
 ### P-4a Holder binding
 
-A callee MUST NOT act on a delegation chain until the presenter has proved it controls the private key of the leaf credential's `subject`. The callee MUST issue the challenge the proof answers, and MUST reject a proof that does not commit to the callee's own identity, that challenge, the leaf `credential_id` and `subject`, the requested capability, the `record_id`, the sealed payload if one is present, and the caller's own offered channel key if one is present. A chain presented without such a proof MUST be refused with `HOLDER_PROOF_INVALID`.
+A callee MUST NOT act on a delegation chain until the presenter has proved it controls the private key of the leaf credential's `subject`. The callee MUST issue the challenge the proof answers, and MUST reject a proof that does not commit to the callee's own identity, that challenge, the leaf `credential_id` and `subject`, the requested capability, the `record_id`, the `parent_record_hash`, the sealed payload if one is present, and the caller's own offered channel key if one is present. A chain presented without such a proof MUST be refused with `HOLDER_PROOF_INVALID`.
+
+The rule behind that list: **every field of the request that reaches the emitted provenance record MUST be committed.** Committing `record_id` while leaving `parent_record_hash` uncommitted would be half a commitment to the record's identity, and would let a party on the path re-parent the hop while the proof still verified.
 
 Holder binding MUST be evaluated after chain verification, so the subject is a key someone was genuinely delegated rather than one the caller asserted, and before the effective scope is computed under P-5, so a caller that has proved nothing never reaches policy evaluation and never elicits a signed denial record.
 
@@ -59,11 +61,7 @@ The binding key is already in the credential and needs no new trust root: `subje
 
 A callee MAY accept a chain without a proof only for offline replay of recorded evidence, where no live caller exists to answer a challenge. It MUST NOT do so on a live peer path.
 
-A callee SHOULD honour each proof at most once. `ca2a_runtime.challenge` is stateless by design and so cannot be consumed, which means single-use has to come from remembering the proof rather than the challenge; `ProofReplayCache` does that, and `PeerNode` uses one by default with a TTL matching its own challenge TTL. A callee that remembers nothing degrades to at-most-once-per-window, where a captured proof stays usable until its challenge expires.
-
-Where a proof is remembered, it MUST be recorded only after it has verified. Recording earlier would let a party that holds none of the keys fill the store, or insert a signature to lock the real delegate out of its own proof.
-
-> The cache is bounded, and the bound is honest: past its capacity the oldest entry is evicted, so a flood of distinct valid proofs can push an earlier one out and let it be replayed inside its window. Refusing new calls instead would turn the same flood into an outage. So the property is exactly-once up to capacity, degrading to the challenge window under flood. A deployment across several instances wants a shared store or sticky routing, the same caveat the challenge secret already carries.
+> **Replay is bounded by the challenge, not eliminated.** `ca2a_runtime.challenge` is stateless by design and so cannot be consumed, which makes holder binding at-most-once-per-window: a captured proof stays usable until its challenge expires, and the window is the TTL. Keeping the path stateless is the deliberate trade, the same one that module documents for itself. A deployment that needs exactly-once has to supply state, and the place for it is the challenge rather than the proof, so there is one such decision in the profile instead of two.
 
 ### P-5 Effective scope
 
