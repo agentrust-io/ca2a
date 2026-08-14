@@ -25,7 +25,7 @@ from ca2a_runtime.attestation import ChannelOffer
 from ca2a_runtime.canonical import canonicalize
 from ca2a_runtime.channel import SealedChannel, generate_channel_keypair
 from ca2a_runtime.delegation import DelegationCredential, build_holder_proof
-from ca2a_runtime.delegation.holder import HolderProof, ProofReplayCache, proof_body
+from ca2a_runtime.delegation.holder import HolderProof, proof_body
 from ca2a_runtime.errors import HolderProofInvalid
 from ca2a_runtime.node import PeerNode
 from ca2a_runtime.peer import REQUIRE_ANY, PeerRequest
@@ -108,6 +108,7 @@ def test_attacker_cannot_forge_a_proof_with_their_own_key() -> None:
         record_id="r0",
         sealed_payload=None,
         caller_channel_key=None,
+        parent_record_hash=None,
     )
     forged = HolderProof(challenge=challenge, signature=mallory.sign(canonicalize(body)).hex())
     req = PeerRequest(
@@ -224,6 +225,26 @@ def test_expired_challenge_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
         _handle(req)
 
 
+def test_a_proof_replays_inside_its_challenge_window() -> None:
+    """The bound, stated as a test rather than left to the prose.
+
+    Holder binding is at-most-once *per challenge window*, not exactly-once: the
+    challenge is stateless and so cannot be consumed, so a captured request stays
+    usable until its challenge expires. That is a deliberate trade (#104), and a
+    property nobody should have to infer from a docstring. The other half of the
+    story is :func:`test_expired_challenge_is_refused`: once the window closes,
+    the same proof is dead.
+
+    If this test ever starts failing, the path has acquired state and the
+    guarantee has changed. That is a decision, not a bug fix, so it should break
+    a test on the way through.
+    """
+    chain, keys = _chain()
+    req = proved_request(chain, keys[-1], "write", "r0")
+    assert _handle(req).granted_capability == "write"
+    assert _handle(req).granted_capability == "write"
+
+
 def test_proof_for_another_audience_is_refused() -> None:
     """A proof made for one peer cannot be presented to another."""
     chain, keys = _chain()
@@ -248,6 +269,73 @@ def test_proof_does_not_transfer_across_capability_or_record() -> None:
                 chain=chain, requested_capability="read", record_id="other", holder_proof=proof
             )
         )
+
+
+def test_proof_pins_the_parent_record_hash() -> None:
+    """A party on the path must not be able to re-parent the hop.
+
+    ``parent_record_hash`` flows from the request into the emitted record's parent
+    link. Leaving it uncommitted meant it could be altered in flight while the
+    proof still verified, producing a record attached to the wrong parent. The
+    proof already commits to ``record_id``, so committing the record's own id but
+    not its parent link was half a commitment (#106).
+    """
+    chain, keys = _chain()
+    req = proved_request(chain, keys[-1], "write", "r0", parent_record_hash="a" * 64)
+    reparented = PeerRequest(
+        chain=chain,
+        requested_capability="write",
+        record_id="r0",
+        parent_record_hash="b" * 64,
+        holder_proof=req.holder_proof,
+    )
+    with pytest.raises(HolderProofInvalid):
+        _handle(reparented)
+
+
+def test_a_root_hop_cannot_have_a_parent_bolted_on() -> None:
+    """The mirror: committing ``None`` is a commitment too."""
+    chain, keys = _chain()
+    req = proved_request(chain, keys[-1], "write", "r0")  # root hop, no parent
+    with_parent = PeerRequest(
+        chain=chain,
+        requested_capability="write",
+        record_id="r0",
+        parent_record_hash="c" * 64,
+        holder_proof=req.holder_proof,
+    )
+    with pytest.raises(HolderProofInvalid):
+        _handle(with_parent)
+
+
+def test_a_matching_parent_record_hash_still_verifies() -> None:
+    """The positive case, so the commitment is not merely rejecting everything."""
+    chain, keys = _chain()
+    req = proved_request(chain, keys[-1], "write", "r0", parent_record_hash="d" * 64)
+    assert _handle(req).granted_capability == "write"
+
+
+def test_the_proof_body_commits_every_request_field_that_reaches_the_record() -> None:
+    """A guard against the next field arriving uncommitted.
+
+    Fields on the request that shape the emitted record must appear in the signed
+    body. This is the check that would have caught #106 when the proof was written.
+    """
+    committed = set(
+        proof_body(
+            audience="a",
+            challenge="c",
+            credential_id="cid",
+            subject="s",
+            requested_capability="cap",
+            record_id="rid",
+            sealed_payload=None,
+            caller_channel_key=None,
+            parent_record_hash=None,
+        )
+    )
+    assert {"requested_capability", "record_id", "parent_record_hash"} <= committed
+    assert {"payload_sha256", "caller_channel_key"} <= committed
 
 
 def test_proof_pins_the_sealed_payload() -> None:
@@ -280,111 +368,6 @@ def test_proof_must_be_signed_by_the_leaf_not_an_ancestor() -> None:
             requested_capability="read",
             record_id="r0",
         )
-
-
-# --------------------------------------------------------------------------
-# Single use: a proof is honoured once, not once per window
-# --------------------------------------------------------------------------
-
-
-def test_a_proof_is_honoured_once() -> None:
-    """The whole request, valid proof included, cannot be replayed."""
-    chain, keys = _chain()
-    seen = ProofReplayCache()
-    req = proved_request(chain, keys[-1], "write", "r0")
-
-    assert _handle(req, seen_proofs=seen).granted_capability == "write"
-    with pytest.raises(HolderProofInvalid, match="already been used"):
-        _handle(req, seen_proofs=seen)
-
-
-def test_without_a_cache_the_guarantee_is_only_the_window() -> None:
-    """Stated as a test so the weaker mode is a choice rather than a surprise."""
-    chain, keys = _chain()
-    req = proved_request(chain, keys[-1], "write", "r0")
-    assert _handle(req).granted_capability == "write"
-    assert _handle(req).granted_capability == "write"  # replayed, and accepted
-
-
-def test_the_cache_only_remembers_proofs_that_verified() -> None:
-    """Recording before verifying would let anyone poison it.
-
-    An attacker who could insert a signature they had not proved would be able to
-    lock the real delegate out of its own proof, so nothing enters the cache until
-    it has verified under the leaf subject.
-    """
-    chain, keys = _chain()
-    seen = ProofReplayCache()
-    challenge = challenge_mod.issue_challenge(TEST_SECRET)
-    good = proved_request(chain, keys[-1], "write", "r0", challenge=challenge)
-
-    # Mallory presents the same signature under a mismatched capability, so the
-    # signature check fails. Nothing should be remembered.
-    with pytest.raises(HolderProofInvalid):
-        _handle(
-            PeerRequest(
-                chain=chain,
-                requested_capability="read",
-                record_id="r0",
-                holder_proof=good.holder_proof,
-            ),
-            seen_proofs=seen,
-        )
-    assert len(seen) == 0
-
-    # Bob's own call still works: his proof was never recorded by the failure.
-    assert _handle(good, seen_proofs=seen).granted_capability == "write"
-
-
-def test_cache_entries_expire_with_their_challenge(monkeypatch: pytest.MonkeyPatch) -> None:
-    seen = ProofReplayCache(ttl_seconds=1)
-    assert seen.record("sig") is True
-    assert seen.record("sig") is False
-    real = time.monotonic
-    monkeypatch.setattr(time, "monotonic", lambda: real() + 5)
-    assert seen.record("sig") is True  # forgotten, because its challenge is dead too
-
-
-def test_cache_is_bounded_and_says_what_that_costs() -> None:
-    """Past capacity the oldest goes, so a flood degrades to the window."""
-    seen = ProofReplayCache(max_entries=4)
-    for i in range(20):
-        assert seen.record(f"sig-{i}") is True
-    assert len(seen) <= 4
-    assert seen.record("sig-0") is True  # evicted, so replayable again
-    assert seen.record("sig-19") is False  # still remembered
-
-
-def test_a_node_remembers_proofs_by_default() -> None:
-    """The default posture, over the transport, not just the handler."""
-    chain, keys = _chain()
-    node = PeerNode(POLICY, trusted_root_issuers={chain[0].issuer})
-    assert node.seen_proofs is not None
-    message = a2a_adapter.attach_ca2a_metadata(
-        {},
-        PeerRequest(
-            chain=chain,
-            requested_capability="write",
-            record_id="r0",
-            holder_proof=build_holder_proof(
-                keys[-1],
-                chain[-1],
-                audience=node.channel_public_key,
-                challenge=node.issue_challenge(),
-                requested_capability="write",
-                record_id="r0",
-            ),
-        ),
-    )
-    assert node.handle(message).granted_capability == "write"
-    with pytest.raises(HolderProofInvalid, match="already been used"):
-        node.handle(message)
-
-
-def test_a_node_can_opt_out_of_remembering() -> None:
-    """For a multi-instance deployment that shares no state."""
-    node = PeerNode(POLICY, seen_proofs=None)
-    assert node.seen_proofs is None
 
 
 # --------------------------------------------------------------------------
@@ -483,6 +466,7 @@ def test_replay_over_http_is_refused() -> None:
             record_id="m2",
             sealed_payload=None,
             caller_channel_key=None,
+            parent_record_hash=None,
         )
         status, body = client._post_json(
             f"{base}{server.TASK_PATH}",

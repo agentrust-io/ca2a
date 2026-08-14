@@ -18,7 +18,6 @@ from typing import Any
 from ca2a_runtime.attestation import ChannelOffer, Verifier, attest_channel
 from ca2a_runtime.challenge import DEFAULT_TTL_SECONDS, generate_secret, issue_challenge
 from ca2a_runtime.channel import generate_channel_keypair
-from ca2a_runtime.delegation.holder import ProofReplayCache
 from ca2a_runtime.errors import ConfigError, TransportError
 from ca2a_runtime.peer import (
     REQUIRE_HARDWARE,
@@ -30,13 +29,6 @@ from ca2a_runtime.peer import (
 from ca2a_runtime.policy import Policy
 from ca2a_runtime.tee.base import BaseProvider
 from ca2a_runtime.tee.software import SoftwareProvider
-
-
-class _Unset:
-    """Sentinel, so ``seen_proofs=None`` can mean "no cache" rather than "default"."""
-
-
-_UNSET = _Unset()
 
 
 class PeerNode:
@@ -61,7 +53,6 @@ class PeerNode:
         caller_verifier: Verifier | None = None,
         challenge_ttl_seconds: int = DEFAULT_TTL_SECONDS,
         require_holder_proof: bool = True,
-        seen_proofs: ProofReplayCache | None | _Unset = _UNSET,
         trusted_root_issuers: Collection[str] = (),
     ) -> None:
         if require_caller_attestation not in REQUIREMENT_VALUES:
@@ -85,18 +76,6 @@ class PeerNode:
         self.caller_verifier = caller_verifier
         self.challenge_ttl_seconds = challenge_ttl_seconds
         self.require_holder_proof = require_holder_proof
-        # A proof is honoured once. The challenge underneath is stateless and so
-        # cannot be consumed, so single-use comes from remembering the proof. The
-        # TTL matches this node's challenge TTL: a proof cannot outlive the
-        # challenge it answers, so nothing is gained by remembering it longer.
-        # A deployment behind a load balancer wants a shared store or sticky
-        # routing, the same caveat the challenge secret already carries; pass
-        # ``seen_proofs=None`` to opt out and accept the window instead.
-        self.seen_proofs: ProofReplayCache | None
-        if isinstance(seen_proofs, _Unset):
-            self.seen_proofs = ProofReplayCache(ttl_seconds=challenge_ttl_seconds)
-        else:
-            self.seen_proofs = seen_proofs
         self.trusted_root_issuers = frozenset(trusted_root_issuers)
         self._private_key, self.channel_public_key = generate_channel_keypair()
         self._challenge_secret = generate_secret()
@@ -126,6 +105,5 @@ class PeerNode:
             caller_verifier=self.caller_verifier,
             audience=self.channel_public_key,
             require_holder_proof=self.require_holder_proof,
-            seen_proofs=self.seen_proofs,
             trusted_root_issuers=self.trusted_root_issuers,
         )

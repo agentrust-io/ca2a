@@ -163,6 +163,7 @@ def send_task(
         record_id=record_id,
         sealed_payload=sealed,
         caller_channel_key=(None if caller_offer is None else caller_offer.channel_public_key),
+        parent_record_hash=parent_record_hash,
     )
     request = PeerRequest(
         chain=chain,
