@@ -220,6 +220,14 @@ def verify_chain(
     window that has lapsed by audit time says nothing about validity at
     decision time.
     """
+    # Bounds on the wire are strict JSON integers; the evaluation time they are
+    # compared against holds the same line, or True / 1.5 / -1 from a library
+    # caller would silently decide validity. (The CLI is already argparse-typed.)
+    if at_time is not None and (
+        isinstance(at_time, bool) or not isinstance(at_time, int) or at_time < 0
+    ):
+        raise ValueError("at_time must be a non-negative integer or None")
+
     if not chain:
         raise BrokenDelegationLink("empty delegation chain")
 

@@ -233,6 +233,16 @@ def test_inverted_window_rejected_in_chain() -> None:
         verify_chain([cred], at_time=1_500)
 
 
+@pytest.mark.parametrize("bad_at_time", [True, 1.5, -1, "1500"])
+def test_verify_chain_rejects_non_integer_at_time(
+    valid_chain: list[DelegationCredential], bad_at_time: object
+) -> None:
+    # The credential bounds are strict JSON integers; the evaluation time they
+    # are compared against holds the same line for library callers.
+    with pytest.raises(ValueError, match="at_time"):
+        verify_chain(valid_chain, at_time=bad_at_time)  # type: ignore[arg-type]
+
+
 def test_from_dict_rejects_inverted_window(valid_chain: list[DelegationCredential]) -> None:
     raw = valid_chain[0].body() | {
         "signature": valid_chain[0].signature,
