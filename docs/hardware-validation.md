@@ -166,8 +166,12 @@ time, the AK's RSA PKCS#1 v1.5 SHA-256 signature over the attest blob, and
 rejection of a single flipped bit.
 
 ```
-CA2A_TPM_FIXTURE_DIR=<capture dir> pytest tests/unit/test_tpm.py
+pytest tests/unit/test_tpm.py
 ```
+
+The committed capture is loaded from
+`tests/fixtures/hardware/azure-vtpm-2026-07-27` by default. Set
+`CA2A_TPM_FIXTURE_DIR=<capture dir>` to replay a newly captured vector instead.
 
 What it does **not** check, which matters: the AK certificate chain. Azure's
 pre-provisioned AK certificate (read from vTPM NV index `0x01C101D0`, subject

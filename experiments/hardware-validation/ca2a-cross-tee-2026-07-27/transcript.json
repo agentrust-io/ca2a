@@ -1,0 +1,54 @@
+{
+  "peer": "http://34.69.83.218:8443",
+  "offer_status": 200,
+  "peer_platform": "tdx",
+  "tdx_quote_bytes": 8000,
+  "tdx_verified": true,
+  "peer_mrtd": "c1ee9c16e3afc506cfe042c5b846a368528f3b37618eafb27469bc114cf914e9222c91618470e7f2b28ac360968270a5",
+  "peer_channel_key_bound_to_quote": true,
+  "stale_nonce_rejected": true,
+  "sealed_bytes": 107,
+  "allowed_call": {
+    "status": 200,
+    "outcome": "allow",
+    "granted": "tool:search",
+    "effective_scope": [
+      "task:read",
+      "tool:search"
+    ],
+    "payload_opened_in_enclave": "{\"task\":\"search\",\"q\":\"confidential cross-TEE\"}",
+    "record": {
+      "record_id": "rec-xtee-0",
+      "credential_id": "cred-1",
+      "subject": "7cd7be25c9c057e0726c74aaece5dac32101ccd3f289239e47ad3fdf96f90e20",
+      "scope": [
+        "task:read",
+        "tool:search"
+      ],
+      "parent_record_hash": null
+    }
+  },
+  "denied_call": {
+    "status": 403,
+    "outcome": "deny",
+    "code": "SCOPE_NOT_PERMITTED",
+    "error": "capability 'tool:purchase' is not in the effective scope",
+    "record": {
+      "record_id": "rec-xtee-1",
+      "credential_id": "cred-1",
+      "subject": "7cd7be25c9c057e0726c74aaece5dac32101ccd3f289239e47ad3fdf96f90e20",
+      "scope": [
+        "task:read",
+        "tool:search"
+      ],
+      "parent_record_hash": null,
+      "decision": "deny",
+      "requested_capability": "tool:purchase",
+      "effective_scope": [
+        "task:read",
+        "tool:search"
+      ],
+      "denial_reason": "capability 'tool:purchase' is not in the effective scope"
+    }
+  }
+}
