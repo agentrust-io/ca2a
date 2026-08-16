@@ -168,10 +168,7 @@ def test_real_tpm_quote_parses_and_verifies() -> None:
 
     d = pathlib.Path(
         os.environ.get("CA2A_TPM_FIXTURE_DIR")
-        or pathlib.Path(__file__).parents[1]
-        / "fixtures"
-        / "hardware"
-        / "azure-vtpm-2026-07-27"
+        or pathlib.Path(__file__).parents[1] / "fixtures" / "hardware" / "azure-vtpm-2026-07-27"
     )
     attest = (d / "quote.msg").read_bytes()
     signature = (d / "quote.sig").read_bytes()
