@@ -223,14 +223,32 @@ def test_body_omits_absent_bounds(valid_chain: list[DelegationCredential]) -> No
     valid_chain[0].verify_signature()
 
 
-def test_inverted_window_rejected_in_chain() -> None:
-    priv, pub = new_keypair()
+@pytest.mark.parametrize("field", ["not_before", "not_after"])
+@pytest.mark.parametrize("value", [True, -5, 1.5, "1000"])
+def test_direct_construction_rejects_invalid_bounds(field: str, value: object) -> None:
+    # The dataclass is a public constructor too; without __post_init__ a bound
+    # outside the documented wire format could be signed into a body that this
+    # implementation's own from_dict rejects.
+    _, pub = new_keypair()
     _, sub = new_keypair()
-    cred = DelegationCredential(
-        "c0", pub, sub, frozenset({"cap:a"}), 0, not_before=2_000, not_after=1_000
-    ).sign(priv)
     with pytest.raises(InvalidCredential):
-        verify_chain([cred], at_time=1_500)
+        DelegationCredential(
+            "c0",
+            pub,
+            sub,
+            frozenset({"cap:a"}),
+            0,
+            **{field: value},  # type: ignore[arg-type]
+        )
+
+
+def test_direct_construction_rejects_inverted_window() -> None:
+    _, pub = new_keypair()
+    _, sub = new_keypair()
+    with pytest.raises(InvalidCredential, match="inverted"):
+        DelegationCredential(
+            "c0", pub, sub, frozenset({"cap:a"}), 0, not_before=2_000, not_after=1_000
+        )
 
 
 @pytest.mark.parametrize("bad_at_time", [True, 1.5, -1, "1500"])

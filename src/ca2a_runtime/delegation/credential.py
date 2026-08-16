@@ -85,6 +85,26 @@ class DelegationCredential:
     not_before: int | None = None  # Unix epoch seconds, inclusive
     not_after: int | None = None  # Unix epoch seconds, inclusive
 
+    def __post_init__(self) -> None:
+        # Enforced at construction, not only in from_dict: this is also a public
+        # constructor, and sign() would otherwise put a bound outside the
+        # documented wire format into a signed body that this implementation's
+        # own parser rejects. replace() re-runs this, so no path around it.
+        for name, bound in (("not_before", self.not_before), ("not_after", self.not_after)):
+            if bound is not None and (
+                isinstance(bound, bool) or not isinstance(bound, int) or bound < 0
+            ):
+                raise InvalidCredential(f"{name} must be a non-negative integer when present")
+        if (
+            self.not_before is not None
+            and self.not_after is not None
+            and self.not_before > self.not_after
+        ):
+            raise InvalidCredential(
+                "validity window is inverted",
+                detail=f"not_before={self.not_before} > not_after={self.not_after}",
+            )
+
     def body(self) -> dict[str, Any]:
         """The signed portion of the credential (everything but the signature).
 
@@ -251,15 +271,8 @@ def verify_chain(
         # Window checks come after the signature so the bounds being judged are
         # the ones the issuer signed, and before the structural checks so an
         # expired hop is named as expired rather than as some downstream break.
-        if (
-            cred.not_before is not None
-            and cred.not_after is not None
-            and cred.not_before > cred.not_after
-        ):
-            raise InvalidCredential(
-                f"hop {i} validity window is inverted",
-                detail=f"not_before={cred.not_before} > not_after={cred.not_after}",
-            )
+        # An inverted window cannot reach here: __post_init__ refuses to
+        # construct one.
         if cred.not_before is not None and now < cred.not_before:
             raise CredentialNotYetValid(
                 f"hop {i} credential is not yet valid",
