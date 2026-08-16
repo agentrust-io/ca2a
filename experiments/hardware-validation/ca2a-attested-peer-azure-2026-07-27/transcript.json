@@ -1,0 +1,19 @@
+{
+  "snp_report_bytes": 1184,
+  "measurement": "b2b53ada66639958b707804dade56a9336a6bbd51e625ba93002ce8614482c198245c6d012196aa845353fe259fd0a34",
+  "tcb": {
+    "bl": 4,
+    "tee": 0,
+    "snp": 24,
+    "ucode": 219
+  },
+  "report_data_binds_runtime_data": true,
+  "vcek_subject": "CN=SEV-VCEK,O=Advanced Micro Devices,ST=CA,L=Santa Clara,C=US,OU=Engineering",
+  "assurance": "hardware",
+  "verified_measurement": "b2b53ada66639958b707804dade56a9336a6bbd51e625ba93002ce8614482c198245c6d012196aa845353fe259fd0a34",
+  "sealed_bytes": 102,
+  "roundtrip_ok": true,
+  "binary_swap_rejected": true,
+  "binary_swap_reason": "offered measurement does not match the verified report",
+  "stale_nonce_rejected": true
+}

@@ -151,11 +151,6 @@ def test_provider_fails_closed_off_tpm_hardware() -> None:
         TpmProvider().attest("deadbeef", "nonce")
 
 
-@pytest.mark.skipif(
-    not os.environ.get("CA2A_TPM_FIXTURE_DIR"),
-    reason="set CA2A_TPM_FIXTURE_DIR to a dir with quote.msg + quote.sig + ak.pub + "
-    "nonce.hex (a real TPM capture) to run the hardware test",
-)
 def test_real_tpm_quote_parses_and_verifies() -> None:
     """A genuine vTPM quote, end to end (see docs/hardware-validation.md).
 
@@ -171,7 +166,10 @@ def test_real_tpm_quote_parses_and_verifies() -> None:
     from cryptography.hazmat.primitives import hashes, serialization
     from cryptography.hazmat.primitives.asymmetric import padding
 
-    d = pathlib.Path(os.environ["CA2A_TPM_FIXTURE_DIR"])
+    d = pathlib.Path(
+        os.environ.get("CA2A_TPM_FIXTURE_DIR")
+        or pathlib.Path(__file__).parents[1] / "fixtures" / "hardware" / "azure-vtpm-2026-07-27"
+    )
     attest = (d / "quote.msg").read_bytes()
     signature = (d / "quote.sig").read_bytes()
     nonce = bytes.fromhex((d / "nonce.hex").read_text().strip())
