@@ -60,7 +60,7 @@ dev = [
     "bandit[toml]>=1.7",
     "pip-audit>=2.6",
     # Conformance suite: asserts emitted records pass the TRACE Level checks.
-    "agentrust-trace-tests>=0.4,<0.5",
+    "agentrust-trace-tests>=0.4,<0.6",
     # So tests/unit/test_a2a_sdk_bridge.py runs in CI rather than skipping. A
     # bridge whose tests only ever skip is a bridge nobody has exercised.
     "a2a-sdk>=1.1,<2",
