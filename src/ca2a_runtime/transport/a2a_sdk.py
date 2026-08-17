@@ -13,10 +13,12 @@ one set of tests, and the profile stays transport-agnostic. Nothing here
 verifies, enforces, or appraises; it converts and delegates.
 
 **The Struct round trip loses integer-ness.** ``Struct`` has no integer type, so
-a credential's ``depth`` of ``0`` comes back as ``0.0``. This bridge restores
-only finite integral depth values before handing metadata to the strict parser.
-A non-integral value remains a float and is rejected rather than truncated.
-``tests/unit/test_a2a_sdk_bridge.py`` holds both sides of that boundary.
+a credential's ``depth`` of ``0`` comes back as ``0.0``, and its validity bounds
+(``not_before`` / ``not_after``) suffer the same fate. This bridge restores only
+finite integral values of those fields before handing metadata to the strict
+parser. A non-integral value remains a float and is rejected rather than
+truncated. ``tests/unit/test_a2a_sdk_bridge.py`` holds both sides of that
+boundary.
 
 Install with the extra::
 
@@ -80,9 +82,10 @@ def metadata_from_sdk_message(message: Any) -> dict[str, Any]:
         for credential in chain:
             if not isinstance(credential, dict):
                 continue
-            depth = credential.get("depth")
-            if isinstance(depth, float) and depth.is_integer():
-                credential["depth"] = int(depth)
+            for field in ("depth", "not_before", "not_after"):
+                value = credential.get(field)
+                if isinstance(value, float) and value.is_integer():
+                    credential[field] = int(value)
     return result
 
 

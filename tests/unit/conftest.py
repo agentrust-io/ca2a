@@ -27,11 +27,15 @@ TEST_SECRET = generate_secret()
 
 def build_chain_with_keys(
     scopes: list[frozenset[str]],
+    *,
+    not_before: int | None = None,
+    not_after: int | None = None,
 ) -> tuple[list[DelegationCredential], list[Ed25519PrivateKey]]:
     """Build a signed chain and return it with each hop's subject private key.
 
     Continuity is preserved (each issuer is the previous subject) and depth
-    increments from 0. Callers pass narrowing scopes to exercise attenuation.
+    increments from 0. Callers pass narrowing scopes to exercise attenuation,
+    and optionally a validity window applied to every hop.
 
     The keys are what a delegate actually holds. The last one is the leaf key a
     holder proof has to be signed with, and keeping it is the difference between
@@ -50,6 +54,8 @@ def build_chain_with_keys(
             scope=scope,
             depth=depth,
             parent_id=parent_id,
+            not_before=not_before,
+            not_after=not_after,
         ).sign(priv)
         chain.append(cred)
         subject_keys.append(next_priv)
@@ -58,9 +64,14 @@ def build_chain_with_keys(
     return chain, subject_keys
 
 
-def build_chain(scopes: list[frozenset[str]]) -> list[DelegationCredential]:
+def build_chain(
+    scopes: list[frozenset[str]],
+    *,
+    not_before: int | None = None,
+    not_after: int | None = None,
+) -> list[DelegationCredential]:
     """Build a correctly signed chain where hop i grants scopes[i]."""
-    return build_chain_with_keys(scopes)[0]
+    return build_chain_with_keys(scopes, not_before=not_before, not_after=not_after)[0]
 
 
 def proved_request(

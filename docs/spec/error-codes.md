@@ -16,6 +16,8 @@ An error also carries a human-readable message and an optional `detail`. The mes
 | `BrokenDelegationLink` | `BROKEN_DELEGATION_LINK` | 409 | A hop does not chain to its stated parent, or continuity is broken: empty chain, a root credential that names a parent or has nonzero depth, a hop whose parent link or subject does not match the previous hop, or a hop depth that is not previous + 1. |
 | `DelegationDepthExceeded` | `DELEGATION_DEPTH_EXCEEDED` | 403 | A chain is longer than the configured `max_delegation_depth`. Raised by `verify_chain`. |
 | `CredentialReplay` | `CREDENTIAL_REPLAY` | 409 | A `credential_id` appears more than once in a single chain. Raised by `verify_chain`. |
+| `CredentialNotYetValid` | `CREDENTIAL_NOT_YET_VALID` | 403 | A hop's `not_before` bound is after the evaluation time. The chain is well formed and validly signed, but the grant is not yet in force. Raised by `verify_chain`. |
+| `CredentialExpired` | `CREDENTIAL_EXPIRED` | 403 | A hop's `not_after` bound is before the evaluation time. Raised by `verify_chain`. |
 | `HolderProofInvalid` | `HOLDER_PROOF_INVALID` | 401 | The presenter of a delegation chain did not prove it controls the leaf `subject`: no proof was presented, the proof was malformed, it answered a challenge this callee did not issue or which has expired, or its signature did not verify over the exact request being made. 401 rather than 403 because the chain may well carry the authority requested while the caller has not shown it is the party that authority was delegated to. Distinct from `ATTESTATION_FAILED`, which is about what the caller is *running*: a caller can appraise perfectly and still fail this. Raised by `verify_holder_proof`, `handle_peer_request`, and the A2A adapter on a malformed proof. See [profile](profile.md) P-4a. |
 | `AttestationUnsupported` | `ATTESTATION_UNSUPPORTED` | 500 | An attestation provider was requested that the host cannot supply. Raised by any provider's `attest` when the host lacks what its collector needs, and by `OpaqueProvider`, which has no collector. The `detail` names the missing piece. See [Peer Attestation](attestation.md). |
 | `AttestationFailed` | `ATTESTATION_FAILED` | 412 | Attestation evidence was present but did not verify. Raised by the SEV-SNP verifier on a malformed report, an untrusted or broken certificate chain, a bad report signature, or a measurement / report-data mismatch. See [Peer Attestation](attestation.md). |
@@ -26,7 +28,7 @@ An error also carries a human-readable message and an optional `detail`. The mes
 
 ## Which errors are live today
 
-`ConfigError`, `InvalidCredential`, `ScopeEscalation`, `BrokenDelegationLink`, `DelegationDepthExceeded`, `CredentialReplay`, and `ProvenanceLinkBroken` are raised by shipping code paths: attenuated delegation, offline chain verification, and the provenance DAG. `ScopeNotPermitted` is raised by the peer-call enforcement decision core (`enforce_peer_call`), and `SealedChannelError` by the sealed channel (`SealedChannel.seal`, `open_sealed`), both of which are implemented. `TransportError` is raised by the A2A metadata adapter when cA2A keys are present but cannot be parsed into a `PeerRequest`.
+`ConfigError`, `InvalidCredential`, `ScopeEscalation`, `BrokenDelegationLink`, `DelegationDepthExceeded`, `CredentialReplay`, `CredentialNotYetValid`, `CredentialExpired`, and `ProvenanceLinkBroken` are raised by shipping code paths: attenuated delegation, offline chain verification, and the provenance DAG. `ScopeNotPermitted` is raised by the peer-call enforcement decision core (`enforce_peer_call`), and `SealedChannelError` by the sealed channel (`SealedChannel.seal`, `open_sealed`), both of which are implemented. `TransportError` is raised by the A2A metadata adapter when cA2A keys are present but cannot be parsed into a `PeerRequest`.
 
 `AttestationFailed` is raised by the SEV-SNP verifier (chain, report signature, and measurement binding), and by a collector whose hardware returned evidence that does not commit the key and nonce it asked for. `AttestationUnsupported` is raised where a host cannot collect at all: no TPM or tpm2-pytss for `tpm`, no configfs-TSM or guest device for `sev-snp` and `tdx`, and on Azure confidential VMs, where SEV-SNP runs behind a paravisor that owns `REPORT_DATA`. See [Peer Attestation](attestation.md) and [ROADMAP.md](../../ROADMAP.md).
 
@@ -52,7 +54,7 @@ Verification fails closed. `verify_chain`, `verify_dag`, and `cross_check_chain`
 
 ## See also
 
-- [Delegation Chain](delegation-chain.md) for the checks behind `ScopeEscalation`, `BrokenDelegationLink`, `DelegationDepthExceeded`, and `CredentialReplay`.
+- [Delegation Chain](delegation-chain.md) for the checks behind `ScopeEscalation`, `BrokenDelegationLink`, `DelegationDepthExceeded`, `CredentialReplay`, `CredentialNotYetValid`, and `CredentialExpired`.
 - [Provenance DAG](provenance-dag.md) for the checks behind `ProvenanceLinkBroken`.
 - [Verification Library](verification-library.md) for `verify_chain`, `verify_chain_file`, `verify_dag`, and `cross_check_chain`.
 - [Failure Modes](failure-modes.md) for how these errors map to observable runtime behavior.

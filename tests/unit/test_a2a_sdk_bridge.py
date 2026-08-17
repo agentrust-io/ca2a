@@ -152,6 +152,29 @@ def test_a_chain_still_verifies_after_the_struct_round_trip(hops: int) -> None:
     verify_chain(parsed.chain)
 
 
+def test_validity_bounds_survive_the_struct_round_trip() -> None:
+    """``not_before`` / ``not_after`` cross the Struct boundary as doubles too,
+    and they are part of the signed body when present, so the signature only
+    survives if the bridge restores their integer-ness like it does depth's."""
+    priv, pub = new_keypair()
+    _, sub = new_keypair()
+    cred = DelegationCredential(
+        credential_id="c0",
+        issuer=pub,
+        subject=sub,
+        scope=frozenset({"read"}),
+        depth=0,
+        not_before=1_000,
+        not_after=2_000,
+    ).sign(priv)
+    message = a2a_sdk.attach_to_sdk_message(Message(message_id="m1"), _request(chain=[cred]))
+
+    parsed = a2a_sdk.parse_sdk_message(message)
+    assert parsed is not None
+    assert (parsed.chain[0].not_before, parsed.chain[0].not_after) == (1_000, 2_000)
+    verify_chain(parsed.chain, at_time=1_500)
+
+
 def test_a_tampered_depth_does_not_verify() -> None:
     """A non-integral Struct number is rejected instead of truncated."""
     message = a2a_sdk.attach_to_sdk_message(Message(message_id="m1"), _request(chain=_chain(2)))

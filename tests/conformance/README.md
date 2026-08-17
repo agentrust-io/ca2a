@@ -35,6 +35,9 @@ Spec: [delegation-chain.md](../../docs/spec/delegation-chain.md)
 | DELEG-004 | MUST | A chain deeper than the configured maximum is rejected. | `DELEGATION_DEPTH_EXCEEDED`. |
 | DELEG-005 | MUST | A `credential_id` that repeats within a chain is rejected. | `CREDENTIAL_REPLAY`. |
 | DELEG-006 | MUST | A well-formed, strictly narrowing chain is accepted. | Verification succeeds. |
+| DELEG-007 | MUST | A credential whose `not_after` is before the evaluation time is rejected. | `CREDENTIAL_EXPIRED`. |
+| DELEG-008 | MUST | A credential whose `not_before` is after the evaluation time is rejected. | `CREDENTIAL_NOT_YET_VALID`. |
+| DELEG-009 | MUST | A well-formed chain whose evaluation time falls within every hop's validity window is accepted. | Verification succeeds. |
 
 ## Group 2: Scope-policy intersection
 
@@ -105,6 +108,8 @@ Spec: [trace-a2a-profile.md](../../docs/spec/trace-a2a-profile.md), [provenance-
 | ACTION-009 | MUST | A delegated action with a strictly attenuating multi-hop credential chain verifies. | `verified`. |
 | ACTION-010 | MUST | An action evidence chain with scope widening at an intermediate hop is rejected as provenance-invalid. | `SCOPE_ESCALATION`. |
 | ACTION-011 | MUST | Action evidence whose delegatee differs from the subject of the referenced credential is rejected as provenance-invalid. | `PROVENANCE_LINK_BROKEN`. |
+| ACTION-012 | MUST | Action evidence whose delegation chain contains an expired credential is rejected as provenance-invalid. | `CREDENTIAL_EXPIRED`. |
+| ACTION-013 | MUST | Action evidence whose delegation chain contains a not-yet-valid credential is rejected as provenance-invalid. | `CREDENTIAL_NOT_YET_VALID`. |
 
 ## Group 8: Holder binding
 

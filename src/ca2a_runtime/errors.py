@@ -59,6 +59,24 @@ class CredentialReplay(CA2AError):
     http_status = 409
 
 
+class CredentialNotYetValid(CA2AError):
+    """A credential's ``not_before`` bound is after the evaluation time.
+
+    403 like the other validity failures: the chain is well formed and validly
+    signed, but the grant is not in force at the time being evaluated.
+    """
+
+    code = "CREDENTIAL_NOT_YET_VALID"
+    http_status = 403
+
+
+class CredentialExpired(CA2AError):
+    """A credential's ``not_after`` bound is before the evaluation time."""
+
+    code = "CREDENTIAL_EXPIRED"
+    http_status = 403
+
+
 class HolderProofInvalid(CA2AError):
     """The presenter of a delegation chain did not prove it holds the leaf key.
 

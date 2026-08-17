@@ -11,8 +11,10 @@ result: ChainResult = verify_chain_file("chain.json")
 # result.hops, result.root_issuer, result.leaf_subject, result.leaf_scope
 ```
 
-- `verify_delegation_chain(chain, max_depth=8)` verifies a list of `DelegationCredential` and returns a `ChainResult` summary, or raises a `CA2AError` subtype.
-- `verify_chain_file(path, max_depth=8)` loads a chain from JSON (a bare list, or `{"chain": [...]}`) and verifies it.
+- `verify_delegation_chain(chain, max_depth=8, at_time=None)` verifies a list of `DelegationCredential` and returns a `ChainResult` summary, or raises a `CA2AError` subtype.
+- `verify_chain_file(path, max_depth=8, at_time=None)` loads a chain from JSON (a bare list, or `{"chain": [...]}`) and verifies it.
+
+`at_time` is the Unix time validity windows are evaluated at; `None` means the current time. An auditor replaying recorded evidence passes the time the action was decided, not its own. See [delegation chain](delegation-chain.md).
 
 ## Errors
 
