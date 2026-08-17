@@ -17,6 +17,7 @@ or TDX silicon; docs/hardware-validation.md records what has.
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from cryptography.hazmat.primitives.asymmetric import ec
@@ -86,11 +87,15 @@ def install_fake_tsm(
     provider: str,
     make_outblob,
     auxblob: bytes | None = None,
-) -> list[Path]:
+) -> SimpleNamespace:
     """Simulate the kernel's configfs-TSM report interface under ``tmp_path``.
 
-    Returns the list of entry directories created, so a test can assert on how
-    the interface was driven rather than only on what came back.
+    Faithful on the one point these tests turn on: the report is produced when
+    ``outblob`` is *read*, not when the entry is created. Writing ``inblob`` only
+    supplies the report data and materialises ``provider``.
+
+    Returns the entries created and the attributes read, so a test can assert on
+    how the interface was driven rather than only on what came back.
     """
     root = tmp_path / "tsm-report"
     root.mkdir()
@@ -98,8 +103,11 @@ def install_fake_tsm(
     monkeypatch.setattr("ca2a_runtime.tee.tsm.sys.platform", "linux")
 
     entries: list[Path] = []
+    reads: list[str] = []
+    pending: dict[str, bytes] = {}
     real_mkdir = Path.mkdir
     real_write_bytes = Path.write_bytes
+    real_read_bytes = Path.read_bytes
 
     def mkdir(self: Path, *args, **kwargs):  # noqa: ANN002, ANN003, ANN202
         result = real_mkdir(self, *args, **kwargs)
@@ -111,15 +119,25 @@ def install_fake_tsm(
         written = real_write_bytes(self, data)
         if self.name == "inblob":
             entry = self.parent
-            real_write_bytes(entry / "outblob", make_outblob(data))
+            pending[str(entry)] = data
             (entry / "provider").write_text(provider + "\n")
             if auxblob is not None:
                 real_write_bytes(entry / "auxblob", auxblob)
         return written
 
+    def read_bytes(self: Path) -> bytes:
+        if self.name == "outblob":
+            reads.append("outblob")
+            data = pending.get(str(self.parent))
+            if data is None:
+                raise FileNotFoundError(self)
+            return make_outblob(data)
+        return real_read_bytes(self)
+
     monkeypatch.setattr(Path, "mkdir", mkdir)
     monkeypatch.setattr(Path, "write_bytes", write_bytes)
-    return entries
+    monkeypatch.setattr(Path, "read_bytes", read_bytes)
+    return SimpleNamespace(entries=entries, reads=reads)
 
 
 def test_collect_report_returns_the_report_and_its_certificates(
@@ -153,8 +171,14 @@ def test_collect_report_reports_no_certificates_when_none_are_supplied(
 def test_collect_report_refuses_the_wrong_platform(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """A TDX guest answering an SNP collector is a misconfiguration, not evidence."""
-    install_fake_tsm(
+    """A TDX guest answering an SNP collector is a misconfiguration, not evidence.
+
+    The provider is checked before ``outblob`` is read, so the platform is never
+    asked to sign a report over the caller's binding that would then be thrown
+    away. Nothing escapes either way, but the signature is work the hardware
+    should not have been asked for.
+    """
+    fake = install_fake_tsm(
         monkeypatch,
         tmp_path,
         provider=tsm.PROVIDER_TDX_GUEST,
@@ -162,6 +186,7 @@ def test_collect_report_refuses_the_wrong_platform(
     )
     with pytest.raises(AttestationFailed, match="not the expected platform"):
         tsm.collect_report(b"\x00" * 64, expect_provider=tsm.PROVIDER_SEV_GUEST)
+    assert fake.reads == []
 
 
 def test_collect_report_refuses_an_empty_report(
@@ -199,7 +224,7 @@ def test_each_collection_uses_its_own_entry(
     write moves the report the first is about to read, so a peer could ship a
     report committing someone else's key.
     """
-    entries = install_fake_tsm(
+    fake = install_fake_tsm(
         monkeypatch,
         tmp_path,
         provider=tsm.PROVIDER_SEV_GUEST,
@@ -207,7 +232,7 @@ def test_each_collection_uses_its_own_entry(
     )
     tsm.collect_report(b"\x01" * 64, expect_provider=tsm.PROVIDER_SEV_GUEST)
     tsm.collect_report(b"\x02" * 64, expect_provider=tsm.PROVIDER_SEV_GUEST)
-    assert len({entry.name for entry in entries}) == 2
+    assert len({entry.name for entry in fake.entries}) == 2
 
 
 def test_collect_report_when_the_kernel_refuses_an_entry(
@@ -226,13 +251,31 @@ def test_collect_report_when_the_kernel_refuses_an_entry(
         tsm.collect_report(b"\x00" * 64, expect_provider=tsm.PROVIDER_SEV_GUEST)
 
 
-def test_collect_report_when_the_provider_returns_nothing_readable(
+def test_collect_report_when_the_entry_names_no_provider(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    """An entry that exists but produces no outblob is a failure, not empty evidence."""
+    """An entry with no readable attributes cannot be trusted to be the right platform."""
     root = tmp_path / "tsm-report"
     root.mkdir()
     monkeypatch.setattr(tsm, "TSM_REPORT_DIR", str(root))
+    with pytest.raises(AttestationFailed, match="did not name its provider"):
+        tsm.collect_report(b"\x00" * 64, expect_provider=tsm.PROVIDER_SEV_GUEST)
+
+
+def test_collect_report_when_the_right_provider_returns_no_report(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """The provider matches but outblob cannot be read: a failure, not empty evidence."""
+
+    def unreadable(_data: bytes) -> bytes:
+        raise OSError("EIO")
+
+    install_fake_tsm(
+        monkeypatch,
+        tmp_path,
+        provider=tsm.PROVIDER_SEV_GUEST,
+        make_outblob=unreadable,
+    )
     with pytest.raises(AttestationFailed, match="did not return a report"):
         tsm.collect_report(b"\x00" * 64, expect_provider=tsm.PROVIDER_SEV_GUEST)
 
