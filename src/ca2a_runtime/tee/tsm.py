@@ -74,6 +74,11 @@ def collect_report(report_data: bytes, *, expect_provider: str) -> tuple[bytes, 
     two processes collecting at once would share one entry, and the second write
     to ``inblob`` would change the report the first is about to read, so a peer
     could ship a report committing someone else's key.
+
+    The provider is confirmed before ``outblob`` is read, because the read is
+    what makes the platform generate and sign the report. Checking afterwards
+    still fails closed, but only after asking the hardware to sign something over
+    the caller's binding that is then discarded.
     """
     if len(report_data) > REPORT_DATA_LEN:
         raise AttestationFailed(
@@ -97,14 +102,17 @@ def collect_report(report_data: bytes, *, expect_provider: str) -> tuple[bytes, 
     try:
         try:
             (entry / "inblob").write_bytes(report_data)
-            outblob = (entry / "outblob").read_bytes()
             provider = (entry / "provider").read_text().strip()
         except OSError as exc:
             raise AttestationFailed(
-                "the configfs-TSM provider did not return a report",
+                "the configfs-TSM entry did not name its provider",
                 detail=f"{type(exc).__name__}: {exc}",
             ) from exc
 
+        # Checked before outblob is read, because reading outblob is what makes
+        # the platform generate and sign a report over the caller's binding. On
+        # the wrong provider that report is discarded, so asking for it at all is
+        # work the hardware should never have been asked to do.
         if provider != expect_provider:
             raise AttestationFailed(
                 "the configfs-TSM provider is not the expected platform",
@@ -113,6 +121,15 @@ def collect_report(report_data: bytes, *, expect_provider: str) -> tuple[bytes, 
                     f"{expect_provider!r}; the wrong provider was selected for this host"
                 ),
             )
+
+        try:
+            outblob = (entry / "outblob").read_bytes()
+        except OSError as exc:
+            raise AttestationFailed(
+                "the configfs-TSM provider did not return a report",
+                detail=f"{type(exc).__name__}: {exc}",
+            ) from exc
+
         if not outblob:
             raise AttestationFailed(
                 "the configfs-TSM provider returned an empty report",
