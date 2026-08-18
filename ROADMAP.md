@@ -13,22 +13,22 @@ Already implemented and tested elsewhere; cA2A depends on it rather than reimple
 - Cedar policy engine (cmcp)
 - Ed25519 + RFC 8785 canonicalization (all three repos; cA2A now ships a JCS canonicalizer in `ca2a_runtime.canonical`)
 
-## v0.1: Profile and offline verifier
+## Delivered in v0.1: Profile and offline verifier
 
 - cA2A profile specification published as an A2A binding (`docs/SPEC.md`)
 - TRACE A2A profile: optional delegation-link block (parent record hash + delegation credential id) and its validation (Tier 1, coordinated in trace-spec)
 - `ca2a-verify`: offline verification of a delegation chain and the delegation DAG, reusing the agent-manifest verifier
 - Wire the agent-manifest delegation verifier as a check the runtime can call on an inbound peer request (Tier 1)
 
-## v0.2: Runtime enforcement and sealed channel
+## Delivered in v0.2: Runtime enforcement and sealed channel
 
 - Runtime peer-delegation enforcement: **decision core landed** (`ca2a_runtime.peer.enforce_peer_call`: verify chain, intersect delegated scope with local policy, enforce, emit provenance record; claim C3 validated), now with a **real Cedar policy engine** option (`ca2a_runtime.cedar.CedarPolicy`) alongside the allow-set `LocalPolicy`. Live transport **landed** (`ca2a_runtime.transport`: A2A wire binding in `transport.a2a_adapter`, a reference standard-library HTTP server and client, and `ca2a_runtime.node.PeerNode`), exercised end to end in software mode by `tests/unit/test_live_call.py` and runnable from a config file with `ca2a start`
 - Sealed peer channel: **landed** (`ca2a_runtime.channel`: HPKE-style X25519 -> HKDF-SHA256 -> ChaCha20-Poly1305 sealing to the peer's attested key; claim C4 validated). The seal is now **gated on a verified channel key** by the attestation handshake (`ca2a_runtime.attestation`: offer, verify, seal), so a payload is sealed only to an attested peer key; software mode records `assurance="none"` and hardware plugs in via a `verifier` callable. Remaining hardware property: the enclave holding the private key, established on a confidential VM
 - Linked runtime evidence: **landed** (`ca2a_runtime.trace_binding` emits a signed TRACE record per hop with the A2A `delegation` block; `ca2a_verify.verify_trace_dag` verifies the DAG offline, each link committing to the parent's full signed record). Built on `agentrust-trace` (Ed25519 + RFC 8785), reused not reimplemented. Software-mode records are Level 0; a hardware TEE run lifts them to Level 1. See `examples/trace-dag/`.
 
-## Critical path, sequenced first (Tier 3)
+## Current adoption path (post-v0.2)
 
-Real hardware attestation verification (SEV-SNP VCEK chain, Intel TDX quote via QVL/PCS, TPM AK cert + checkquote). This is a dependency for any cross-operator trust claim, single-agent or multi-agent, and is shared with cmcp. At least one real hardware backend must land before cA2A is marketed as attested across trust domains, so the demo matches the claim.
+Real hardware attestation verification (SEV-SNP VCEK chain, Intel TDX quote via QVL/PCS, TPM AK cert + checkquote) is shared with cMCP. Appraisal against genuine SEV-SNP and TDX evidence has landed; the work below tracks what remains before broadly claiming mutual, cross-operator hardware assurance.
 
 - **SEV-SNP verifier: landed and validated on real evidence.** Report parsing, VCEK chain verification, ECDSA-P384 report-signature verification, and measurement/report-data binding, all fail-closed, run against a genuine Azure CVM report (see [docs/hardware-validation.md](docs/hardware-validation.md)). Report generation is implemented via configfs-TSM but is not yet hardware-validated, and Azure's paravisor shape is out of scope for it. See `ca2a_verify.sev_snp` and [docs/spec/attestation.md](docs/spec/attestation.md).
 - **TDX verifier: landed and validated on real evidence.** DCAP Quote v4 parsing (including the nested type-6 QE certification data), PCK chain to the genuine Intel SGX Root CA, QE report signature, attestation-key binding, quote signature, and MRTD binding, all fail-closed, run against a genuine GCP C3 quote. Quote generation is implemented via configfs-TSM but is not yet hardware-validated. See `ca2a_verify.tdx`.
@@ -38,7 +38,7 @@ Real hardware attestation verification (SEV-SNP VCEK chain, Intel TDX quote via 
 - **Cross-operator, cross-TEE run: landed.** An Azure SEV-SNP peer appraised a GCP Intel TDX peer's real quote, sealed a delegated task to the attested key, and the TDX enclave opened it, enforced the attenuated scope, allowed `tool:search` and refused `tool:purchase` with a denial record returned across the boundary. See [docs/hardware-validation.md](docs/hardware-validation.md).
 - **Pending:** a hardware run of the SEV-SNP and TDX collectors (both implemented against configfs-TSM, neither yet exercised on silicon), mutual attestation on real silicon in both directions (the protocol now supports it in software mode and is off by default; that hardware run was one-directional), simultaneous attestation (which needs a commitment step neither peer can back out of, a larger protocol than what landed), and the TPM certificate-chain path. TPM parsing, bindings and the AK signature are validated against a real Azure vTPM quote; SEV-SNP and TDX appraisal of real evidence is done. The transport that parses A2A messages into a `PeerRequest` has **landed** (`ca2a_runtime.transport.a2a_adapter`), running in software mode; the hardware seam is the `verifier` callable in `ca2a_runtime.attestation`.
 
-## v1.0: Stable profile
+## v1.0 exit criteria: Stable profile
 
 - Stable delegation credential and TRACE link schema with documented versioning guarantees
 - Full RATS/EAT conformance for peer attestation evidence

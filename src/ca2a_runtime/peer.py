@@ -66,7 +66,7 @@ from ca2a_runtime.provenance import (
 #: How much the callee demands of the caller's own runtime.
 #:
 #: ``"none"`` is the default and demands nothing: the outcome is recorded and the
-#: call proceeds. It is the default because cA2A is alpha and almost no caller can
+#: call proceeds. It is the default during the Developer Preview because not every caller can
 #: attest yet, so a callee that refused unattested callers out of the box would be
 #: a callee nobody could talk to -- and a control that breaks the common case gets
 #: switched off and never switched back on. Strictness is opt-in, one rung at a

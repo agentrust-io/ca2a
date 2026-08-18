@@ -23,7 +23,9 @@
 
 [![CI](https://github.com/agentrust-io/ca2a/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/agentrust-io/ca2a/actions/workflows/ci.yml) [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](LICENSE) [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/agentrust-io/ca2a/badge)](https://scorecard.dev/viewer/?uri=github.com/agentrust-io/ca2a)
 
-> **Pre-release draft.** cA2A is a profile in active design. The delegation semantics are implemented and tested in [agent-manifest](https://github.com/agentrust-io/agent-manifest); the runtime peer path and sealed channel in this repo are under construction. See [ROADMAP.md](ROADMAP.md) and [LIMITATIONS.md](LIMITATIONS.md) for exactly what is and is not built.
+[![PyPI](https://img.shields.io/pypi/v/ca2a-runtime)](https://pypi.org/project/ca2a-runtime/)
+
+> **Developer Preview.** cA2A 0.2 ships the profile, offline verifier, enforced peer runtime, sealed channel, signed TRACE provenance, and fail-closed SEV-SNP, TDX, and TPM appraisal. It may still introduce breaking changes before 1.0. See [ROADMAP.md](ROADMAP.md) and [LIMITATIONS.md](LIMITATIONS.md) for the remaining hardware and interoperability work.
 
 **cA2A (Confidential A2A) is the secure, confidential way to do agent-to-agent delegation on the [Agent2Agent (A2A)](https://a2a-protocol.org/) protocol.** It layers attested, attenuated delegation, a sealed peer channel, and an offline-verifiable provenance record on top of A2A, without replacing the transport. If you are looking for a secure version of A2A for multi-agent systems, this is the AgenTrust profile for it.
 
@@ -62,10 +64,10 @@ cA2A is a trust profile layered on A2A, the way TRACE binds to IETF RATS, EAT, a
 ## Quick Start
 
 ```bash
-pip install --pre ca2a-runtime
+pip install ca2a-runtime
 ```
 
-> cA2A is in alpha; `--pre` opts into the pre-release. The runtime peer path is under construction (see [ROADMAP.md](ROADMAP.md)). Today you can build and verify delegation chains offline:
+The same package supports both offline chain verification and the live peer runtime:
 
 ```bash
 ca2a verify-chain --chain ./examples/minimal/chain.json
@@ -126,7 +128,7 @@ Agent A --(delegation cred, scope S_A)--> Agent B --(scope S_B ⊆ S_A)--> Agent
 3. The task payload is sealed to B's attested measurement, so only B's verified enclave can read it.
 4. Each hop emits a TRACE record linking to its parent, producing a delegation DAG any verifier can check offline without trusting an operator.
 
-> **Status:** the delegation-chain verification and the provenance DAG (steps 1 and 4) are implemented and offline-verifiable today. The live inbound peer path (steps 2 and 3: verifying a peer's attestation on a real call and sealing the payload to a *verified* measurement) is under construction. See [LIMITATIONS.md](LIMITATIONS.md) and [ROADMAP.md](ROADMAP.md).
+> **Status:** all four steps are implemented and exercised end to end. Software mode is available for evaluation; hardware-backed assurance requires a supported platform and pinned trust policy. See [LIMITATIONS.md](LIMITATIONS.md) and [ROADMAP.md](ROADMAP.md).
 
 ---
 

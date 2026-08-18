@@ -15,6 +15,7 @@ from __future__ import annotations
 from collections.abc import Collection
 from typing import Any
 
+from ca2a_runtime.agent_manifest import AgentManifestBinding
 from ca2a_runtime.attestation import ChannelOffer, Verifier, attest_channel
 from ca2a_runtime.challenge import DEFAULT_TTL_SECONDS, generate_secret, issue_challenge
 from ca2a_runtime.channel import generate_channel_keypair
@@ -54,6 +55,7 @@ class PeerNode:
         challenge_ttl_seconds: int = DEFAULT_TTL_SECONDS,
         require_holder_proof: bool = True,
         trusted_root_issuers: Collection[str] = (),
+        agent_manifest: AgentManifestBinding | None = None,
     ) -> None:
         if require_caller_attestation not in REQUIREMENT_VALUES:
             raise ConfigError(
@@ -77,6 +79,7 @@ class PeerNode:
         self.challenge_ttl_seconds = challenge_ttl_seconds
         self.require_holder_proof = require_holder_proof
         self.trusted_root_issuers = frozenset(trusted_root_issuers)
+        self.agent_manifest = agent_manifest
         self._private_key, self.channel_public_key = generate_channel_keypair()
         self._challenge_secret = generate_secret()
 

@@ -4,7 +4,7 @@ cA2A is a profile *on* A2A, and until this module it integrated with no A2A
 implementation: :mod:`ca2a_runtime.transport.a2a_adapter` parsed A2A-shaped
 ``dict``s and :mod:`ca2a_runtime.transport.server` was a bespoke HTTP server. A
 team already running the official SDK had no way to adopt the profile short of
-replacing their transport with ours, which nobody does to try an alpha.
+replacing their transport with ours, which should not be required to evaluate a profile.
 
 This is the whole bridge, and it is deliberately thin: the SDK carries A2A
 ``metadata`` as a ``google.protobuf.Struct``, so converting that to a plain

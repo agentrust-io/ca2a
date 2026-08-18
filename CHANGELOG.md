@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-18
+
+This is the first normal cA2A release. It promotes the project from its initial
+preview package to a runnable Developer Preview with runtime enforcement, sealed
+peer channels, signed TRACE provenance, real-evidence hardware appraisal, a
+conformance suite, and startup-bound Agent Manifest identity.
+
 ### Fixed
 
 - **`collect_report` confirms the configfs-TSM provider before reading `outblob` (#86 follow-up).** Reading `outblob` is what makes the platform generate and sign a report, so checking the provider afterwards meant a mismatched guest signed a report over the caller's binding and the result was then discarded. Nothing was returned and the entry was removed either way, so this was not a disclosure, but it asked the hardware to sign something no one could use. The provider check now gates the read. A test asserts `outblob` is never read on a mismatch, so the ordering cannot quietly regress.
@@ -243,5 +250,6 @@ built/stubbed boundary.
 - The sealed channel does not by itself establish the enclave-held-private-key property; that is a hardware attestation guarantee that lands with real-hardware validation.
 - Alpha schemas: the delegation credential and TRACE link schemas are not yet stable or versioned, and peer attestation evidence is not yet RATS/EAT conformant.
 
-[Unreleased]: https://github.com/agentrust-io/ca2a/compare/v0.1.0a1...main
+[Unreleased]: https://github.com/agentrust-io/ca2a/compare/v0.2.0...main
+[0.2.0]: https://github.com/agentrust-io/ca2a/compare/v0.1.0a1...v0.2.0
 [0.1.0a1]: https://github.com/agentrust-io/ca2a/releases/tag/v0.1.0a1

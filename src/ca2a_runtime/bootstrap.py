@@ -16,6 +16,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from ca2a_runtime.agent_manifest import (
+    load_agent_manifest_document,
+    load_agent_manifest_trust_anchor,
+    verify_agent_manifest_binding,
+)
 from ca2a_runtime.cedar import CedarPolicy
 from ca2a_runtime.config import Ca2aConfig
 from ca2a_runtime.errors import ConfigError
@@ -100,9 +105,34 @@ def build_peer_node(config: Ca2aConfig, *, config_dir: Path | None = None) -> Pe
             "ca2a start requires at least one trusted_root_issuer",
             detail="pin the Ed25519 public key of each authority allowed to originate delegation chains",
         )
+    manifest_binding = None
+    if config.agent_manifest_path is not None:
+        if (
+            config.agent_manifest_trust_anchor_path is None
+            or config.agent_manifest_authenticated_subject is None
+        ):
+            raise ConfigError(
+                "Agent Manifest startup requires path, trust anchor, and authenticated subject"
+            )
+        manifest_path = Path(config.agent_manifest_path)
+        trust_path = Path(config.agent_manifest_trust_anchor_path)
+        if config_dir is not None:
+            if not manifest_path.is_absolute():
+                manifest_path = config_dir / manifest_path
+            if not trust_path.is_absolute():
+                trust_path = config_dir / trust_path
+        loaded = load_agent_manifest_document(manifest_path)
+        trusted_keys = load_agent_manifest_trust_anchor(trust_path)
+        manifest_binding = verify_agent_manifest_binding(
+            loaded,
+            trusted_keys,
+            authenticated_subject=config.agent_manifest_authenticated_subject,
+        )
+
     return PeerNode(
         policy,
         provider=select_provider(config),
         max_depth=config.max_delegation_depth,
         trusted_root_issuers=config.trusted_root_issuers,
+        agent_manifest=manifest_binding,
     )
