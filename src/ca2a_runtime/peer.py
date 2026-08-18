@@ -409,9 +409,11 @@ def handle_peer_request(
     there is no live caller to challenge, and must not be used on a live peer
     path.
     """
-    # The trust set is supplied here as well as in the scope intersection below,
-    # so an untrusted root is refused before the caller is challenged for a proof
-    # about a credential this peer was never going to honour.
+    # The chain, trust set included, is verified exactly once: here, before the
+    # caller is challenged, so an untrusted or malformed chain is refused before
+    # a proof is demanded about a credential this peer was never going to honour.
+    # The scope intersection below reads the leaf of this verified chain, so it
+    # does not verify it again.
     verify_chain(
         request.chain,
         max_depth=max_depth,
@@ -426,12 +428,7 @@ def handle_peer_request(
             challenge_secret=challenge_secret,
         )
 
-    effective = effective_scope(
-        request.chain,
-        policy,
-        max_depth=max_depth,
-        trusted_root_issuers=trusted_root_issuers,
-    )
+    effective = policy.intersect(request.chain[-1].scope)
 
     caller_attestation = appraise_caller_runtime(
         request,
