@@ -138,7 +138,7 @@ process, B gives at-most-once-per-window across many.
 
 ## Posture when the caller will not attest
 
-Most callers, today, cannot: cA2A is alpha and the ecosystem is two peers we run.
+Most callers, today, cannot: mutual hardware attestation is not yet broadly deployed across independently operated peers.
 A callee that refuses unattested callers by default is a callee nobody can talk
 to; one that accepts them silently has added a field nobody reads.
 

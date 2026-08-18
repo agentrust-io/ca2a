@@ -6,9 +6,7 @@ offline, from the committed files, without trusting the operator that produced
 them.
 
 ```bash
-# From repo root, package installed editable (pip install -e ".[dev]").
-# The published ca2a-runtime 0.1.0a1 predates the `delegation` module this
-# demo imports, so a PyPI install is not enough yet.
+# From repo root with ca2a-runtime 0.2.0+ installed.
 python examples/rejection-with-proof/demo.py
 ```
 

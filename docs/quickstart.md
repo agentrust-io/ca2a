@@ -5,7 +5,7 @@ This walkthrough builds a delegation chain and verifies it offline. It needs no 
 ## Install
 
 ```bash
-pip install --pre ca2a-runtime
+pip install ca2a-runtime
 ```
 
 Or run the published rootless container with a read-only configuration mount:
@@ -14,7 +14,7 @@ Or run the published rootless container with a read-only configuration mount:
 docker run --rm -p 8443:8443 \
   --read-only --tmpfs /tmp:rw,noexec,nosuid,size=16m \
   -v "$PWD/ca2a-config.yaml:/etc/ca2a/config.yaml:ro" \
-  ghcr.io/agentrust-io/ca2a-runtime:v0.1.0a1 \
+  ghcr.io/agentrust-io/ca2a-runtime:v0.2.0 \
   start --config /etc/ca2a/config.yaml
 ```
 
@@ -22,7 +22,7 @@ The image runs as UID/GID 10001. Hardware-backed providers additionally need
 the relevant device passed through with permissions for that identity; do not
 run the whole container as root to obtain device access.
 
-cA2A is in alpha, so `--pre` is required to opt into the pre-release. Contributors working from a checkout can instead install from source: `pip install -e ".[dev]"`.
+cA2A 0.2 is published as a normal release. Contributors working from a checkout can instead install from source: `pip install -e ".[dev]"`.
 
 ## Build an example chain
 
@@ -75,4 +75,4 @@ verify_chain([root, child])  # raises on any violation
 
 ## What is not in this walkthrough
 
-The runtime peer path (accepting a delegation credential on a live inbound A2A call, attesting the peer, sealing the payload) is under construction. See [ROADMAP.md](../ROADMAP.md) and [LIMITATIONS.md](../LIMITATIONS.md).
+The runtime peer path accepts a delegation credential on a live inbound A2A call, appraises the peer, seals the payload, enforces local policy, and emits signed provenance. The walkthrough defaults to software assurance; see [ROADMAP.md](../ROADMAP.md) and [LIMITATIONS.md](../LIMITATIONS.md) before making hardware-backed claims.

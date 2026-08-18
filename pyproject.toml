@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ca2a-runtime"
-version = "0.1.0a1"
+version = "0.2.0"
 description = "Confidential agent-to-agent runtime: attested, attenuated delegation and sealed peer channels for A2A"
 readme = "README.md"
 license = { text = "MIT" }
@@ -13,7 +13,7 @@ authors = [
 ]
 keywords = ["a2a", "agent-to-agent", "delegation", "tee", "attestation", "confidential-computing", "ai-agents"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
