@@ -61,9 +61,7 @@ def _trust_file(path: Path, key_id: str, public_key: bytes) -> Path:
         json.dumps(
             {
                 "key_id": key_id,
-                "public_key_base64url": base64.urlsafe_b64encode(public_key)
-                .rstrip(b"=")
-                .decode(),
+                "public_key_base64url": base64.urlsafe_b64encode(public_key).rstrip(b"=").decode(),
             }
         ),
         encoding="utf-8",
@@ -119,9 +117,7 @@ def test_tampered_cose_is_rejected(tmp_path: Path) -> None:
     except ConfigError:
         return
     with pytest.raises(ConfigError, match="verification failed"):
-        verify_agent_manifest_binding(
-            loaded, {key_id: public_key}, authenticated_subject=AGENT_ID
-        )
+        verify_agent_manifest_binding(loaded, {key_id: public_key}, authenticated_subject=AGENT_ID)
 
 
 def test_untrusted_cose_is_rejected(tmp_path: Path) -> None:

@@ -100,9 +100,7 @@ def load_agent_manifest_trust_anchor(path: str | Path) -> dict[str, bytes]:
     elif isinstance(raw, dict) and isinstance(raw.get("keys"), list):
         items = raw["keys"]
     else:
-        raise ConfigError(
-            "Agent Manifest trust anchor must contain public_key_base64url or keys[]"
-        )
+        raise ConfigError("Agent Manifest trust anchor must contain public_key_base64url or keys[]")
 
     anchors: dict[str, bytes] = {}
     for item in items:

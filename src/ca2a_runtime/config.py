@@ -124,7 +124,11 @@ class Ca2aConfig:
         ):
             if value is not None and not isinstance(value, str):
                 raise ConfigError(f"agent_manifest.{name} must be a string")
-        configured = [manifest_path is not None, trust_anchor_path is not None, authenticated_subject is not None]
+        configured = [
+            manifest_path is not None,
+            trust_anchor_path is not None,
+            authenticated_subject is not None,
+        ]
         if any(configured) and not all(configured):
             raise ConfigError(
                 "agent_manifest.path, trust_anchor_path, and authenticated_subject "
