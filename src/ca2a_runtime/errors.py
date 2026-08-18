@@ -134,6 +134,25 @@ class ProvenanceLinkBroken(CA2AError):
     http_status = 409
 
 
+class TraceDigestUnsupported(CA2AError):
+    """A parent link names a digest algorithm this verifier does not implement.
+
+    The TRACE schema permits ``sha256:`` and ``sha384:`` for
+    ``delegation.parent_record_hash``; this verifier computes only
+    :data:`~ca2a_runtime.trace_binding.LINK_DIGEST`. A link naming the other one
+    is well formed and may be entirely correct, so the chain is *unverifiable*
+    here rather than invalid.
+
+    Distinct from :class:`ProvenanceLinkBroken` on purpose. That code means a
+    record contradicts its parent; this one means nothing was compared. Reporting
+    an unimplemented digest as a broken link puts a tampering finding into an
+    audit record that no tampering produced.
+    """
+
+    code = "TRACE_DIGEST_UNSUPPORTED"
+    http_status = 501
+
+
 class ScopeNotPermitted(CA2AError):
     """A requested capability is not in the effective scope (the delegated
     scope intersected with the callee's local policy).

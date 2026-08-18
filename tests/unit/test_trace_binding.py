@@ -8,16 +8,23 @@ confirm tampering and untrusted keys fail closed.
 
 from __future__ import annotations
 
+import hashlib
 import time
 
 import pytest
+import rfc8785
 from agentrust_trace import generate_key, sign_record, validate_json
 from trace_tests.runner import run as run_conformance
 
 from ca2a_runtime.delegation import DelegationCredential
-from ca2a_runtime.errors import ProvenanceLinkBroken, TraceRecordInvalid
+from ca2a_runtime.errors import (
+    ProvenanceLinkBroken,
+    TraceDigestUnsupported,
+    TraceRecordInvalid,
+)
 from ca2a_runtime.trace_binding import (
     EAT_PROFILE,
+    LINK_DIGEST,
     HopContext,
     HopSpec,
     build_trace_record,
@@ -215,3 +222,122 @@ def test_root_with_delegation_block_rejected() -> None:
 def test_empty_dag_rejected() -> None:
     with pytest.raises(ProvenanceLinkBroken, match="empty TRACE DAG"):
         verify_trace_dag([], trusted_keys=[])
+
+
+# --- links naming a digest this verifier does not compute -------------------
+#
+# The TRACE schema permits sha256: and sha384: for delegation.parent_record_hash
+# and this verifier computes only LINK_DIGEST. Such a link is well formed and may
+# be correct, so the outcome is unverifiable, not invalid. Before these tests the
+# link was compared as a string against a digest it could never equal, and the
+# mismatch was reported as ProvenanceLinkBroken, whose documented meaning is that
+# tampering or reparenting was detected.
+
+
+def _linked_dag(link_algs: list[str | None]) -> tuple[list[dict], list]:
+    """A correctly signed DAG, hop ``i`` linking to its parent by ``link_algs[i]``.
+
+    ``link_algs[0]`` is the root and must be None. Every record is signed over the
+    link it carries, so the only difference between the arms is the algorithm.
+    """
+    assert link_algs[0] is None
+    keys = [generate_key() for _ in link_algs]
+    records: list[dict] = []
+    for i, alg in enumerate(link_algs):
+        if alg is None:
+            link = None
+        elif alg == LINK_DIGEST:
+            link = trace_record_hash(records[-1])
+        else:
+            link = f"{alg}:" + hashlib.new(alg, rfc8785.dumps(records[-1])).hexdigest()
+        records.append(
+            sign_trace_record(
+                build_trace_record(
+                    subject=f"spiffe://ca2a.example/peer/{i}",
+                    iat=_NOW,
+                    context=_software_context(f"peer-{i}"),
+                    credential_id=None if i == 0 else f"cred-{i}",
+                    parent_record_hash=link,
+                ),
+                keys[i],
+            )
+        )
+    return records, _trusted(keys)
+
+
+def test_baseline_link_verifies() -> None:
+    """The control. Without it the next two tests pass on a verifier that rejects
+    every DAG, and the arms would differ in more than the digest."""
+    records, trusted = _linked_dag([None, LINK_DIGEST])
+    assert verify_trace_dag(records, trusted_keys=trusted).hops == 2
+
+
+def test_unsupported_link_digest_is_unverifiable_not_broken() -> None:
+    records, trusted = _linked_dag([None, "sha384"])
+    with pytest.raises(TraceDigestUnsupported, match="does not implement") as exc:
+        verify_trace_dag(records, trusted_keys=trusted)
+    assert "sha384" in (exc.value.detail or "")
+
+
+@pytest.mark.parametrize(
+    ("algs", "hop"),
+    [
+        ([None, "sha384", LINK_DIGEST], "record 1"),
+        ([None, LINK_DIGEST, "sha384"], "record 2"),
+    ],
+    ids=["unreadable-deep-readable-leaf", "readable-deep-unreadable-leaf"],
+)
+def test_unsupported_link_is_caught_wherever_it_sits(algs: list, hop: str) -> None:
+    """One readable link and one unreadable one, in both orders.
+
+    Each link is checked on its own. A verifier that reads one link's algorithm
+    and assumes the rest of the chain matches reports one of these two verified,
+    having never resolved half of it, and which one depends only on the order it
+    walks. Both orders are here so neither direction can mask the other.
+    """
+    records, trusted = _linked_dag(algs)
+    with pytest.raises(TraceDigestUnsupported, match=hop):
+        verify_trace_dag(records, trusted_keys=trusted)
+
+
+def test_supported_digest_still_detects_a_broken_link() -> None:
+    """Refusing early must not weaken what the comparison was there to catch.
+
+    A well-formed LINK_DIGEST link, signed by the hop's own key, pointing at a
+    record that is not its parent. It passes the new check and must still fail
+    the old one, or the fix would have replaced tamper detection rather than
+    narrowed it.
+    """
+    keys = [generate_key(), generate_key()]
+    root = sign_trace_record(
+        build_trace_record(
+            subject="spiffe://ca2a.example/peer/0",
+            iat=_NOW,
+            context=_software_context("peer-0"),
+            credential_id=None,
+            parent_record_hash=None,
+        ),
+        keys[0],
+    )
+    decoy = sign_trace_record(
+        build_trace_record(
+            subject="spiffe://ca2a.example/peer/decoy",
+            iat=_NOW,
+            context=_software_context("decoy"),
+            credential_id=None,
+            parent_record_hash=None,
+        ),
+        keys[0],
+    )
+    child = sign_trace_record(
+        build_trace_record(
+            subject="spiffe://ca2a.example/peer/1",
+            iat=_NOW,
+            context=_software_context("peer-1"),
+            credential_id="cred-1",
+            parent_record_hash=trace_record_hash(decoy),
+        ),
+        keys[1],
+    )
+    with pytest.raises(ProvenanceLinkBroken, match="parent link does not match"):
+        verify_trace_dag([root, child], trusted_keys=_trusted(keys))

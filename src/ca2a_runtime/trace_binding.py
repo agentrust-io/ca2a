@@ -197,6 +197,13 @@ def sign_trace_record(record: dict[str, Any], key: Ed25519PrivateKey) -> dict[st
     return sign_record(record, key)
 
 
+#: The digest a parent link commits to. Named once and used both to label and
+#: to compute the hash, so the verifier cannot drift from the producer: see
+#: ``ca2a_verify.dag``, which refuses a link naming anything else rather than
+#: comparing it against a digest it never computed.
+LINK_DIGEST = "sha256"
+
+
 def trace_record_hash(signed_record: dict[str, Any]) -> str:
     """The ``sha256:`` digest a child hop puts in ``delegation.parent_record_hash``.
 
@@ -204,7 +211,7 @@ def trace_record_hash(signed_record: dict[str, Any]) -> str:
     canonical bytes, so the link commits to the exact signed parent. Compute this
     only on a signed record.
     """
-    return "sha256:" + hashlib.sha256(rfc8785.dumps(signed_record)).hexdigest()
+    return f"{LINK_DIGEST}:" + hashlib.new(LINK_DIGEST, rfc8785.dumps(signed_record)).hexdigest()
 
 
 @dataclass(frozen=True)

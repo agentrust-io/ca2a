@@ -92,7 +92,7 @@ except ProvenanceLinkBroken as exc:
 
 - the record list is empty;
 - the first record carries a parent link (a root must not reference a parent);
-- any later record's `parent_record_hash` does not equal the recomputed hash of the immediately preceding record (this catches both tampering and reparenting);
+- any later record's `parent_record_hash` does not equal the recomputed hash of the immediately preceding record (this catches both tampering and reparenting). A link naming a digest this verifier does not compute never reaches that comparison: it raises `TRACE_DIGEST_UNSUPPORTED` instead, because a hash that was never recomputed cannot be evidence of tampering;
 - a `record_id` repeats.
 
 `cross_check_chain` ties provenance back to authority: record `i` must reference credential `i` and carry the same `subject`. A mismatch in length, `credential_id`, or `subject` raises `PROVENANCE_LINK_BROKEN`. A verified DAG that does not line up with the delegation chain it claims to describe is not accepted as evidence.
