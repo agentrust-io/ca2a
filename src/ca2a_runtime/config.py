@@ -60,6 +60,9 @@ class Ca2aConfig:
     local_policy: frozenset[str] | None = None
     listen_addr: str = DEFAULT_LISTEN_ADDR
     trusted_root_issuers: frozenset[str] = frozenset()
+    agent_manifest_path: str | None = None
+    agent_manifest_trust_anchor_path: str | None = None
+    agent_manifest_authenticated_subject: str | None = None
 
     def listen_host_port(self) -> tuple[str, int]:
         """Return ``listen_addr`` split into the host and port to bind."""
@@ -108,6 +111,28 @@ class Ca2aConfig:
         ):
             raise ConfigError("trusted_root_issuers must be a list of non-empty public-key strings")
 
+        manifest = data.get("agent_manifest", {}) or {}
+        if not isinstance(manifest, dict):
+            raise ConfigError("agent_manifest must be a mapping")
+        manifest_path = manifest.get("path")
+        trust_anchor_path = manifest.get("trust_anchor_path")
+        authenticated_subject = manifest.get("authenticated_subject")
+        for name, value in (
+            ("path", manifest_path),
+            ("trust_anchor_path", trust_anchor_path),
+            ("authenticated_subject", authenticated_subject),
+        ):
+            if value is not None and not isinstance(value, str):
+                raise ConfigError(f"agent_manifest.{name} must be a string")
+        configured = [manifest_path is not None, trust_anchor_path is not None, authenticated_subject is not None]
+        if any(configured) and not all(configured):
+            raise ConfigError(
+                "agent_manifest.path, trust_anchor_path, and authenticated_subject "
+                "must be configured together"
+            )
+        if authenticated_subject is not None and not authenticated_subject.startswith("spiffe://"):
+            raise ConfigError("agent_manifest.authenticated_subject must be a SPIFFE URI")
+
         return cls(
             provider=provider,
             enforcement_mode=enforcement,
@@ -116,6 +141,9 @@ class Ca2aConfig:
             local_policy=local_policy,
             listen_addr=listen_addr,
             trusted_root_issuers=frozenset(raw_roots),
+            agent_manifest_path=manifest_path,
+            agent_manifest_trust_anchor_path=trust_anchor_path,
+            agent_manifest_authenticated_subject=authenticated_subject,
         )
 
     @classmethod

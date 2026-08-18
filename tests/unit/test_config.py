@@ -17,6 +17,7 @@ def test_defaults_from_empty_dict() -> None:
     assert cfg.max_delegation_depth == 8
     assert cfg.listen_host_port() == ("127.0.0.1", 8443)
     assert cfg.trusted_root_issuers == frozenset()
+    assert cfg.agent_manifest_path is None
 
 
 def test_trusted_root_issuers_are_loaded() -> None:
@@ -98,3 +99,35 @@ def test_listen_addr_ipv6_brackets_stripped() -> None:
 def test_bad_listen_addr_rejected(addr: str) -> None:
     with pytest.raises(ConfigError):
         Ca2aConfig.from_dict({"listen_addr": addr})
+
+
+def test_agent_manifest_config_is_loaded_as_a_complete_set() -> None:
+    cfg = Ca2aConfig.from_dict(
+        {
+            "agent_manifest": {
+                "path": "manifest.cose",
+                "trust_anchor_path": "manifest-key.json",
+                "authenticated_subject": "spiffe://example.test/agent/ca2a",
+            }
+        }
+    )
+    assert cfg.agent_manifest_path == "manifest.cose"
+    assert cfg.agent_manifest_trust_anchor_path == "manifest-key.json"
+    assert cfg.agent_manifest_authenticated_subject == "spiffe://example.test/agent/ca2a"
+
+
+@pytest.mark.parametrize(
+    "manifest",
+    [
+        {"path": "manifest.cose"},
+        {"path": "manifest.cose", "trust_anchor_path": "key.json"},
+        {
+            "path": "manifest.cose",
+            "trust_anchor_path": "key.json",
+            "authenticated_subject": "not-spiffe",
+        },
+    ],
+)
+def test_incomplete_or_unbound_agent_manifest_config_is_rejected(manifest: dict) -> None:
+    with pytest.raises(ConfigError, match="agent_manifest"):
+        Ca2aConfig.from_dict({"agent_manifest": manifest})

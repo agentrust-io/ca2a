@@ -33,7 +33,7 @@ dependencies = [
     "agentrust-trace>=0.5",
     # Shared hardware-attestation verification (generic cert-chain verifier,
     # SNP/TDX/TPM primitives) consumed via PyPI instead of duplicated per repo.
-    "agent-manifest>=0.10",
+    "agent-manifest>=0.11",
     "rfc8785>=0.1",
 ]
 
