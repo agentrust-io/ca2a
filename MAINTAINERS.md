@@ -4,7 +4,12 @@
 
 | Name | GitHub | Affiliation | Role |
 |------|--------|-------------|------|
-| Imran Siddique | @imransiddique | OPAQUE Systems | Project Lead |
+| Imran Siddique | @imran-siddique | OPAQUE Systems | Project Lead |
+| Rishabh Poddar | @podcastinator | OPAQUE Systems | Maintainer |
+| Aaron Fulkerson | @AaronRoeF | OPAQUE Systems | Maintainer |
+
+The Project Lead has final decision authority on architecture, conformance
+requirements, and Maintainer appointments.
 
 ## Roles
 
