@@ -8,6 +8,7 @@ from pathlib import Path
 
 import agent_manifest as sdk
 import pytest
+from agent_manifest import _cose as sdk_cose
 
 from ca2a_runtime.agent_manifest import (
     load_agent_manifest_document,
@@ -102,6 +103,24 @@ def test_v02_bare_json_is_rejected(tmp_path: Path) -> None:
     path = tmp_path / "manifest.json"
     path.write_text(json.dumps(_manifest("0.2")), encoding="utf-8")
     with pytest.raises(ConfigError, match="COSE envelope"):
+        load_agent_manifest_document(path)
+
+
+def test_v01_payload_inside_v02_envelope_is_rejected(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """AM-VEC-COSE-012 through cA2A's own startup loader."""
+    keypair = sdk.generate_ed25519()
+    manifest = _manifest("0.1")
+    manifest["@context"] = "https://agentmanifest.agentrust-io.com/v0.1/context.json"
+
+    # Bypass only the producer guard to construct the adversarial signed wire
+    # artifact. The consumer decoder and verifier remain unmodified.
+    monkeypatch.setattr(sdk_cose, "_require_v02", lambda _manifest: None)
+    path = tmp_path / "v01-in-v02.cose"
+    path.write_bytes(sdk.sign_manifest_cose(manifest, keypair))
+
+    with pytest.raises(ConfigError, match="payload declares manifest version 0.1"):
         load_agent_manifest_document(path)
 
 
