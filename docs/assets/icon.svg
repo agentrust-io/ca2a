@@ -1,29 +1,26 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#f5f3ff"/>
-      <stop offset="100%" stop-color="#e0f2fe"/>
+      <stop offset="0%" stop-color="#FFFFFF"/>
+      <stop offset="100%" stop-color="#F2F4F7"/>
     </linearGradient>
     <linearGradient id="brand" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#7c3aed"/>
-      <stop offset="100%" stop-color="#0ea5e9"/>
+      <stop offset="0%" stop-color="#15294B"/>
+      <stop offset="100%" stop-color="#1B5EA0"/>
     </linearGradient>
   </defs>
   <rect width="400" height="400" fill="url(#bg)"/>
   <path d="M200,58 L326,112 L326,224 C326,298 268,340 200,360 C132,340 74,298 74,224 L74,112 Z"
         fill="url(#brand)" opacity="0.10" stroke="url(#brand)" stroke-width="3.5" stroke-linejoin="round"/>
-  <!-- Padlock shackle -->
-  <path d="M174,228 Q174,148 200,148 Q226,148 226,228"
-        fill="none" stroke="url(#brand)" stroke-width="13" stroke-linecap="round"/>
-  <!-- Padlock body -->
-  <rect x="154" y="222" width="92" height="74" rx="12" fill="url(#brand)" opacity="0.12"/>
-  <rect x="154" y="222" width="92" height="74" rx="12" fill="none" stroke="url(#brand)" stroke-width="3.5"/>
-  <!-- Keyhole glow ring -->
-  <circle cx="200" cy="251" r="18" fill="url(#brand)" opacity="0.18"/>
-  <!-- Keyhole circle -->
-  <circle cx="200" cy="251" r="12" fill="url(#brand)"/>
-  <!-- Keyhole stem -->
-  <rect x="196" y="259" width="8" height="18" rx="3" fill="url(#brand)"/>
-  <!-- White center -->
-  <circle cx="200" cy="251" r="4" fill="white"/>
+  <!-- delegation hop: parent node -> child node, sealed -->
+  <circle cx="146" cy="248" r="24" fill="url(#brand)" opacity="0.18"/>
+  <circle cx="146" cy="248" r="16" fill="url(#brand)"/>
+  <circle cx="146" cy="248" r="5.5" fill="#FFFFFF"/>
+  <circle cx="254" cy="248" r="20" fill="url(#brand)" opacity="0.14"/>
+  <circle cx="254" cy="248" r="13" fill="none" stroke="url(#brand)" stroke-width="4"/>
+  <!-- attenuating arc from parent to child -->
+  <path d="M160,228 Q200,180 240,228" fill="none" stroke="url(#brand)" stroke-width="7"
+        stroke-linecap="round"/>
+  <!-- red arrowhead: authority narrows in the direction of travel -->
+  <path d="M232,214 L245,232 L223,234 Z" fill="#B91C1C"/>
 </svg>
