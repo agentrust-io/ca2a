@@ -39,8 +39,12 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 from ca2a_runtime.delegation import DelegationCredential
-from ca2a_runtime.errors import ProvenanceLinkBroken, TraceRecordInvalid
-from ca2a_runtime.trace_binding import trace_record_hash
+from ca2a_runtime.errors import (
+    ProvenanceLinkBroken,
+    TraceDigestUnsupported,
+    TraceRecordInvalid,
+)
+from ca2a_runtime.trace_binding import LINK_DIGEST, trace_record_hash
 
 
 @dataclass(frozen=True)
@@ -137,8 +141,11 @@ def verify_trace_dag(
     check.
 
     Raises ``TraceRecordInvalid`` for a structurally invalid, untrusted, or
-    badly-signed record, and ``ProvenanceLinkBroken`` for a broken parent link,
-    a mislabeled root, or a repeated record. Returns a summary on success.
+    badly-signed record, ``ProvenanceLinkBroken`` for a broken parent link,
+    a mislabeled root, or a repeated record, and ``TraceDigestUnsupported`` for a
+    parent link naming a digest this verifier does not compute, which leaves the
+    chain unverifiable at that hop rather than invalid. Returns a summary on
+    success.
     """
     if not records:
         raise ProvenanceLinkBroken("empty TRACE DAG")
@@ -183,7 +190,16 @@ def verify_trace_dag(
         else:
             if delegation is None:
                 raise ProvenanceLinkBroken(f"record {i} is missing its delegation block")
-            if delegation.get("parent_record_hash") != prev_hash:
+            parent_link = delegation["parent_record_hash"]
+            if not parent_link.startswith(f"{LINK_DIGEST}:"):
+                raise TraceDigestUnsupported(
+                    f"record {i} parent link names a digest this verifier does not implement",
+                    detail=(
+                        f"the link is {parent_link.split(':', 1)[0]}, this verifier computes "
+                        f"{LINK_DIGEST}; the chain is unverifiable here, not invalid"
+                    ),
+                )
+            if parent_link != prev_hash:
                 raise ProvenanceLinkBroken(
                     f"record {i} parent link does not match the previous record's hash",
                     detail="a tampered or reparented record was detected",
