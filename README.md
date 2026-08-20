@@ -167,7 +167,7 @@ Agent A --(delegation cred, scope S_A)--> Agent B --(scope S_B ⊆ S_A)--> Agent
 
 ## Contributing
 
-[CONTRIBUTING.md](CONTRIBUTING.md) · [GOVERNANCE.md](GOVERNANCE.md) · [Discussions](https://github.com/agentrust-io/ca2a/discussions)
+[CONTRIBUTING.md](CONTRIBUTING.md) · [GOVERNANCE.md](GOVERNANCE.md) · [Discussions](https://github.com/orgs/agentrust-io/discussions)
 
 ---
 

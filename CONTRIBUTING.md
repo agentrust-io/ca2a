@@ -83,4 +83,4 @@ Do **not** open a public issue. Use [GitHub Security Advisories](https://github.
 
 ## Questions
 
-Open a [GitHub Discussion](https://github.com/agentrust-io/ca2a/discussions) for design questions or proposals before writing code.
+Open a [GitHub Discussion](https://github.com/orgs/agentrust-io/discussions) for design questions or proposals before writing code.
