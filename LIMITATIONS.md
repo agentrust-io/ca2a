@@ -18,6 +18,29 @@ cA2A 0.2 is a Developer Preview with a runnable, tested profile and runtime. Thi
   What **failed**, and it is the important half: `verify_tpm_report` could not chain to a pinned root, reporting "AK chain root is not among the supplied trusted TPM roots". On that host the AK certificate at NV `0x01C101D0` is 994 bytes, is issued by `CN=Global Virtual TPM CA - 03`, and carries **no AIA extension at all**, so there are no intermediates to fetch and none stored elsewhere in NV. A different Azure host (`Standard_D2s_v5`, eastus, 2026-07-31) presented a 1596-byte certificate under `Azure Cloud Virtual TPM CA - 11` with a walkable AIA chain reaching the root pinned in `ca2a_verify/tpm_roots.py`. Both observations are real: Azure runs more than one vTPM CA generation, so **the shipped Azure root is not sufficient fleet-wide** and a deployment must pin the hierarchy its own hosts actually present. Until then, treat the TPM tier as: evidence is genuine and its signature and binding are verifiable, but key provenance is host-dependent.
 - **TPM evidence proves key provenance only where a chain reaches a pinnable root.** A quote signed by the transient fallback key is a verifiable signature but carries no certificate chain, so it proves nothing about *where* the key lives, and `verify_tpm_report` rejects it. As above, a platform-provisioned certified attestation key is necessary but not sufficient: the chain must also be assemblable, which fails when the AK certificate carries no AIA. A GCP Shielded VM is weaker still (probed 2026-07-31: no EK certificate, no persistent handles, and `get-shielded-identity` returns a bare `ekPub` with no certificate). Client firmware TPM vendor roots are not yet published in a pinnable form. Separately, the TCG event log is 0 bytes on both Azure and GCP, so PCR values cannot be attributed to specific boot events on either cloud.
 
+## Platform state is not appraised
+
+The SEV-SNP path here establishes that a report is authentic and which workload it
+describes: report signature, the VCEK to ASK to ARK chain with the ARK pinned by the
+operator, and measurement binding. Those are the right four checks and they are not
+in dispute.
+
+**What none of them ask is what kind of machine the report came from.** A SEV-SNP
+report carries that separately in `PLATFORM_INFO` at offset 0x40: whether SMT is on,
+whether ECC is enabled, whether ciphertext hiding is enforced, and whether the
+firmware completed its boot-time DRAM alias check, which is AMD's mitigation for
+BadRAM (security bulletin SB-3015). `agent-manifest` parses and can appraise these fields as of 2026-08-20; cA2A does not yet call that appraisal, on either the attested-peer or the sealed-channel path.
+
+The practical consequence: a report from a machine with SMT enabled and the alias
+check never completed verifies exactly as cleanly as one from a machine with neither
+condition. If that distinction matters to your deployment, it has to be asserted
+explicitly, and today cA2A does not assert it for you.
+
+Related: [google/go-sev-guest#195](https://github.com/google/go-sev-guest/issues/195),
+where the reference verifier's own platform-info policy field is documented as a
+ceiling while four of its seven fields are enforced as minimums. Worth reading before
+writing any policy over these bits.
+
 ## Out of scope
 
 - A normative or production A2A transport. cA2A is a profile on A2A, not a replacement for it, and mandates no wire protocol. A reference HTTP transport ships (`ca2a_runtime.transport.server`/`client`) so the peer path is runnable on ordinary compute, but it is a convenience, not part of the profile: any A2A server can drive the adapter and a `PeerNode` instead, and cA2A makes no claim about the reference transport's production hardening.
