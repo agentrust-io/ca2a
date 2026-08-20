@@ -135,7 +135,9 @@ extra:
   generator: false
 
 extra_css:
-  - docs/stylesheets/extra.css
+  # Shared AgenTrust editorial design system. Deliberately the only stylesheet:
+  # a local override here is how this site drifted to the Material default
+  # violet last time. Change the shared file instead.
   - https://agentrust-io.com/design-system.css
 
 nav:
@@ -159,6 +161,7 @@ nav:
       - Provenance DAG: docs/spec/provenance-dag.md
       - Sealed Peer Channel: docs/spec/sealed-channel.md
       - Attestation: docs/spec/attestation.md
+      - Mutual Attestation: docs/spec/mutual-attestation.md
       - Scope-Policy Intersection: docs/spec/cedar-policy.md
       - TRACE A2A Profile: docs/spec/trace-a2a-profile.md
       - Verification Library: docs/spec/verification-library.md
@@ -166,12 +169,15 @@ nav:
       - Error Codes: docs/spec/error-codes.md
       - Failure Modes: docs/spec/failure-modes.md
       - Threat Model: docs/spec/threat-model.md
+  - Testing:
+      - Hardware Validation: docs/hardware-validation.md
   - Project:
       - Limitations: LIMITATIONS.md
       - Changelog: CHANGELOG.md
       - Contributing: CONTRIBUTING.md
       - Governance: GOVERNANCE.md
       - Roadmap: ROADMAP.md
+      - Privacy: PRIVACY.md
 
 extra_javascript:
   # Shared cross-project top navigation (TRACE / Manifest / cMCP / cA2A / ...)
