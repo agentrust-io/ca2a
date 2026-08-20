@@ -9,8 +9,14 @@ from __future__ import annotations
 
 import pytest
 
+from ca2a_runtime import peer as peer_module
 from ca2a_runtime.channel import SealedChannel, generate_channel_keypair
-from ca2a_runtime.errors import ScopeEscalation, ScopeNotPermitted, SealedChannelError
+from ca2a_runtime.errors import (
+    ScopeEscalation,
+    ScopeNotPermitted,
+    SealedChannelError,
+    UntrustedDelegationRoot,
+)
 from ca2a_runtime.peer import PeerResult
 from ca2a_runtime.peer import handle_peer_request as _handle_peer_request
 from ca2a_runtime.policy import LocalPolicy
@@ -90,3 +96,44 @@ def test_invalid_chain_rejected() -> None:
     req = proved_request(chain, keys[-1], "read", "rec-0")
     with pytest.raises(ScopeEscalation):
         _handle(req, LocalPolicy.of(["read", "write"]))
+
+
+def test_untrusted_root_is_rejected() -> None:
+    # The handler enforces the trust set itself: a chain that verifies perfectly
+    # but roots outside it is refused, and refused before the caller is
+    # challenged for a holder proof.
+    chain, keys = _chain()
+    req = proved_request(chain, keys[-1], "read", "rec-0")
+    with pytest.raises(UntrustedDelegationRoot):
+        _handle_peer_request(
+            req,
+            policy=LocalPolicy.of(["read"]),
+            audience=TEST_AUDIENCE,
+            challenge_secret=TEST_SECRET,
+            trusted_root_issuers={"some-other-root"},
+        )
+
+
+def test_chain_is_verified_exactly_once(monkeypatch: pytest.MonkeyPatch) -> None:
+    """One accepted request costs one chain verification, not two.
+
+    The real verifier still runs -- the wrapper only counts calls -- so the
+    request is genuinely verified while the count pins down how often.
+    """
+    real_verify_chain = peer_module.verify_chain
+    calls = 0
+
+    def counting_verify_chain(*args, **kwargs):
+        nonlocal calls
+        calls += 1
+        return real_verify_chain(*args, **kwargs)
+
+    monkeypatch.setattr(peer_module, "verify_chain", counting_verify_chain)
+
+    chain, keys = _chain()
+    result = _handle(proved_request(chain, keys[-1], "read", "rec-0"), LocalPolicy.of(["read"]))
+
+    assert calls == 1
+    # The saved verification did not cost the authorization decision.
+    assert result.granted_capability == "read"
+    assert result.effective_scope == frozenset({"read"})
