@@ -142,7 +142,7 @@ ______________________________________________________________________
 
 ## Contributing
 
-[CONTRIBUTING.md](https://ca2a.agentrust-io.com/CONTRIBUTING/index.md) · [GOVERNANCE.md](https://ca2a.agentrust-io.com/GOVERNANCE/index.md) · [Discussions](https://github.com/agentrust-io/ca2a/discussions)
+[CONTRIBUTING.md](https://ca2a.agentrust-io.com/CONTRIBUTING/index.md) · [GOVERNANCE.md](https://ca2a.agentrust-io.com/GOVERNANCE/index.md) · [Discussions](https://github.com/orgs/agentrust-io/discussions)
 
 ______________________________________________________________________
 
