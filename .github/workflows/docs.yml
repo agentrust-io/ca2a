@@ -55,7 +55,7 @@ jobs:
 
           if [ -d docs ]; then cp -r docs $BUILD/docs; fi
 
-          for fname in README.md CHANGELOG.md CONTRIBUTING.md GOVERNANCE.md ROADMAP.md LIMITATIONS.md CNAME; do
+          for fname in index.md CHANGELOG.md CONTRIBUTING.md GOVERNANCE.md CHARTER.md CODE_OF_CONDUCT.md SECURITY.md PRIVACY.md ROADMAP.md LIMITATIONS.md CNAME; do
             if [ -f "$fname" ]; then cp "$fname" "$BUILD/$fname"; fi
           done
 
