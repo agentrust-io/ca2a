@@ -14,6 +14,12 @@ on:
       - "ROADMAP.md"
       - "LIMITATIONS.md"
       - "CNAME"
+      - "overrides/**"
+      - "index.md"
+      - "CHARTER.md"
+      - "CODE_OF_CONDUCT.md"
+      - "SECURITY.md"
+      - "PRIVACY.md"
   workflow_dispatch:
 
 permissions:
