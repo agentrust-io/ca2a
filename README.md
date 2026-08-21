@@ -7,8 +7,8 @@
 ### The secure, confidential profile for agent-to-agent (A2A) delegation
 
 <p align="center">
-  <a href="https://agentrust-io.github.io/ca2a">
-    <img src="https://img.shields.io/badge/Documentation-agentrust--io.github.io%2Fca2a-7c3aed?style=for-the-badge" alt="Documentation" height="36">
+  <a href="https://ca2a.agentrust-io.com">
+    <img src="https://img.shields.io/badge/Documentation-ca2a.agentrust--io.com-7c3aed?style=for-the-badge" alt="Documentation" height="36">
   </a>
 </p>
 

@@ -15,11 +15,9 @@ exclude_docs: |
   examples/
   LICENSE
   NOTICE
+  README.md
   ADOPTERS.md
   MAINTAINERS.md
-  SECURITY.md
-  CHARTER.md
-  CODE_OF_CONDUCT.md
   pyproject.toml
   .gitignore
 
@@ -76,7 +74,7 @@ plugins:
         the TEE and policy primitives from cMCP. Developer preview.
       sections:
         Getting started:
-          - README.md
+          - index.md
           - docs/quickstart.md
           - docs/concepts.md
           - docs/configuration.md
@@ -141,7 +139,7 @@ extra_css:
   - https://agentrust-io.com/design-system.css
 
 nav:
-  - Home: README.md
+  - Home: index.md
   - Quick Start: docs/quickstart.md
   - How It Works: docs/concepts.md
   - Configuration: docs/configuration.md
@@ -176,6 +174,9 @@ nav:
       - Changelog: CHANGELOG.md
       - Contributing: CONTRIBUTING.md
       - Governance: GOVERNANCE.md
+      - Technical Charter: CHARTER.md
+      - Code of Conduct: CODE_OF_CONDUCT.md
+      - Security: SECURITY.md
       - Roadmap: ROADMAP.md
       - Privacy: PRIVACY.md
 
