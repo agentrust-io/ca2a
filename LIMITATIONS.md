@@ -20,6 +20,12 @@ cA2A 0.2 is a Developer Preview with a runnable, tested profile and runtime. Thi
 
 ## Platform state is not appraised
 
+<!-- The marked block below is shared verbatim with trace-spec and cmcp.
+     trace-spec/LIMITATIONS.md is the source and the limitations-parity
+     workflow checks this copy against it, so edit it there, not here.
+     The paragraph after the end marker is this project's own. -->
+
+<!-- shared:platform-state-appraisal begin -->
 The SEV-SNP path here establishes that a report is authentic and which workload it
 describes: report signature, the VCEK to ASK to ARK chain with the ARK pinned by the
 operator, and measurement binding. Those are the right four checks and they are not
@@ -29,17 +35,23 @@ in dispute.
 report carries that separately in `PLATFORM_INFO` at offset 0x40: whether SMT is on,
 whether ECC is enabled, whether ciphertext hiding is enforced, and whether the
 firmware completed its boot-time DRAM alias check, which is AMD's mitigation for
-BadRAM (security bulletin SB-3015). `agent-manifest` parses and can appraise these fields as of 2026-08-20; cA2A does not yet call that appraisal, on either the attested-peer or the sealed-channel path.
+BadRAM (security bulletin SB-3015).
 
 The practical consequence: a report from a machine with SMT enabled and the alias
 check never completed verifies exactly as cleanly as one from a machine with neither
 condition. If that distinction matters to your deployment, it has to be asserted
-explicitly, and today cA2A does not assert it for you.
+explicitly.
 
 Related: [google/go-sev-guest#195](https://github.com/google/go-sev-guest/issues/195),
 where the reference verifier's own platform-info policy field is documented as a
 ceiling while four of its seven fields are enforced as minimums. Worth reading before
 writing any policy over these bits.
+<!-- shared:platform-state-appraisal end -->
+
+**In cA2A.** [`agent-manifest`](https://manifest.agentrust-io.com/limitations/) parses these fields and can
+enforce a policy over them as of 2026-08-20. cA2A does not yet call that appraisal, on
+either the attested-peer or the sealed-channel path, so cA2A does not assert it for
+you.
 
 ## Out of scope
 
