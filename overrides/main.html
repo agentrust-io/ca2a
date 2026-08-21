@@ -22,6 +22,8 @@
 
 {% block extrahead %}
   {{ super() }}
+  {# page.title is the nav label ("Home"); page.meta.title is the front matter. #}
+  {% set page_name = (page.meta.title if page and page.meta and page.meta.title else (page.title if page else None)) %}
   {% set page_desc = page.meta.description if page and page.meta and page.meta.description else config.site_description %}
   {% set page_url = page.canonical_url if page and page.canonical_url else config.site_url %}
   {% set og_image = config.site_url ~ 'docs/assets/og.png' %}
@@ -29,7 +31,7 @@
 
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="{{ config.site_name }}">
-  <meta property="og:title" content="{% if page and page.title %}{{ page.title }} - {{ config.site_name }}{% else %}{{ config.site_name }}: {{ social_title }}{% endif %}">
+  <meta property="og:title" content="{% if page_name %}{{ page_name }} - {{ config.site_name }}{% else %}{{ config.site_name }}: {{ social_title }}{% endif %}">
   <meta property="og:description" content="{{ page_desc }}">
   <meta property="og:url" content="{{ page_url }}">
   <meta property="og:image" content="{{ og_image }}">
@@ -39,7 +41,7 @@
   <meta property="og:locale" content="en_US">
 
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="{% if page and page.title %}{{ page.title }} - {{ config.site_name }}{% else %}{{ config.site_name }}: {{ social_title }}{% endif %}">
+  <meta name="twitter:title" content="{% if page_name %}{{ page_name }} - {{ config.site_name }}{% else %}{{ config.site_name }}: {{ social_title }}{% endif %}">
   <meta name="twitter:description" content="{{ page_desc }}">
   <meta name="twitter:image" content="{{ og_image }}">
 
