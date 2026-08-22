@@ -14,7 +14,7 @@ The cA2A runtime is a set of small, composable modules under `src/`. Each maps t
 
 ### verify
 
-`ca2a_verify.verify` is a thin offline wrapper over the delegation verifier. `verify_delegation_chain(chain, *, max_depth=8)` returns a `ChainResult` (`hops`, `root_issuer`, `leaf_subject`, `leaf_scope`); `verify_chain_file(path, *, max_depth=8)` loads a chain from JSON (a list, or `{"chain": [...]}`) and verifies it. `VerificationError` is re-exported as `CA2AError` so callers catch one type. This layer trusts no operator: it works from signed credentials alone. Implemented. See [verification library](verification-library.md).
+`ca2a_verify.verify` is a thin offline wrapper over the delegation verifier. `verify_delegation_chain(chain, *, trusted_root_issuers, max_depth=8)` returns a `ChainResult` (`hops`, `root_issuer`, `leaf_subject`, `leaf_scope`); `verify_chain_file(path, *, trusted_root_issuers, max_depth=8)` loads a chain from JSON (a list, or `{"chain": [...]}`) and verifies it. The explicit local root trust set is mandatory: signatures alone establish consistency, not authorization. `VerificationError` is re-exported as `CA2AError` so callers catch one type. Implemented. See [verification library](verification-library.md).
 
 ### channel
 
@@ -34,7 +34,7 @@ The cA2A runtime is a set of small, composable modules under `src/`. Each maps t
 
 ### cli
 
-`ca2a_runtime.cli` exposes the `ca2a` command. `validate-config --config` loads and validates a `Ca2aConfig`, `verify-chain --chain [--max-depth]` calls `verify_chain_file`, and `verify-dag --dag [--chain]` verifies a provenance DAG; all three operate offline. `start --config` is the one online command: it builds a `PeerNode` through `ca2a_runtime.bootstrap` and serves it with `ca2a_runtime.transport.server`.
+`ca2a_runtime.cli` exposes the `ca2a` command. `validate-config --config` loads and validates a `Ca2aConfig`, `verify-chain --chain --trusted-root-issuer [--max-depth]` calls `verify_chain_file`, and `verify-dag --dag [--chain --trusted-root-issuer]` verifies a provenance DAG; all three operate offline. `start --config` is the one online command: it builds a `PeerNode` through `ca2a_runtime.bootstrap` and serves it with `ca2a_runtime.transport.server`.
 
 ## Component map
 

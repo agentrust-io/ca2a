@@ -8,6 +8,7 @@ each hop's TRACE record to its parent) lives in ``ca2a_verify.dag``.
 from __future__ import annotations
 
 import json
+from collections.abc import Collection
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -30,7 +31,11 @@ class ChainResult:
 
 
 def verify_delegation_chain(
-    chain: list[DelegationCredential], *, max_depth: int = 8, at_time: int | None = None
+    chain: list[DelegationCredential],
+    *,
+    trusted_root_issuers: Collection[str],
+    max_depth: int = 8,
+    at_time: int | None = None,
 ) -> ChainResult:
     """Verify a root-to-leaf chain and summarize it. Raises on any violation.
 
@@ -38,7 +43,12 @@ def verify_delegation_chain(
     means the current time. An auditor replaying recorded evidence passes the
     time the action was decided, not its own.
     """
-    verify_chain(chain, max_depth=max_depth, at_time=at_time)
+    verify_chain(
+        chain,
+        max_depth=max_depth,
+        trusted_root_issuers=trusted_root_issuers,
+        at_time=at_time,
+    )
     root = chain[0]
     leaf = chain[-1]
     return ChainResult(
@@ -58,7 +68,11 @@ def _parse_chain(data: Any) -> list[DelegationCredential]:
 
 
 def verify_chain_file(
-    path: str | Path, *, max_depth: int = 8, at_time: int | None = None
+    path: str | Path,
+    *,
+    trusted_root_issuers: Collection[str],
+    max_depth: int = 8,
+    at_time: int | None = None,
 ) -> ChainResult:
     """Load a delegation chain from a JSON file and verify it."""
     p = Path(path)
@@ -68,4 +82,9 @@ def verify_chain_file(
         data = json.loads(p.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
         raise InvalidCredential(f"invalid JSON in {p}", detail=str(exc)) from exc
-    return verify_delegation_chain(_parse_chain(data), max_depth=max_depth, at_time=at_time)
+    return verify_delegation_chain(
+        _parse_chain(data),
+        trusted_root_issuers=trusted_root_issuers,
+        max_depth=max_depth,
+        at_time=at_time,
+    )

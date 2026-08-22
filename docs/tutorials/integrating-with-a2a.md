@@ -88,14 +88,17 @@ from ca2a_verify import verify_chain_file
 from ca2a_runtime.errors import CA2AError
 
 try:
-    result = verify_chain_file("examples/minimal/chain.json")
+    result = verify_chain_file(
+        "examples/minimal/chain.json",
+        trusted_root_issuers={"<trusted-root-issuer-hex>"},
+    )
     print(f"verified {result.hops} hops, leaf scope {result.leaf_scope}")
 except CA2AError as exc:
     print(f"rejected: {exc.code}: {exc}")
 ```
 
 ```bash
-ca2a verify-chain --chain examples/minimal/chain.json
+ca2a verify-chain --chain examples/minimal/chain.json --trusted-root-issuer <trusted-root-issuer-hex>
 # {"verified": true, "hops": 2, "leaf_scope": ["cap:read"]}
 ```
 

@@ -70,7 +70,8 @@ pip install ca2a-runtime
 The same package supports both offline chain verification and the live peer runtime:
 
 ```bash
-ca2a verify-chain --chain ./examples/minimal/chain.json
+ca2a verify-chain --chain ./examples/minimal/chain.json \
+  --trusted-root-issuer <trusted-root-issuer-hex>
 ```
 
 ### See it refuse a call, and prove why

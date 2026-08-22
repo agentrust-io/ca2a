@@ -6,7 +6,7 @@ This tutorial verifies a chain, then deliberately breaks each invariant to see t
 
 ```bash
 python scripts/gen_example_chain.py
-ca2a verify-chain --chain examples/minimal/chain.json
+ca2a verify-chain --chain examples/minimal/chain.json --trusted-root-issuer <trusted-root-issuer-hex>
 # {"verified": true, "hops": 3, "leaf_scope": ["cap:read"]}
 ```
 
@@ -17,7 +17,7 @@ The chain grants `admin` at the root, narrows to `read+write`, then to `read`.
 Open `examples/minimal/chain.json` and add `"cap:admin"` to the `scope` of the last hop (the leaf held only `cap:read`). Re-run:
 
 ```bash
-ca2a verify-chain --chain examples/minimal/chain.json
+ca2a verify-chain --chain examples/minimal/chain.json --trusted-root-issuer <trusted-root-issuer-hex>
 # {"verified": false, "code": "SCOPE_ESCALATION", ...}
 ```
 
@@ -28,7 +28,7 @@ The leaf claimed authority its parent did not hold. Regenerate to restore.
 Regenerate, then change the `parent_id` of the middle hop to `"nope"`:
 
 ```bash
-ca2a verify-chain --chain examples/minimal/chain.json
+ca2a verify-chain --chain examples/minimal/chain.json --trusted-root-issuer <trusted-root-issuer-hex>
 # {"verified": false, "code": "BROKEN_DELEGATION_LINK", ...}
 ```
 
@@ -37,7 +37,7 @@ ca2a verify-chain --chain examples/minimal/chain.json
 Regenerate, then change any signed field (for example a `scope` entry) without re-signing:
 
 ```bash
-ca2a verify-chain --chain examples/minimal/chain.json
+ca2a verify-chain --chain examples/minimal/chain.json --trusted-root-issuer <trusted-root-issuer-hex>
 # {"verified": false, "code": "INVALID_CREDENTIAL", ...}
 ```
 
@@ -50,7 +50,10 @@ from ca2a_verify import verify_chain_file
 from ca2a_runtime.errors import CA2AError
 
 try:
-    result = verify_chain_file("examples/minimal/chain.json")
+    result = verify_chain_file(
+        "examples/minimal/chain.json",
+        trusted_root_issuers={"<trusted-root-issuer-hex>"},
+    )
     print(f"verified {result.hops} hops, leaf scope {result.leaf_scope}")
 except CA2AError as exc:
     print(f"rejected: {exc.code}: {exc}")

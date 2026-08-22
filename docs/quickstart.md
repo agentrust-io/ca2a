@@ -38,7 +38,7 @@ Each hop is a signed `DelegationCredential`. The scope of each hop is a subset o
 ## Verify it
 
 ```bash
-ca2a verify-chain --chain examples/minimal/chain.json
+ca2a verify-chain --chain examples/minimal/chain.json --trusted-root-issuer <trusted-root-issuer-hex>
 # {"verified": true, "hops": 3, "leaf_scope": ["cap:read"]}
 ```
 
@@ -54,7 +54,7 @@ Verification checks four invariants and fails on the first violation:
 Edit `examples/minimal/chain.json` so a child hop adds a capability its parent did not hold, then re-run:
 
 ```bash
-ca2a verify-chain --chain examples/minimal/chain.json
+ca2a verify-chain --chain examples/minimal/chain.json --trusted-root-issuer <trusted-root-issuer-hex>
 # {"verified": false, "code": "SCOPE_ESCALATION", "error": "hop 1 scope exceeds parent grant"}
 ```
 

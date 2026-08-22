@@ -150,7 +150,7 @@ def _verify_action_evidence(
     policy: LocalPolicy,
 ) -> _ActionEvidenceResult:
     try:
-        verify_delegation_chain(chain)
+        verify_delegation_chain(chain, trusted_root_issuers={chain[0].issuer})
         verify_dag(records)
         cross_check_chain(records, chain)
     except CA2AError as exc:
