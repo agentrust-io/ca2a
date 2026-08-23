@@ -15,7 +15,7 @@ cA2A is a profile on A2A, not a competing transport. A2A moves tasks and context
 | Seal gated on the appraised channel key on a live call | Implemented in software mode |
 | Seal bound to a hardware-verified measurement | Not yet: needs a real quote via the `verifier` seam (Tier 3) |
 | `ca2a start` CLI listener | Implemented: builds a `PeerNode` from a config file and serves it over the reference transport |
-| Bridge to the official `a2a-sdk` | Implemented (`ca2a_runtime.transport.a2a_sdk`, optional extra `ca2a[a2a-sdk]`): converts the SDK's protobuf `metadata` Struct to the mapping the adapter already parses, so an SDK server adopts the profile without replacing its transport |
+| Bridge to the official `a2a-sdk` | Implemented (`ca2a_runtime.transport.a2a_sdk`, optional extra `ca2a-runtime[a2a-sdk]`): contributes cA2A's declaration to an operator-owned Agent Card, inspects a peer card without imposing policy, and converts SDK protobuf `metadata` to the mapping the adapter already parses |
 
 The reference HTTP server/client run a live call end to end in software mode (`assurance="none"`). That is progress on Tier 2 transport wiring and a convenience for running the peer path off hardware. It is not evidence that cA2A is attested across trust domains: that needs the hardware `verifier` seam driven by a real quote. See [LIMITATIONS.md](../../LIMITATIONS.md) and [ROADMAP.md](../../ROADMAP.md).
 
@@ -42,6 +42,51 @@ Per [A2A v1.0 extensions](https://a2a-protocol.org/v1.0.0/topics/extensions/), a
 |---|---|
 | Extension URI | `https://agentrust-io.com/extensions/ca2a/v0.1` |
 | Opt-in header | `A2A-Extensions: https://agentrust-io.com/extensions/ca2a/v0.1` |
+
+### Declaring the extension with the official SDK
+
+An A2A application owns its Agent Card: its identity, interfaces, skills,
+documentation, publication route, and signing policy. cA2A therefore supplies
+an `AgentExtension` to merge rather than a competing complete card. The
+declaration is derived from the same `PeerNode` that enforces inbound calls, so
+its caller-attestation requirement cannot drift into a second configuration:
+
+```python
+from a2a.types import AgentCard
+
+from ca2a_runtime.transport.a2a_sdk import merge_agent_card
+
+# Build the complete card in the A2A application, then add cA2A before signing.
+operator_card = AgentCard(...)  # identity, interface, skills, and URL are yours
+published_card = merge_agent_card(operator_card, peer_node)
+```
+
+The resulting capability entry has this shape:
+
+```json
+{
+  "uri": "https://agentrust-io.com/extensions/ca2a/v0.1",
+  "required": false,
+  "params": {"require_caller_attestation": "any"}
+}
+```
+
+`merge_agent_card` returns a copy, preserves unrelated fields and extensions,
+and replaces any stale cA2A declaration so there is exactly one. It refuses a
+card that already has signatures: adding an extension changes the signed
+content, and cA2A neither verifies nor re-signs the operator's card. Merge first,
+then apply the operator's normal Agent Card signing and publication flow. The
+reference cA2A server does not publish a synthetic Agent Card because it does not
+own honest values for the required A2A identity, interface, or skill fields.
+
+On the client side, fetch the Agent Card through the official SDK and pass it to
+`inspect_agent_card`. The returned `AgentCardDiscovery` records whether the URI
+was advertised, the declared caller-attestation requirement, and any warning
+(missing declaration, duplicate declaration, `required=true`, or an unknown
+parameter). Inspection is permissive in this Developer Preview and does not
+decide whether a call proceeds; deployments can record the result now and choose
+their own rollout policy. Binding this declaration to a Signed Agent Card and to
+attestation identity remains separate work.
 
 Namespaced keys on A2A `metadata` (message and/or params):
 
@@ -80,7 +125,7 @@ the older response sees exactly what it saw before and simply does not attest.
 
 ## Attachment points
 
-The credential and sealing metadata are carried in A2A `metadata` maps on the task message (and optionally params-level metadata), alongside the payload A2A already moves. cA2A does not rewrite the A2A message, change its routing, or interpose a new transport under it. The Signed Agent Card remains the A2A identity anchor; cA2A treats it as the anchor the delegation credential's `subject` and the peer's attestation measurement are checked against (attestation check on the live path is not yet wired).
+The credential and sealing metadata are carried in A2A `metadata` maps on the task message (and optionally params-level metadata), alongside the payload A2A already moves. cA2A does not rewrite the A2A message, change its routing, or interpose a new transport under it. cA2A does not yet verify the Agent Card signature or bind a delegation credential's `subject` or a peer attestation measurement to the card. Extension discovery must not be treated as either binding; those checks remain separate design work.
 
 ## Ignore versus enforce
 

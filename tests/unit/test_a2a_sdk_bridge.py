@@ -15,10 +15,21 @@ from __future__ import annotations
 
 import pytest
 
-pytest.importorskip("a2a", reason="install 'ca2a[a2a-sdk]' to exercise the SDK bridge")
+pytest.importorskip("a2a", reason="install 'ca2a-runtime[a2a-sdk]' to exercise the SDK bridge")
 
-from a2a.extensions.common import HTTP_EXTENSION_HEADER  # noqa: E402
-from a2a.types import Message  # noqa: E402
+from a2a.extensions.common import (  # noqa: E402
+    HTTP_EXTENSION_HEADER,
+    find_extension_by_uri,
+)
+from a2a.types import (  # noqa: E402
+    AgentCapabilities,
+    AgentCard,
+    AgentCardSignature,
+    AgentExtension,
+    AgentInterface,
+    AgentSkill,
+    Message,
+)
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey  # noqa: E402
 from google.protobuf import json_format  # noqa: E402
 
@@ -32,7 +43,12 @@ from ca2a_runtime.delegation.credential import (  # noqa: E402
 from ca2a_runtime.delegation.holder import build_holder_proof  # noqa: E402
 from ca2a_runtime.errors import TransportError  # noqa: E402
 from ca2a_runtime.node import PeerNode  # noqa: E402
-from ca2a_runtime.peer import REQUIRE_ANY, PeerRequest  # noqa: E402
+from ca2a_runtime.peer import (  # noqa: E402
+    REQUIRE_ANY,
+    REQUIRE_HARDWARE,
+    REQUIRE_NONE,
+    PeerRequest,
+)
 from ca2a_runtime.policy import LocalPolicy  # noqa: E402
 from ca2a_runtime.tee.base import AttestationReport  # noqa: E402
 from ca2a_runtime.transport import a2a_sdk  # noqa: E402
@@ -111,6 +127,193 @@ def _request(
             ),
         )
     return PeerRequest(**base)
+
+
+def _operator_card(*, extensions: list[AgentExtension] | None = None) -> AgentCard:
+    """A complete-enough card owned by the embedding A2A application.
+
+    The values are deliberately not cA2A defaults: preserving them proves the
+    bridge contributes only its extension instead of quietly becoming a second
+    Agent Card implementation.
+    """
+    return AgentCard(
+        name="operator-owned-agent",
+        description="Runs the operator's workflow",
+        supported_interfaces=[
+            AgentInterface(
+                url="https://operator.example/a2a",
+                protocol_binding="JSONRPC",
+                protocol_version="1.0",
+            )
+        ],
+        version="2026.8",
+        documentation_url="https://operator.example/docs",
+        capabilities=AgentCapabilities(
+            streaming=True,
+            push_notifications=True,
+            extensions=extensions or [],
+        ),
+        default_input_modes=["text/plain"],
+        default_output_modes=["application/json"],
+        skills=[
+            AgentSkill(
+                id="operator-skill",
+                name="Operator skill",
+                description="Not supplied by cA2A",
+                tags=["operator"],
+            )
+        ],
+        icon_url="https://operator.example/icon.png",
+    )
+
+
+# --------------------------------------------------------------------------
+# Agent Card declaration and discovery
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "requirement",
+    [REQUIRE_NONE, REQUIRE_ANY, REQUIRE_HARDWARE],
+)
+def test_agent_extension_is_derived_from_peer_node(requirement: str) -> None:
+    verifier = (lambda report, nonce: "measurement") if requirement == REQUIRE_HARDWARE else None
+    node = PeerNode(
+        LocalPolicy.of({"read"}),
+        require_caller_attestation=requirement,
+        caller_verifier=verifier,
+    )
+
+    extension = a2a_sdk.agent_extension_for_node(node)
+
+    assert isinstance(extension, AgentExtension)
+    assert extension.uri == EXTENSION_URI
+    assert extension.required is False
+    assert json_format.MessageToDict(extension.params) == {
+        "require_caller_attestation": requirement
+    }
+
+
+def test_merge_agent_card_preserves_operator_fields_and_input() -> None:
+    other = AgentExtension(uri="https://operator.example/extensions/audit", required=True)
+    card = _operator_card(extensions=[other])
+    before = json_format.MessageToDict(card, preserving_proto_field_name=True)
+    node = PeerNode(LocalPolicy.of({"read"}), require_caller_attestation=REQUIRE_ANY)
+
+    merged = a2a_sdk.merge_agent_card(card, node)
+
+    assert merged is not card
+    assert json_format.MessageToDict(card, preserving_proto_field_name=True) == before
+    assert merged.name == card.name
+    assert merged.description == card.description
+    assert merged.supported_interfaces == card.supported_interfaces
+    assert merged.skills == card.skills
+    assert merged.default_input_modes == card.default_input_modes
+    assert merged.default_output_modes == card.default_output_modes
+    assert merged.capabilities.streaming is True
+    assert merged.capabilities.push_notifications is True
+    assert merged.capabilities.extensions[0] == other
+    declared = find_extension_by_uri(merged, EXTENSION_URI)
+    assert declared is not None
+    assert json_format.MessageToDict(declared.params) == {"require_caller_attestation": REQUIRE_ANY}
+
+
+def test_merge_replaces_stale_declaration_and_collapses_duplicates() -> None:
+    stale = AgentExtension(uri=EXTENSION_URI, required=True)
+    json_format.ParseDict({"require_caller_attestation": "stale"}, stale.params)
+    duplicate = AgentExtension(uri=EXTENSION_URI, required=False)
+    other = AgentExtension(uri="https://operator.example/extensions/audit")
+    card = _operator_card(extensions=[stale, other, duplicate])
+    node = PeerNode(LocalPolicy.of({"read"}), require_caller_attestation=REQUIRE_ANY)
+
+    merged = a2a_sdk.merge_agent_card(card, node)
+    declarations = [ext for ext in merged.capabilities.extensions if ext.uri == EXTENSION_URI]
+
+    assert len(declarations) == 1
+    assert merged.capabilities.extensions[0] == declarations[0]
+    assert merged.capabilities.extensions[1] == other
+    assert declarations[0].required is False
+    assert json_format.MessageToDict(declarations[0].params) == {
+        "require_caller_attestation": REQUIRE_ANY
+    }
+
+    merged_again = a2a_sdk.merge_agent_card(merged, node)
+    assert merged_again == merged
+
+
+def test_merge_must_happen_before_the_operator_signs_the_card() -> None:
+    card = _operator_card()
+    card.signatures.append(AgentCardSignature(protected="header", signature="signature"))
+    node = PeerNode(LocalPolicy.of({"read"}))
+
+    with pytest.raises(TransportError, match="before signing"):
+        a2a_sdk.merge_agent_card(card, node)
+
+
+def test_inspect_agent_card_records_a_valid_declaration() -> None:
+    node = PeerNode(LocalPolicy.of({"read"}), require_caller_attestation=REQUIRE_ANY)
+    card = a2a_sdk.merge_agent_card(_operator_card(), node)
+
+    result = a2a_sdk.inspect_agent_card(card)
+
+    assert result.advertised is True
+    assert result.required is False
+    assert result.require_caller_attestation == REQUIRE_ANY
+    assert result.warnings == ()
+
+
+def test_inspect_agent_card_records_a_declaration_after_json_round_trip() -> None:
+    node = PeerNode(
+        LocalPolicy.of({"read"}),
+        require_caller_attestation=REQUIRE_HARDWARE,
+        caller_verifier=lambda report, nonce: "measurement",
+    )
+    merged = a2a_sdk.merge_agent_card(_operator_card(), node)
+    received = AgentCard()
+    json_format.Parse(json_format.MessageToJson(merged), received)
+
+    result = a2a_sdk.inspect_agent_card(received)
+
+    assert result.advertised is True
+    assert result.required is False
+    assert result.require_caller_attestation == REQUIRE_HARDWARE
+    assert result.warnings == ()
+
+
+def test_inspect_agent_card_is_permissive_but_records_a_missing_declaration() -> None:
+    result = a2a_sdk.inspect_agent_card(_operator_card())
+
+    assert result.advertised is False
+    assert result.required is None
+    assert result.require_caller_attestation is None
+    assert len(result.warnings) == 1
+    assert "does not advertise" in result.warnings[0]
+
+
+@pytest.mark.parametrize("advertised", [None, "sometimes"])
+def test_inspect_agent_card_records_missing_or_unknown_requirement(
+    advertised: str | None,
+) -> None:
+    extension = AgentExtension(uri=EXTENSION_URI, required=True)
+    params: dict[str, object] = {"z_future": True, "a_future": "value"}
+    if advertised is not None:
+        params["require_caller_attestation"] = advertised
+    json_format.ParseDict(params, extension.params)
+
+    result = a2a_sdk.inspect_agent_card(
+        _operator_card(extensions=[extension, AgentExtension(uri=EXTENSION_URI)])
+    )
+
+    assert result.advertised is True
+    assert result.required is True
+    assert result.require_caller_attestation is None
+    assert any("required=true" in warning for warning in result.warnings)
+    assert any("2 times" in warning for warning in result.warnings)
+    assert [warning for warning in result.warnings if "unknown parameter" in warning] == [
+        "cA2A declaration has an unknown parameter 'a_future'",
+        "cA2A declaration has an unknown parameter 'z_future'",
+    ]
+    assert any("require_caller_attestation" in warning for warning in result.warnings)
 
 
 # --------------------------------------------------------------------------
