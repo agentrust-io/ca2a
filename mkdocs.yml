@@ -171,6 +171,7 @@ nav:
       - Hardware Validation: docs/hardware-validation.md
   - Project:
       - Limitations: LIMITATIONS.md
+      - Sponsors: SPONSORS.md
       - Changelog: CHANGELOG.md
       - Contributing: CONTRIBUTING.md
       - Governance: GOVERNANCE.md
