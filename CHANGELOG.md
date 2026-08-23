@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Official-SDK Agent Card declaration and discovery helpers (#92).**
+  `agent_extension_for_node` derives the cA2A `AgentExtension` from the live
+  `PeerNode` (`required=false`, with its `require_caller_attestation` value), and
+  `merge_agent_card` contributes that declaration to a copy of an
+  operator-owned card without inventing identity, interfaces, skills, a serving
+  URL, or signing. `inspect_agent_card` returns a permissive,
+  recordable discovery result for remote cards; missing or malformed declarations
+  are warnings for deployment policy rather than an implicit trust decision.
+  Tests use the real `a2a-sdk` protobuf models and preserve existing card fields
+  and unrelated extensions.
+
 ## [0.2.0] - 2026-08-18
 
 This is the first normal cA2A release. It promotes the project from its initial
@@ -89,7 +102,7 @@ conformance suite, and startup-bound Agent Manifest identity.
 
 - **A bridge to the official `a2a-sdk`, so cA2A reaches the SDK that A2A agents actually run (#91).** cA2A describes itself as a profile on A2A and, until now, integrated with no A2A implementation: `transport.a2a_adapter` parsed A2A-shaped dicts and `transport.server` was a bespoke standard-library HTTP server. Both are honest about being a *reference*, but the practical effect was that a team already running the official SDK could only adopt the profile by replacing their transport with ours, which nobody does to try an alpha. A2A reached v1.0 in April 2026 under the Linux Foundation with SDKs in six languages, and is wired into Google ADK, Azure AI Foundry, Amazon Bedrock AgentCore and Copilot Studio; the profile reached none of it.
 
-  `ca2a_runtime.transport.a2a_sdk` is deliberately thin. The SDK carries A2A `metadata` as a `google.protobuf.Struct`, so converting that to a plain mapping hands the existing adapter exactly what it already parses: one parser, one set of tests, and the profile stays transport-agnostic. Optional extra (`pip install 'ca2a[a2a-sdk]'`); the base install still depends on no A2A implementation.
+  `ca2a_runtime.transport.a2a_sdk` is deliberately thin. The SDK carries A2A `metadata` as a `google.protobuf.Struct`, so converting that to a plain mapping hands the existing adapter exactly what it already parses: one parser, one set of tests, and the profile stays transport-agnostic. Optional extra (`pip install 'ca2a-runtime[a2a-sdk]'`); the base install still depends on no A2A implementation.
 
   **The protobuf round trip nearly broke every chain, and the reason it does not is worth knowing.** `Struct` has no integer type, so a credential's `depth` of `0` arrives as `0.0` — and a credential signature covers the RFC 8785 canonical bytes of its body, where `canonicalize` *refuses floats outright*. Chains verify because `DelegationCredential.from_dict` coerces `depth` with `int()` before anything is canonicalized, so what gets verified is the integer form the signer signed. A non-integral float cannot be smuggled past it either: it coerces to a *different* integer and the signature then fails. Both directions are tested against the real SDK, over multi-hop chains so the non-zero depths actually cross the boundary.
 
