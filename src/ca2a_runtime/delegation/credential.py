@@ -251,6 +251,15 @@ def verify_chain(
     if not chain:
         raise BrokenDelegationLink("empty delegation chain")
 
+    # Reject unknown roots before doing attacker-controlled signature or
+    # structural work. Trusted callers retain precise diagnostics, while an
+    # untrusted chain cannot use this verifier as a validation oracle.
+    if chain[0].issuer not in trusted_root_issuers:
+        raise UntrustedDelegationRoot(
+            "delegation root issuer is not trusted by this peer",
+            detail=f"root_issuer={chain[0].issuer}",
+        )
+
     now = int(time.time()) if at_time is None else at_time
 
     seen_ids: set[str] = set()
@@ -303,14 +312,3 @@ def verify_chain(
                 )
 
         prev = cred
-
-    # Root authorization is a required part of `verify_chain`, including for
-    # library callers. An omitted/empty set fails closed; signature consistency
-    # alone does not authorize an attacker-minted root. It runs after the
-    # cryptographic and structural checks so malformed evidence still reports
-    # its precise invariant failure.
-    if chain[0].issuer not in trusted_root_issuers:
-        raise UntrustedDelegationRoot(
-            "delegation root issuer is not trusted by this peer",
-            detail=f"root_issuer={chain[0].issuer}",
-        )

@@ -77,6 +77,18 @@ def test_core_verify_chain_omitted_root_trust_fails_closed(
         verify_chain(valid_chain)
 
 
+def test_untrusted_root_is_rejected_before_signature_diagnostics(
+    valid_chain: list[DelegationCredential], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def should_not_verify(_credential: DelegationCredential) -> None:
+        raise AssertionError("untrusted chains must not reach signature verification")
+
+    monkeypatch.setattr(DelegationCredential, "verify_signature", should_not_verify)
+
+    with pytest.raises(UntrustedDelegationRoot):
+        verify_chain(valid_chain, trusted_root_issuers=set())
+
+
 def test_empty_chain_rejected() -> None:
     with pytest.raises(BrokenDelegationLink):
         verify_chain([])
@@ -85,12 +97,16 @@ def test_empty_chain_rejected() -> None:
 def test_scope_escalation_rejected() -> None:
     chain = build_chain([frozenset({"cap:a"}), frozenset({"cap:a", "cap:b"})])
     with pytest.raises(ScopeEscalation):
-        verify_chain(chain)
+        verify_chain(chain, trusted_root_issuers={chain[0].issuer})
 
 
 def test_depth_limit_enforced(valid_chain: list[DelegationCredential]) -> None:
     with pytest.raises(DelegationDepthExceeded):
-        verify_chain(valid_chain, max_depth=1)
+        verify_chain(
+            valid_chain,
+            max_depth=1,
+            trusted_root_issuers={valid_chain[0].issuer},
+        )
 
 
 def test_broken_parent_link_rejected() -> None:
@@ -104,7 +120,7 @@ def test_broken_parent_link_rejected() -> None:
         "c1", mid_pub, leaf_pub, frozenset({"cap:a"}), 1, parent_id="wrong"
     ).sign(mid_priv)
     with pytest.raises(BrokenDelegationLink):
-        verify_chain([root, child])
+        verify_chain([root, child], trusted_root_issuers={root.issuer})
 
 
 def test_replayed_credential_id_rejected() -> None:
@@ -119,7 +135,7 @@ def test_replayed_credential_id_rejected() -> None:
         chain[0].signature,
     )
     with pytest.raises(CredentialReplay):
-        verify_chain([chain[0], dup])
+        verify_chain([chain[0], dup], trusted_root_issuers={chain[0].issuer})
 
 
 def test_root_with_parent_rejected() -> None:
@@ -127,7 +143,7 @@ def test_root_with_parent_rejected() -> None:
     _, sub = new_keypair()
     root = DelegationCredential("c0", pub, sub, frozenset({"cap:a"}), 0, parent_id="x").sign(priv)
     with pytest.raises(BrokenDelegationLink):
-        verify_chain([root])
+        verify_chain([root], trusted_root_issuers={root.issuer})
 
 
 def test_from_dict_roundtrip(valid_chain: list[DelegationCredential]) -> None:
@@ -197,13 +213,13 @@ def test_windowed_credential_roundtrip_and_inclusive_bounds() -> None:
 def test_expired_credential_rejected() -> None:
     chain = build_chain([frozenset({"cap:a"})], not_before=1_000, not_after=2_000)
     with pytest.raises(CredentialExpired):
-        verify_chain(chain, at_time=2_001)
+        verify_chain(chain, at_time=2_001, trusted_root_issuers={chain[0].issuer})
 
 
 def test_not_yet_valid_credential_rejected() -> None:
     chain = build_chain([frozenset({"cap:a"})], not_before=1_000, not_after=2_000)
     with pytest.raises(CredentialNotYetValid):
-        verify_chain(chain, at_time=999)
+        verify_chain(chain, at_time=999, trusted_root_issuers={chain[0].issuer})
 
 
 def test_expired_credential_rejected_by_default_clock() -> None:
@@ -212,7 +228,7 @@ def test_expired_credential_rejected_by_default_clock() -> None:
     # existing call site by default.
     chain = build_chain([frozenset({"cap:a"})], not_after=1_000)
     with pytest.raises(CredentialExpired):
-        verify_chain(chain)
+        verify_chain(chain, trusted_root_issuers={chain[0].issuer})
 
 
 def test_stripping_a_signed_validity_bound_breaks_the_signature() -> None:

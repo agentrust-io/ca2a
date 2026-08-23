@@ -102,3 +102,25 @@ def test_verify_chain_cli_accepts_an_explicit_trusted_root(
         )
         == 0
     )
+
+
+def test_verify_dag_cli_requires_a_trusted_root_when_cross_checking_chain(
+    tmp_path: Path,
+) -> None:
+    dag_path = tmp_path / "dag.json"
+    chain_path = tmp_path / "chain.json"
+    dag_path.write_text("[]")
+    chain_path.write_text("[]")
+
+    with pytest.raises(SystemExit) as exc:
+        cli_main(
+            [
+                "verify-dag",
+                "--dag",
+                str(dag_path),
+                "--chain",
+                str(chain_path),
+            ]
+        )
+
+    assert exc.value.code == 2

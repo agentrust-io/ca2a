@@ -197,8 +197,9 @@ def test_deleg_001_signature() -> None:
 
 
 def test_deleg_002_attenuation() -> None:
+    chain = build_chain([frozenset({"a"}), frozenset({"a", "b"})])
     with pytest.raises(ScopeEscalation):
-        verify_chain(build_chain([frozenset({"a"}), frozenset({"a", "b"})]))
+        verify_chain(chain, trusted_root_issuers={chain[0].issuer})
 
 
 def test_deleg_003_continuity() -> None:
@@ -208,12 +209,15 @@ def test_deleg_003_continuity() -> None:
     root = DelegationCredential("c0", rpub, mpub, frozenset({"a"}), 0).sign(rp)
     child = DelegationCredential("c1", mpub, leaf, frozenset({"a"}), 1, parent_id="wrong").sign(mp)
     with pytest.raises(BrokenDelegationLink):
-        verify_chain([root, child])
+        verify_chain([root, child], trusted_root_issuers={root.issuer})
 
 
 def test_deleg_004_depth() -> None:
+    chain = _deep3()
     with pytest.raises(DelegationDepthExceeded):
-        verify_chain(_deep3(), max_depth=1)  # leaf is depth 2 > 1
+        verify_chain(
+            chain, max_depth=1, trusted_root_issuers={chain[0].issuer}
+        )  # leaf is depth 2 > 1
 
 
 def test_deleg_005_replay() -> None:
@@ -228,7 +232,7 @@ def test_deleg_005_replay() -> None:
         chain[0].signature,
     )
     with pytest.raises(CredentialReplay):
-        verify_chain([chain[0], dup])
+        verify_chain([chain[0], dup], trusted_root_issuers={chain[0].issuer})
 
 
 def test_deleg_006_valid_chain_accepted() -> None:
@@ -236,16 +240,22 @@ def test_deleg_006_valid_chain_accepted() -> None:
     verify_chain(chain, trusted_root_issuers={chain[0].issuer})
 
 
+def test_deleg_006a_untrusted_root_rejected() -> None:
+    chain = _narrowing()
+    with pytest.raises(CA2AError, match="root issuer is not trusted"):
+        verify_chain(chain, trusted_root_issuers=set())
+
+
 def test_deleg_007_expired_credential_rejected() -> None:
     chain = build_chain([frozenset({"a"})], not_before=1_000, not_after=2_000)
     with pytest.raises(CredentialExpired):
-        verify_chain(chain, at_time=3_000)
+        verify_chain(chain, at_time=3_000, trusted_root_issuers={chain[0].issuer})
 
 
 def test_deleg_008_not_yet_valid_credential_rejected() -> None:
     chain = build_chain([frozenset({"a"})], not_before=1_000, not_after=2_000)
     with pytest.raises(CredentialNotYetValid):
-        verify_chain(chain, at_time=500)
+        verify_chain(chain, at_time=500, trusted_root_issuers={chain[0].issuer})
 
 
 def test_deleg_009_chain_within_validity_window_accepted() -> None:

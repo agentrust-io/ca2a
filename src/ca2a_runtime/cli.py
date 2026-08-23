@@ -258,6 +258,8 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    if args.command == "verify-dag" and args.chain and not args.trusted_root_issuer:
+        parser.error("verify-dag with --chain requires --trusted-root-issuer")
     result: int = args.func(args)
     return result
 
