@@ -34,6 +34,9 @@ class AgentManifestBinding:
     issuer: str
     authenticated_subject: str
     version: str
+    # CA2A authenticates the signed identity document here. It does not observe
+    # or claim equality with the deployed artifact hashes bound by the manifest.
+    verification_scope: str = "signature-and-identity"
 
 
 def _b64url_decode(value: str) -> bytes:
@@ -126,7 +129,10 @@ def verify_agent_manifest_binding(
     sdk_keys = {key_id: _b64url_encode(key) for key_id, key in trusted_keys.items()}
     result = agent_manifest_sdk.verify_manifest(
         loaded.envelope if loaded.envelope is not None else loaded.manifest,
-        agent_manifest_sdk.VerificationContext(trusted_keys=sdk_keys),
+        agent_manifest_sdk.VerificationContext(
+            trusted_keys=sdk_keys,
+            strict_artifact_verification=False,
+        ),
         agent_manifest_sdk.RevocationStore(),
     )
     if result.result != agent_manifest_sdk.OverallResult.VALID:

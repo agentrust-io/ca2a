@@ -22,9 +22,11 @@ Run (from the repo root):
 
 Then re-verify what it wrote, as an auditor would, with no access to the runtime:
 
-    ca2a verify-chain --chain examples/rejection-with-proof/chain.json
+    ca2a verify-chain --chain examples/rejection-with-proof/chain.json \
+        --trusted-root-issuer <trusted-root-issuer-hex>
     ca2a verify-dag --dag examples/rejection-with-proof/dag.json \
-        --chain examples/rejection-with-proof/chain.json
+        --chain examples/rejection-with-proof/chain.json \
+        --trusted-root-issuer <trusted-root-issuer-hex>
 
 HONEST LABELING (see LIMITATIONS.md): everything here is real and
 hardware-independent. Chain verification, scope attenuation, the scope-intersect-
@@ -33,6 +35,7 @@ attestation claim: it does not seal a payload, does not attest a peer, and prove
 nothing about where the code ran. It proves what was authorized and what was
 refused.
 """
+
 # ruff: noqa: T201
 from __future__ import annotations
 
@@ -110,8 +113,9 @@ def main() -> int:
     records: list[DelegationRecord] = []
     parent_hash: str | None = None
     for depth, cred in enumerate(chain):
-        rec = record_for(cred, record_id=f"rec-{depth}-{NAMES[depth]}",
-                         parent_record_hash=parent_hash)
+        rec = record_for(
+            cred, record_id=f"rec-{depth}-{NAMES[depth]}", parent_record_hash=parent_hash
+        )
         records.append(rec)
         parent_hash = rec.record_hash()
 
@@ -142,22 +146,24 @@ def main() -> int:
         print(f"DENY   {REQUESTED}  {exc}")
         print(f"       requested   {denial.requested_capability}")
         print(f"       effective   {sorted(denial.effective_scope or frozenset())}")
-        print("       why         the leaf grant carries "
-              f"{sorted(chain[-1].scope)}; the callee's own policy would have "
-              "permitted it, but nobody delegated it")
+        print(
+            "       why         the leaf grant carries "
+            f"{sorted(chain[-1].scope)}; the callee's own policy would have "
+            "permitted it, but nobody delegated it"
+        )
     else:  # pragma: no cover - the demo is meaningless if this path is taken
         print("ERROR: the over-scoped call was NOT refused")
         return 1
     print()
 
-    chain_path = dump({"chain": [{**c.body(), "signature": c.signature} for c in chain]},
-                      "chain.json")
+    chain_path = dump(
+        {"chain": [{**c.body(), "signature": c.signature} for c in chain]}, "chain.json"
+    )
     dag_path = dump({"records": [r.body() for r in records]}, "dag.json")
 
     # An auditor's view: verify the DAG from the records alone.
     verify_dag(records)
-    print(f"DAG verifies offline: {len(records)} records, "
-          f"leaf documents a {records[-1].decision}")
+    print(f"DAG verifies offline: {len(records)} records, leaf documents a {records[-1].decision}")
     print(f"  wrote {chain_path.relative_to(REPO_ROOT)}")
     print(f"  wrote {dag_path.relative_to(REPO_ROOT)}")
     print()
@@ -166,8 +172,22 @@ def main() -> int:
     # actually runs. No runtime, no operator, just the committed files.
     print("Re-verified through the CLI, as a third party would:")
     for argv in (
-        ["verify-chain", "--chain", str(chain_path)],
-        ["verify-dag", "--dag", str(dag_path), "--chain", str(chain_path)],
+        [
+            "verify-chain",
+            "--chain",
+            str(chain_path),
+            "--trusted-root-issuer",
+            chain[0].issuer,
+        ],
+        [
+            "verify-dag",
+            "--dag",
+            str(dag_path),
+            "--chain",
+            str(chain_path),
+            "--trusted-root-issuer",
+            chain[0].issuer,
+        ],
     ):
         env = {**os.environ, "PYTHONPATH": str(REPO_ROOT / "src")}
         proc = subprocess.run(  # noqa: S603

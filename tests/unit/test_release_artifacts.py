@@ -21,7 +21,7 @@ def test_runtime_version_comes_from_installed_package_metadata() -> None:
 
 def test_public_release_metadata_is_stable() -> None:
     project = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))["project"]
-    assert project["version"] == "0.2.0"
+    assert project["version"] == "0.2.1"
     assert "Development Status :: 4 - Beta" in project["classifiers"]
     assert not any("Alpha" in classifier for classifier in project["classifiers"])
 

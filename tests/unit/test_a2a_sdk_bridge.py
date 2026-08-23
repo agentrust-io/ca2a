@@ -352,7 +352,7 @@ def test_a_chain_still_verifies_after_the_struct_round_trip(hops: int) -> None:
     assert parsed is not None
     assert [c.depth for c in parsed.chain] == list(range(hops))
     assert all(isinstance(c.depth, int) for c in parsed.chain)
-    verify_chain(parsed.chain)
+    verify_chain(parsed.chain, trusted_root_issuers={parsed.chain[0].issuer})
 
 
 def test_validity_bounds_survive_the_struct_round_trip() -> None:
@@ -375,7 +375,11 @@ def test_validity_bounds_survive_the_struct_round_trip() -> None:
     parsed = a2a_sdk.parse_sdk_message(message)
     assert parsed is not None
     assert (parsed.chain[0].not_before, parsed.chain[0].not_after) == (1_000, 2_000)
-    verify_chain(parsed.chain, at_time=1_500)
+    verify_chain(
+        parsed.chain,
+        at_time=1_500,
+        trusted_root_issuers={parsed.chain[0].issuer},
+    )
 
 
 def test_a_tampered_depth_does_not_verify() -> None:

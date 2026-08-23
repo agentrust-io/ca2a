@@ -10,7 +10,7 @@ A three-hop delegation chain and a minimal runtime config.
 ## Verify
 
 ```bash
-ca2a verify-chain --chain chain.json
+ca2a verify-chain --chain chain.json --trusted-root-issuer <trusted-root-issuer-hex>
 ca2a validate-config --config ca2a-config.yaml
 ```
 

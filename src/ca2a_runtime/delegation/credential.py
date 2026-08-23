@@ -225,7 +225,7 @@ def verify_chain(
     chain: list[DelegationCredential],
     *,
     max_depth: int = 8,
-    trusted_root_issuers: Collection[str] | None = None,
+    trusted_root_issuers: Collection[str] = (),
     at_time: int | None = None,
 ) -> None:
     """Verify a root-to-leaf delegation chain, raising on the first violation.
@@ -252,15 +252,6 @@ def verify_chain(
         raise BrokenDelegationLink("empty delegation chain")
 
     now = int(time.time()) if at_time is None else at_time
-
-    # ``None`` deliberately means structural/offline verification only. Runtime
-    # authorization always supplies its local trust set, including an empty set,
-    # so a self-consistent chain minted by an attacker cannot authorize a call.
-    if trusted_root_issuers is not None and chain[0].issuer not in trusted_root_issuers:
-        raise UntrustedDelegationRoot(
-            "delegation root issuer is not trusted by this peer",
-            detail=f"root_issuer={chain[0].issuer}",
-        )
 
     seen_ids: set[str] = set()
     prev: DelegationCredential | None = None
@@ -312,3 +303,14 @@ def verify_chain(
                 )
 
         prev = cred
+
+    # Root authorization is a required part of `verify_chain`, including for
+    # library callers. An omitted/empty set fails closed; signature consistency
+    # alone does not authorize an attacker-minted root. It runs after the
+    # cryptographic and structural checks so malformed evidence still reports
+    # its precise invariant failure.
+    if chain[0].issuer not in trusted_root_issuers:
+        raise UntrustedDelegationRoot(
+            "delegation root issuer is not trusted by this peer",
+            detail=f"root_issuer={chain[0].issuer}",
+        )

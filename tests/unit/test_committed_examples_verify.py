@@ -55,8 +55,22 @@ def test_committed_dag_verifies(example: str, tmp_path: Path) -> None:
     chain_path = tmp_path / "chain.json"
     dag_path.write_text(dag, encoding="utf-8")
     chain_path.write_text(chain, encoding="utf-8")
+    root_issuer = json.loads(chain)["chain"][0]["issuer"]
 
-    assert cli_main(["verify-dag", "--dag", str(dag_path), "--chain", str(chain_path)]) == 0
+    assert (
+        cli_main(
+            [
+                "verify-dag",
+                "--dag",
+                str(dag_path),
+                "--chain",
+                str(chain_path),
+                "--trusted-root-issuer",
+                root_issuer,
+            ]
+        )
+        == 0
+    )
 
 
 @pytest.mark.parametrize("example", EXAMPLES)

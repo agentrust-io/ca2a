@@ -16,7 +16,7 @@ def test_runtime_cryptography_floor_includes_2026_security_fixes() -> None:
 
 
 def test_agent_manifest_floor_includes_v02_cose_verification() -> None:
-    assert "agent-manifest>=0.11" in _project()["dependencies"]
+    assert "agent-manifest>=0.11.1" in _project()["dependencies"]
 
 
 def test_a2a_sdk_extra_cannot_resolve_vulnerable_aiohttp() -> None:

@@ -15,6 +15,7 @@ from ca2a_runtime.errors import (
     DelegationDepthExceeded,
     InvalidCredential,
     ScopeEscalation,
+    UntrustedDelegationRoot,
 )
 from tests.unit.conftest import build_chain
 
@@ -66,7 +67,14 @@ def test_tampered_scope_fails_verify() -> None:
 
 
 def test_valid_chain_verifies(valid_chain: list[DelegationCredential]) -> None:
-    verify_chain(valid_chain)
+    verify_chain(valid_chain, trusted_root_issuers={valid_chain[0].issuer})
+
+
+def test_core_verify_chain_omitted_root_trust_fails_closed(
+    valid_chain: list[DelegationCredential],
+) -> None:
+    with pytest.raises(UntrustedDelegationRoot):
+        verify_chain(valid_chain)
 
 
 def test_empty_chain_rejected() -> None:
@@ -180,8 +188,8 @@ def test_from_dict_rejects_unsigned_extra_semantics(
 
 def test_windowed_credential_roundtrip_and_inclusive_bounds() -> None:
     chain = build_chain([frozenset({"cap:a"})], not_before=1_000, not_after=2_000)
-    verify_chain(chain, at_time=1_000)
-    verify_chain(chain, at_time=2_000)
+    verify_chain(chain, at_time=1_000, trusted_root_issuers={chain[0].issuer})
+    verify_chain(chain, at_time=2_000, trusted_root_issuers={chain[0].issuer})
     restored = DelegationCredential.from_dict(chain[0].body() | {"signature": chain[0].signature})
     assert restored == chain[0]
 

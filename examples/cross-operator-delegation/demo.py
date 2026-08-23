@@ -24,6 +24,7 @@ HONEST LABELING (mirrors LIMITATIONS.md and the claim 6 docstring):
 Run (from repo root, package installed editable):
   python examples/cross-operator-delegation/demo.py
 """
+
 # ruff: noqa: T201
 from __future__ import annotations
 
@@ -99,8 +100,15 @@ def build_operator(name, measurement, root_key):
     vcek = make_cert(f"{name}-VCEK", "amd-root", vcek_key, root_key)
     priv, pub = generate_channel_keypair()
     report = make_report(vcek_key, measurement, bytes.fromhex(pub) + b"\x00" * 32)
-    return {"name": name, "measurement": measurement, "priv": priv, "pub": pub,
-            "vcek_key": vcek_key, "vcek": vcek, "report": report}
+    return {
+        "name": name,
+        "measurement": measurement,
+        "priv": priv,
+        "pub": pub,
+        "vcek_key": vcek_key,
+        "vcek": vcek,
+        "report": report,
+    }
 
 
 def step(n: int, text: str, ok: bool) -> bool:
@@ -123,21 +131,27 @@ def main() -> int:
     child_op = build_operator("B-child", b"\xbb" * 48, root_key)
 
     # 1. Independent keys across the two trust domains.
-    checks.append(step(1, "independent channel keys across domains",
-                       parent_op["pub"] != child_op["pub"]))
+    checks.append(
+        step(1, "independent channel keys across domains", parent_op["pub"] != child_op["pub"])
+    )
 
     # 2. Mutual attestation binds each side's channel key (SOFTWARE-ASSERTED).
-    r_child = verify_sev_snp_report(child_op["report"], [child_op["vcek"], root],
-                                    trusted_roots=[root],
-                                    expected_measurement=child_op["measurement"])
-    r_parent = verify_sev_snp_report(parent_op["report"], [parent_op["vcek"], root],
-                                     trusted_roots=[root],
-                                     expected_measurement=parent_op["measurement"])
+    r_child = verify_sev_snp_report(
+        child_op["report"],
+        [child_op["vcek"], root],
+        trusted_roots=[root],
+        expected_measurement=child_op["measurement"],
+    )
+    r_parent = verify_sev_snp_report(
+        parent_op["report"],
+        [parent_op["vcek"], root],
+        trusted_roots=[root],
+        expected_measurement=parent_op["measurement"],
+    )
     child_key = r_child.report_data[:32].hex()
     parent_key = r_parent.report_data[:32].hex()
     mutual = child_key == child_op["pub"] and parent_key == parent_op["pub"]
-    checks.append(step(2, "mutual attestation binds each channel key (software-asserted)",
-                       mutual))
+    checks.append(step(2, "mutual attestation binds each channel key (software-asserted)", mutual))
 
     # ------------------------------------------------------------------
     # Attenuated delegation chain: Parent -> intermediate -> Child.
@@ -145,7 +159,7 @@ def main() -> int:
     # ------------------------------------------------------------------
     scopes = [
         frozenset({"task:read", "task:write", "task:admin"}),  # root grant
-        frozenset({"task:read", "task:write"}),                # narrowed to the child
+        frozenset({"task:read", "task:write"}),  # narrowed to the child
     ]
     chain: list[DelegationCredential] = []
     priv, pub = new_keypair()
@@ -164,8 +178,13 @@ def main() -> int:
         parent_id = cred.credential_id
         priv, pub = next_priv, next_pub
 
-    checks.append(step(3, "attenuated delegation chain verifies (leaf scope narrows)",
-                       sorted(chain[-1].scope) == ["task:read", "task:write"]))
+    checks.append(
+        step(
+            3,
+            "attenuated delegation chain verifies (leaf scope narrows)",
+            sorted(chain[-1].scope) == ["task:read", "task:write"],
+        )
+    )
 
     # ------------------------------------------------------------------
     # Scope ∩ local Cedar policy at the Child. The child was delegated
@@ -180,8 +199,9 @@ def main() -> int:
     print(f"      leaf delegated scope : {sorted(chain[-1].scope)}")
     print(f"      child Cedar policy   : {policy_allow} ({policy_path.name})")
     print(f"      effective scope      : {sorted(eff)}")
-    checks.append(step(4, "effective scope = delegated ∩ policy = {task:read}",
-                       sorted(eff) == ["task:read"]))
+    checks.append(
+        step(4, "effective scope = delegated ∩ policy = {task:read}", sorted(eff) == ["task:read"])
+    )
 
     # task:read is delegated AND permitted -> ALLOW (emits a provenance record).
     try:
@@ -189,8 +209,7 @@ def main() -> int:
         read_allowed = True
     except ScopeNotPermitted:
         read_allowed = False
-    checks.append(step(5, "child ALLOWS task:read (delegated and locally permitted)",
-                       read_allowed))
+    checks.append(step(5, "child ALLOWS task:read (delegated and locally permitted)", read_allowed))
 
     # task:write is delegated but NOT locally permitted -> DENY (fail-closed).
     try:
@@ -198,8 +217,9 @@ def main() -> int:
         write_denied = False
     except ScopeNotPermitted:
         write_denied = True
-    checks.append(step(6, "child DENIES task:write (delegated but not locally permitted)",
-                       write_denied))
+    checks.append(
+        step(6, "child DENIES task:write (delegated but not locally permitted)", write_denied)
+    )
 
     # ------------------------------------------------------------------
     # Confidential cross-operator delegation: Parent seals the task to the
@@ -208,24 +228,27 @@ def main() -> int:
     payload = b"delegated task across operators: reconcile ledger (read-only)"
     sealed = SealedChannel(child_key).seal(payload)
     delivered = open_sealed(sealed, child_op["priv"]) == payload and payload not in sealed
-    checks.append(step(7, "task sealed to child's attested key, opened only by child",
-                       delivered))
+    checks.append(step(7, "task sealed to child's attested key, opened only by child", delivered))
 
     # ------------------------------------------------------------------
     # Binary-swap detection: the Child silently runs a tampered binary. Its
     # report is still validly signed by its VCEK, but the measurement differs
     # from the golden value, so the Parent rejects it. (Software-asserted.)
     # ------------------------------------------------------------------
-    swapped = make_report(child_op["vcek_key"], b"\xee" * 48,
-                          bytes.fromhex(child_op["pub"]) + b"\x00" * 32)
+    swapped = make_report(
+        child_op["vcek_key"], b"\xee" * 48, bytes.fromhex(child_op["pub"]) + b"\x00" * 32
+    )
     try:
-        verify_sev_snp_report(swapped, [child_op["vcek"], root], trusted_roots=[root],
-                              expected_measurement=child_op["measurement"])
+        verify_sev_snp_report(
+            swapped,
+            [child_op["vcek"], root],
+            trusted_roots=[root],
+            expected_measurement=child_op["measurement"],
+        )
         swap_caught = False
     except AttestationFailed:
         swap_caught = True
-    checks.append(step(8, "silently swapped binary detected (measurement mismatch)",
-                       swap_caught))
+    checks.append(step(8, "silently swapped binary detected (measurement mismatch)", swap_caught))
 
     # ------------------------------------------------------------------
     # Provenance DAG: one hash-linked record per hop; verify offline and bind
@@ -239,11 +262,15 @@ def main() -> int:
         parent_hash = rec.record_hash()
     dag_ok = verify_dag(records) == records
     cross_check_chain(records, chain)  # raises on any mismatch
-    checks.append(step(9, "per-hop provenance DAG verifies and binds to the chain",
-                       dag_ok))
+    checks.append(step(9, "per-hop provenance DAG verifies and binds to the chain", dag_ok))
     # Sanity: the accepted read hop's record lines up with the leaf credential.
-    checks.append(step(10, "accepted-call record matches the leaf credential",
-                       decision.record.credential_id == chain[-1].credential_id))
+    checks.append(
+        step(
+            10,
+            "accepted-call record matches the leaf credential",
+            decision.record.credential_id == chain[-1].credential_id,
+        )
+    )
 
     # ------------------------------------------------------------------
     # Write the offline artifacts and re-verify them through the CLI, exactly
@@ -260,7 +287,8 @@ def main() -> int:
     def run_cli(args: list[str]) -> bool:
         proc = subprocess.run(
             [sys.executable, "-m", "ca2a_runtime.cli", *args],
-            capture_output=True, text=True,
+            capture_output=True,
+            text=True,
         )
         print(f"      $ ca2a {' '.join(args)}")
         print(f"        {proc.stdout.strip()}")
@@ -268,22 +296,51 @@ def main() -> int:
             print(f"        {proc.stderr.strip()}")
         return proc.returncode == 0
 
-    checks.append(step(11, "ca2a verify-chain accepts chain.json",
-                       run_cli(["verify-chain", "--chain", str(chain_path)])))
-    checks.append(step(12, "ca2a verify-dag accepts dag.json and cross-checks the chain",
-                       run_cli(["verify-dag", "--dag", str(dag_path),
-                                "--chain", str(chain_path)])))
+    checks.append(
+        step(
+            11,
+            "ca2a verify-chain accepts chain.json",
+            run_cli(
+                [
+                    "verify-chain",
+                    "--chain",
+                    str(chain_path),
+                    "--trusted-root-issuer",
+                    chain[0].issuer,
+                ]
+            ),
+        )
+    )
+    checks.append(
+        step(
+            12,
+            "ca2a verify-dag accepts dag.json and cross-checks the chain",
+            run_cli(
+                [
+                    "verify-dag",
+                    "--dag",
+                    str(dag_path),
+                    "--chain",
+                    str(chain_path),
+                    "--trusted-root-issuer",
+                    chain[0].issuer,
+                ]
+            ),
+        )
+    )
 
     passed = sum(checks)
     total = len(checks)
     print()
     if passed == total:
-        print(f"KEY RESULT: {passed}/{total} cross-operator delegation demonstrated offline: "
-              "independent keys, mutual attestation (synthetic vectors), attenuated "
-              "delegation, scope ∩ policy, sealed task, binary-swap rejected, and an "
-              "offline-verifiable provenance DAG. Delegation-chain and provenance-DAG "
-              "verification are hardware-independent and fully real; attestation is "
-              "software-asserted (real hardware end-to-end pending, see issue #43).")
+        print(
+            f"KEY RESULT: {passed}/{total} cross-operator delegation demonstrated offline: "
+            "independent keys, mutual attestation (synthetic vectors), attenuated "
+            "delegation, scope ∩ policy, sealed task, binary-swap rejected, and an "
+            "offline-verifiable provenance DAG. Delegation-chain and provenance-DAG "
+            "verification are hardware-independent and fully real; attestation is "
+            "software-asserted (real hardware end-to-end pending, see issue #43)."
+        )
         return 0
     print(f"KEY RESULT: FAIL ({passed}/{total} checks passed)")
     return 1

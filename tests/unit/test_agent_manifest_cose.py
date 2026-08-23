@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import json
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import agent_manifest as sdk
@@ -21,6 +22,7 @@ from ca2a_runtime.errors import ConfigError
 
 AGENT_ID = "spiffe://factory.example/agent/ca2a/dev"
 ISSUER = "spiffe://factory.example/signing-authority/development"
+EXPIRES_AT = (datetime.now(UTC) + timedelta(days=30)).isoformat().replace("+00:00", "Z")
 
 
 def _manifest(version: str) -> dict:
@@ -31,10 +33,17 @@ def _manifest(version: str) -> dict:
         "agent_id": AGENT_ID,
         "version": version,
         "issued_at": "2026-06-12T00:00:00Z",
-        "expires_at": "2099-09-10T00:00:00Z",
+        "expires_at": EXPIRES_AT,
         "issuer": ISSUER,
         "crypto_profile": "standard",
-        "artifacts": {},
+        "artifacts": {
+            "system_prompt": {"hash": "sha256:" + "a" * 64},
+            "policy_bundle": {"hash": "sha256:" + "b" * 64},
+            "model_identity": {
+                "version": "ca2a-test-model",
+                "deployment_type": "api",
+            },
+        },
     }
 
 
@@ -84,6 +93,7 @@ def test_v02_cose_binds_end_to_end(tmp_path: Path) -> None:
     assert binding.manifest_id == manifest["manifest_id"]
     assert binding.agent_id == AGENT_ID
     assert binding.version == "0.2"
+    assert binding.verification_scope == "signature-and-identity"
 
 
 def test_v01_json_still_binds(tmp_path: Path) -> None:

@@ -232,7 +232,8 @@ def test_deleg_005_replay() -> None:
 
 
 def test_deleg_006_valid_chain_accepted() -> None:
-    verify_chain(_narrowing())
+    chain = _narrowing()
+    verify_chain(chain, trusted_root_issuers={chain[0].issuer})
 
 
 def test_deleg_007_expired_credential_rejected() -> None:
@@ -248,7 +249,8 @@ def test_deleg_008_not_yet_valid_credential_rejected() -> None:
 
 
 def test_deleg_009_chain_within_validity_window_accepted() -> None:
-    verify_chain(build_chain([frozenset({"a"})], not_before=1_000, not_after=2_000), at_time=1_500)
+    chain = build_chain([frozenset({"a"})], not_before=1_000, not_after=2_000)
+    verify_chain(chain, at_time=1_500, trusted_root_issuers={chain[0].issuer})
 
 
 # --- Group 2: Scope-policy intersection ---

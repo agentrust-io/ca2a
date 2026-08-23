@@ -19,9 +19,7 @@ def _dump(chain: list[DelegationCredential]) -> list[dict]:
 
 
 def test_verify_delegation_chain_summary(valid_chain: list[DelegationCredential]) -> None:
-    result = verify_delegation_chain(
-        valid_chain, trusted_root_issuers={valid_chain[0].issuer}
-    )
+    result = verify_delegation_chain(valid_chain, trusted_root_issuers={valid_chain[0].issuer})
     assert isinstance(result, ChainResult)
     assert result.hops == 3
     assert result.leaf_scope == ["cap:a"]
@@ -92,10 +90,15 @@ def test_verify_chain_cli_accepts_an_explicit_trusted_root(
     path = tmp_path / "chain.json"
     path.write_text(json.dumps(_dump(valid_chain)))
 
-    assert cli_main([
-        "verify-chain",
-        "--chain",
-        str(path),
-        "--trusted-root-issuer",
-        valid_chain[0].issuer,
-    ]) == 0
+    assert (
+        cli_main(
+            [
+                "verify-chain",
+                "--chain",
+                str(path),
+                "--trusted-root-issuer",
+                valid_chain[0].issuer,
+            ]
+        )
+        == 0
+    )

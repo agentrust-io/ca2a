@@ -20,6 +20,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Tests use the real `a2a-sdk` protobuf models and preserve existing card fields
   and unrelated extensions.
 
+### Security
+
+- Offline delegation verification now requires an explicit trusted root issuer.
+  The core `verify_chain` API also fails closed when callers omit the trust set,
+  so a self-consistent chain minted by an attacker cannot be mistaken for an
+  authorized chain through either the CLI or library surface. Examples and
+  committed-artifact checks now pass the actual root explicitly.
+
+- Agent Manifest startup binding explicitly declares its appraisal as
+  `signature-and-identity`. CA2A authenticates the signed manifest identity and
+  binds it to the live SPIFFE subject; it does not claim that it observed the
+  deployed artifact hashes. The dependency floor is raised to `agent-manifest
+  >=0.11.1` for the corresponding fail-closed verifier fixes.
+
 ## [0.2.0] - 2026-08-18
 
 This is the first normal cA2A release. It promotes the project from its initial

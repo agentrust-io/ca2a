@@ -24,7 +24,8 @@ def _chain_a() -> list[DelegationCredential]:
 
 
 def test_control_chain_is_valid() -> None:
-    verify_chain(_chain_a())
+    chain = _chain_a()
+    verify_chain(chain, trusted_root_issuers={chain[0].issuer})
 
 
 def test_duplicate_credential_id_raises_replay() -> None:
