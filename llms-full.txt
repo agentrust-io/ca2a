@@ -336,6 +336,8 @@ A cA2A implementation MUST NOT change A2A wire formats, routing, or endpoints. R
 
 An agent supporting this profile MUST declare the extension URI in its Agent Card, and a client opting in MUST signal it per the A2A extension mechanism (the `A2A-Extensions` header for HTTP and JSON-RPC bindings, or the equivalent binding metadata). The extension URI for this version is given in [transport](https://ca2a.agentrust-io.com/docs/spec/transport/index.md).
 
+The official-SDK bridge supplies this declaration from live `PeerNode` state for an operator to merge into its Agent Card before signing. It does not fabricate a complete card for the reference server, which has no operator identity, interface, skill, or public URL to claim. Client-side inspection records the declaration without yet imposing a missing-card refusal policy; see the [transport binding](https://ca2a.agentrust-io.com/docs/spec/transport/#declaring-the-extension-with-the-official-sdk).
+
 ### P-3 Ignore versus enforce
 
 A peer that does not implement this profile MUST ignore the cA2A extension fields and handle the task as ordinary A2A. A peer that does implement it:
