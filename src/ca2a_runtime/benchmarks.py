@@ -40,7 +40,7 @@ def run(hops: int, out: Path | None) -> dict[str, float]:
     for _ in range(hops):
         chain = _build_chain(2)
         start = time.perf_counter()
-        verify_chain(chain, max_depth=64)
+        verify_chain(chain, max_depth=64, trusted_root_issuers={chain[0].issuer})
         latencies.append((time.perf_counter() - start) * 1000.0)
     latencies.sort()
     p99 = latencies[min(len(latencies) - 1, int(len(latencies) * 0.99))]

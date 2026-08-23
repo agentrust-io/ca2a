@@ -24,14 +24,15 @@ def _chain_a() -> list[DelegationCredential]:
 
 
 def test_control_chain_is_valid() -> None:
-    verify_chain(_chain_a())
+    chain = _chain_a()
+    verify_chain(chain, trusted_root_issuers={chain[0].issuer})
 
 
 def test_duplicate_credential_id_raises_replay() -> None:
     chain = _chain_a()
     replayed = [chain[0], chain[1], chain[1]]
     with pytest.raises(CredentialReplay):
-        verify_chain(replayed)
+        verify_chain(replayed, trusted_root_issuers={replayed[0].issuer})
 
 
 def test_cross_chain_splice_is_rejected() -> None:
@@ -47,4 +48,4 @@ def test_cross_chain_splice_is_rejected() -> None:
     # continuity: its issuer is not B's previous subject.
     spliced = [chain_b[0], chain_a[1], chain_b[2]]
     with pytest.raises((BrokenDelegationLink, CredentialReplay)):
-        verify_chain(spliced)
+        verify_chain(spliced, trusted_root_issuers={spliced[0].issuer})

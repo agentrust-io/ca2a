@@ -42,7 +42,9 @@ from ca2a_runtime.errors import CA2AError, ScopeEscalation
 from ca2a_verify.verify import verify_chain_file
 
 try:
-    verify_chain_file("chain.json")
+    verify_chain_file(
+        "chain.json", trusted_root_issuers={"<trusted-root-issuer-hex>"}
+    )
 except ScopeEscalation as exc:
     # A hop claimed more than its parent granted.
     print(exc.code, exc.http_status)  # SCOPE_ESCALATION 403

@@ -21,7 +21,7 @@ def test_known_narrowing_chain_verifies() -> None:
             frozenset({"cap:a"}),
         ]
     )
-    verify_chain(chain)  # does not raise
+    verify_chain(chain, trusted_root_issuers={chain[0].issuer})  # does not raise
 
 
 def test_escalating_chain_raises_scope_escalation() -> None:
@@ -34,7 +34,7 @@ def test_escalating_chain_raises_scope_escalation() -> None:
         ]
     )
     with pytest.raises(ScopeEscalation) as exc_info:
-        verify_chain(chain)
+        verify_chain(chain, trusted_root_issuers={chain[0].issuer})
     assert "cap:c" in (exc_info.value.detail or "")
 
 
@@ -48,14 +48,14 @@ def test_escalation_caught_at_offending_hop() -> None:
         ]
     )
     with pytest.raises(ScopeEscalation) as exc_info:
-        verify_chain(chain)
+        verify_chain(chain, trusted_root_issuers={chain[0].issuer})
     assert "hop 2" in str(exc_info.value)
 
 
 def test_equal_scope_is_not_escalation() -> None:
     # A subset that equals the parent (no narrowing, no widening) is allowed.
     chain = build_chain([frozenset({"cap:a"}), frozenset({"cap:a"})])
-    verify_chain(chain)  # does not raise
+    verify_chain(chain, trusted_root_issuers={chain[0].issuer})  # does not raise
 
 
 def test_hand_built_escalating_chain_raises() -> None:
@@ -76,4 +76,4 @@ def test_hand_built_escalating_chain_raises() -> None:
         parent_id="c0",
     ).sign(mid_priv)
     with pytest.raises(ScopeEscalation):
-        verify_chain([root, child])
+        verify_chain([root, child], trusted_root_issuers={root.issuer})

@@ -33,7 +33,12 @@ def _cmd_validate_config(args: argparse.Namespace) -> int:
 
 def _cmd_verify_chain(args: argparse.Namespace) -> int:
     try:
-        result = verify_chain_file(Path(args.chain), max_depth=args.max_depth, at_time=args.at_time)
+        result = verify_chain_file(
+            Path(args.chain),
+            trusted_root_issuers=args.trusted_root_issuer,
+            max_depth=args.max_depth,
+            at_time=args.at_time,
+        )
     except CA2AError as exc:
         print(json.dumps({"verified": False, "code": exc.code, "error": str(exc)}))
         return 1
@@ -113,7 +118,12 @@ def _cmd_verify_dag(args: argparse.Namespace) -> int:
         cross_checked = False
         if args.chain:
             chain = _load_chain(args.chain)
-            verify_chain(chain, max_depth=args.max_depth, at_time=args.at_time)
+            verify_chain(
+                chain,
+                max_depth=args.max_depth,
+                trusted_root_issuers=args.trusted_root_issuer,
+                at_time=args.at_time,
+            )
             cross_check_chain(records, chain)
             cross_checked = True
     except CA2AError as exc:
@@ -201,6 +211,12 @@ def build_parser() -> argparse.ArgumentParser:
     vch.add_argument("--chain", required=True)
     vch.add_argument("--max-depth", type=int, default=8)
     vch.add_argument(
+        "--trusted-root-issuer",
+        action="append",
+        required=True,
+        help="Trusted root issuer public key in lowercase hex (repeatable)",
+    )
+    vch.add_argument(
         "--at-time",
         type=int,
         default=None,
@@ -215,6 +231,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Optional delegation chain to cross-check the DAG against",
     )
     vd.add_argument("--max-depth", type=int, default=8)
+    vd.add_argument(
+        "--trusted-root-issuer",
+        action="append",
+        default=[],
+        help="Trusted root issuer public key in lowercase hex (required with --chain; repeatable)",
+    )
     vd.add_argument(
         "--at-time",
         type=int,
@@ -236,6 +258,8 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    if args.command == "verify-dag" and args.chain and not args.trusted_root_issuer:
+        parser.error("verify-dag with --chain requires --trusted-root-issuer")
     result: int = args.func(args)
     return result
 

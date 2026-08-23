@@ -28,7 +28,8 @@ Then check it the way an auditor would, with no access to the runtime that
 produced it:
 
 ```
-ca2a verify-chain --chain examples/rejection-with-proof/chain.json
+ca2a verify-chain --chain examples/rejection-with-proof/chain.json \
+  --trusted-root-issuer <trusted-root-issuer-hex>
 ca2a verify-dag   --dag examples/rejection-with-proof/dag.json \
                   --chain examples/rejection-with-proof/chain.json
 ```
