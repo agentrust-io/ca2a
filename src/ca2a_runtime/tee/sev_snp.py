@@ -60,6 +60,8 @@ REPORT_DATA_OFFSET = SNP_OFFSETS["report_data"]
 REPORT_DATA_LEN = 64
 MEASUREMENT_OFFSET = SNP_OFFSETS["measurement"]
 MEASUREMENT_LEN = 48
+PLATFORM_INFO_OFFSET = SNP_OFFSETS["platform_info"]
+PLATFORM_INFO_LEN = 8
 # ECDSA-P384 signature: r then s, each in a 72-byte little-endian field.
 SIG_COMPONENT_LEN = 72
 SIG_ALGO_ECDSA_P384_SHA384 = 1
@@ -98,6 +100,23 @@ class SevSnpReport:
     def signed_body(self) -> bytes:
         """The bytes the report signature is computed over."""
         return self.raw[:SIG_OFFSET]
+
+    @property
+    def platform_info(self) -> int:
+        """The raw PLATFORM_INFO bitfield, as a little-endian u64.
+
+        This says what kind of machine signed the report: whether SMT is on,
+        whether ECC is enabled, whether the firmware finished its boot-time DRAM
+        alias check. None of the four checks in :func:`verify_sev_snp_report`
+        look at it, which is deliberate: a signature, a chain and a measurement
+        establish *which workload* ran, not *what the host was doing while it
+        ran*. Decode it with ``agent_manifest.parse_platform_info`` and appraise
+        it against an explicit policy.
+        """
+        return int.from_bytes(
+            self.raw[PLATFORM_INFO_OFFSET : PLATFORM_INFO_OFFSET + PLATFORM_INFO_LEN],
+            "little",
+        )
 
     @property
     def signature_rs(self) -> tuple[int, int]:

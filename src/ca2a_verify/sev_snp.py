@@ -54,10 +54,27 @@ def verify_sev_snp_report(
     trusted_roots: list[x509.Certificate],
     expected_measurement: bytes | None = None,
     expected_report_data: bytes | None = None,
+    require_platform: set[str] | None = None,
+    forbid_platform: set[str] | None = None,
+    reject_unrecognized_platform_bits: bool = False,
 ) -> SevSnpReport:
     """Appraise a SEV-SNP report offline. Raises AttestationFailed on any failure.
 
     ``vcek_chain`` is ordered leaf (VCEK) first, root (ARK) last.
+
+    The four checks below (signature algorithm, certificate chain, report
+    signature, measurement binding) establish that a report is authentic and
+    which workload it describes. **They do not ask what kind of machine it came
+    from.** A report from a host with SMT enabled and the firmware DRAM alias
+    check never completed verifies exactly as cleanly as one from a host with
+    neither condition.
+
+    ``require_platform`` names PLATFORM_INFO fields that MUST be true and
+    ``forbid_platform`` names fields that MUST be false. **The direction lives in
+    the argument name, never in the field name**, so ``forbid_platform={"smt_enabled"}``
+    cannot be misread as demanding SMT. Field names come from
+    ``agent_manifest.PLATFORM_INFO_BITS``. Both default to ``None``, which
+    appraises nothing and leaves prior behaviour unchanged.
     """
     report = SevSnpReport.parse(report_bytes)
 
@@ -87,5 +104,22 @@ def verify_sev_snp_report(
         )
     if expected_report_data is not None and report.report_data != expected_report_data:
         raise AttestationFailed("report data does not match the expected binding")
+
+    if require_platform or forbid_platform or reject_unrecognized_platform_bits:
+        from agent_manifest import appraise_platform_info, parse_platform_info
+
+        info = parse_platform_info(report.platform_info)
+        try:
+            appraise_platform_info(
+                info,
+                require=require_platform,
+                forbid=forbid_platform,
+                reject_unrecognized_bits=reject_unrecognized_platform_bits,
+            )
+        except Exception as exc:
+            raise AttestationFailed(
+                "platform state does not satisfy the configured policy",
+                detail=f"platform_info=0x{report.platform_info:016x}: {exc}",
+            ) from exc
 
     return report

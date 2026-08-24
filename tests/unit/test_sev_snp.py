@@ -48,12 +48,18 @@ def _cert(
 
 
 def _make_report(
-    vcek_key: ec.EllipticCurvePrivateKey, *, measurement: bytes, report_data: bytes, algo: int = 1
+    vcek_key: ec.EllipticCurvePrivateKey,
+    *,
+    measurement: bytes,
+    report_data: bytes,
+    algo: int = 1,
+    platform_info: int = 0,
 ) -> bytes:
     body = bytearray(SIG_OFFSET)
     struct.pack_into("<IIQ", body, 0, 2, 1, 0)  # version, guest_svn, policy
     struct.pack_into("<I", body, 0x30, 0)  # vmpl
     struct.pack_into("<I", body, 0x34, algo)  # signature_algo
+    struct.pack_into("<Q", body, 0x40, platform_info)  # PLATFORM_INFO
     body[0x50 : 0x50 + len(report_data)] = report_data
     body[0x90 : 0x90 + len(measurement)] = measurement
     der = vcek_key.sign(bytes(body), ec.ECDSA(SHA384()))
@@ -223,3 +229,83 @@ def test_real_snp_report_verifies_to_the_amd_root() -> None:
     tampered[0x50] ^= 0x01
     with pytest.raises(AttestationFailed):
         verify_sev_snp_report(bytes(tampered), [vcek, *rest], trusted_roots=[ark])
+
+
+# PLATFORM_INFO appraisal. The four core checks establish which workload ran;
+# these establish what the host was doing while it ran. Bit positions come from
+# agent_manifest.PLATFORM_INFO_BITS: smt_enabled=0, ecc_enabled=2,
+# alias_check_complete=5.
+_SMT_ON = 1 << 0
+_ECC_ON = 1 << 2
+_ALIAS_CHECK_DONE = 1 << 5
+
+
+def _platform_report(synthetic_chain: dict, platform_info: int) -> bytes:
+    return _make_report(
+        synthetic_chain["vcek_key"],
+        measurement=b"\x11" * 48,
+        report_data=b"\x22" * 64,
+        platform_info=platform_info,
+    )
+
+
+def test_platform_info_is_decoded_from_the_report(synthetic_chain: dict) -> None:
+    report = _platform_report(synthetic_chain, _ECC_ON | _ALIAS_CHECK_DONE)
+    parsed = verify_sev_snp_report(
+        report, synthetic_chain["chain"], trusted_roots=[synthetic_chain["root"]]
+    )
+    assert parsed.platform_info == _ECC_ON | _ALIAS_CHECK_DONE
+
+
+def test_no_platform_policy_appraises_nothing(synthetic_chain: dict) -> None:
+    """A host with SMT on and no alias check still verifies when no policy is set.
+
+    This is the behaviour LIMITATIONS.md described, kept deliberately as the
+    default so that adding the parameters changes nothing for existing callers.
+    """
+    report = _platform_report(synthetic_chain, _SMT_ON)
+    parsed = verify_sev_snp_report(
+        report, synthetic_chain["chain"], trusted_roots=[synthetic_chain["root"]]
+    )
+    assert parsed.platform_info == _SMT_ON
+
+
+def test_required_platform_bit_absent_is_rejected(synthetic_chain: dict) -> None:
+    report = _platform_report(synthetic_chain, _ECC_ON)  # alias check never completed
+    with pytest.raises(AttestationFailed) as exc:
+        verify_sev_snp_report(
+            report,
+            synthetic_chain["chain"],
+            trusted_roots=[synthetic_chain["root"]],
+            require_platform={"alias_check_complete"},
+        )
+    assert "platform state" in str(exc.value)
+
+
+def test_forbidden_platform_bit_present_is_rejected(synthetic_chain: dict) -> None:
+    report = _platform_report(synthetic_chain, _SMT_ON | _ALIAS_CHECK_DONE)
+    with pytest.raises(AttestationFailed):
+        verify_sev_snp_report(
+            report,
+            synthetic_chain["chain"],
+            trusted_roots=[synthetic_chain["root"]],
+            forbid_platform={"smt_enabled"},
+        )
+
+
+def test_satisfied_platform_policy_passes(synthetic_chain: dict) -> None:
+    """The direction is in the argument name, not the field name.
+
+    ``forbid_platform={"smt_enabled"}`` demands SMT be off. It cannot be misread
+    as demanding SMT be on, which is the failure mode google/go-sev-guest#195
+    describes in the reference verifier's single-struct policy.
+    """
+    report = _platform_report(synthetic_chain, _ECC_ON | _ALIAS_CHECK_DONE)
+    parsed = verify_sev_snp_report(
+        report,
+        synthetic_chain["chain"],
+        trusted_roots=[synthetic_chain["root"]],
+        require_platform={"alias_check_complete", "ecc_enabled"},
+        forbid_platform={"smt_enabled"},
+    )
+    assert parsed.measurement == b"\x11" * 48

@@ -9,6 +9,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **PLATFORM_INFO appraisal on the SEV-SNP path (LIMITATIONS: "Platform state is not
+  appraised").** `SevSnpReport.platform_info` decodes the bitfield at offset `0x40`, and
+  `verify_sev_snp_report` takes `require_platform`, `forbid_platform` and
+  `reject_unrecognized_platform_bits`, delegating to `agent_manifest.appraise_platform_info`
+  rather than carrying a second copy of the semantics. Until now a report from a host with SMT
+  enabled and the firmware DRAM alias check never completed verified exactly as cleanly as one
+  from a host with neither condition, because the four core checks establish *which workload
+  ran* and never *what the host was doing while it ran*. The direction lives in the argument
+  name, not the field name, so `forbid_platform={"smt_enabled"}` cannot be misread as demanding
+  SMT (see [google/go-sev-guest#195](https://github.com/google/go-sev-guest/issues/195)).
+  Appraisal is opt in and appraises nothing by default, so existing callers are unaffected.
+
 - **Official-SDK Agent Card declaration and discovery helpers (#92).**
   `agent_extension_for_node` derives the cA2A `AgentExtension` from the live
   `PeerNode` (`required=false`, with its `require_caller_attestation` value), and

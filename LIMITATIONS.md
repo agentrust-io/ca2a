@@ -49,9 +49,23 @@ writing any policy over these bits.
 <!-- shared:platform-state-appraisal end -->
 
 **In cA2A.** [`agent-manifest`](https://manifest.agentrust-io.com/limitations/) parses these fields and can
-enforce a policy over them as of 2026-08-20. cA2A does not yet call that appraisal, on
-either the attested-peer or the sealed-channel path, so cA2A does not assert it for
-you.
+enforce a policy over them as of 2026-08-20. **As of 2026-08-24 cA2A can appraise them too.**
+`SevSnpReport.platform_info` decodes the bitfield, and `verify_sev_snp_report` takes
+`require_platform`, `forbid_platform` and `reject_unrecognized_platform_bits`, which are passed
+straight to `agent_manifest.appraise_platform_info`. A report that fails the policy raises
+`AttestationFailed` carrying the raw `platform_info` value, so a rejection says which host state
+caused it.
+
+The direction lives in the argument name rather than the field name, which is the property that
+makes this safe to write a policy against: `forbid_platform={"smt_enabled"}` demands SMT be off
+and cannot be misread as demanding it be on. That is the failure mode
+[google/go-sev-guest#195](https://github.com/google/go-sev-guest/issues/195) describes in the
+reference verifier's single-struct policy.
+
+**What is still true:** appraisal is opt in and appraises nothing by default, and the
+attested-peer and sealed-channel paths do not set a policy for you. A deployment that cares
+whether SMT was enabled or the firmware finished its DRAM alias check has to say so explicitly.
+cA2A gives you the mechanism and the vocabulary; it does not pick your policy.
 
 ## Out of scope
 
