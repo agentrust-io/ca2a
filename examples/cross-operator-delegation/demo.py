@@ -38,6 +38,14 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
+# This demo prints the set-intersection sign when it reports scope n policy.
+# A default Windows console is cp1252, which cannot encode it, so the run died
+# on a UnicodeEncodeError partway through rather than on anything to do with
+# delegation. Ask for UTF-8 explicitly instead of downgrading the notation.
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8", errors="replace")
+
 from cryptography import x509  # noqa: E402
 from cryptography.hazmat.primitives.asymmetric import ec  # noqa: E402
 from cryptography.hazmat.primitives.asymmetric.utils import decode_dss_signature  # noqa: E402
@@ -193,7 +201,10 @@ def main() -> int:
     # ------------------------------------------------------------------
     policy_path = HERE / "policy.cedar"
     policy = CedarPolicy(policy_path.read_text(encoding="utf-8"))
-    eff = effective_scope(chain, policy)
+    # The root issuer must be pinned explicitly: a self-consistent chain minted
+    # by an attacker verifies on signatures and attenuation alone, so the trust
+    # anchor is what makes this authorization rather than structure-checking.
+    eff = effective_scope(chain, policy, trusted_root_issuers=[chain[0].issuer])
     policy_candidates = chain[-1].scope | {"task:audit"}
     policy_allow = sorted(cap for cap in policy_candidates if policy.permits(cap))
     print(f"      leaf delegated scope : {sorted(chain[-1].scope)}")
@@ -205,7 +216,13 @@ def main() -> int:
 
     # task:read is delegated AND permitted -> ALLOW (emits a provenance record).
     try:
-        decision = enforce_peer_call(chain, "task:read", policy=policy, record_id="rec-1")
+        decision = enforce_peer_call(
+            chain,
+            "task:read",
+            policy=policy,
+            record_id="rec-1",
+            trusted_root_issuers=[chain[0].issuer],
+        )
         read_allowed = True
     except ScopeNotPermitted:
         read_allowed = False
@@ -213,7 +230,13 @@ def main() -> int:
 
     # task:write is delegated but NOT locally permitted -> DENY (fail-closed).
     try:
-        enforce_peer_call(chain, "task:write", policy=policy, record_id="rec-x")
+        enforce_peer_call(
+            chain,
+            "task:write",
+            policy=policy,
+            record_id="rec-x",
+            trusted_root_issuers=[chain[0].issuer],
+        )
         write_denied = False
     except ScopeNotPermitted:
         write_denied = True
