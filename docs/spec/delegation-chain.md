@@ -20,7 +20,7 @@ A `DelegationCredential` has the following signed body plus a detached signature
 
 ## Canonicalization
 
-The signed bytes are the RFC 8785 (JSON Canonicalization Scheme) encoding of the body: keys sorted by UTF-16 code units, JCS minimal string escaping, non-ASCII emitted literally as UTF-8, integers in shortest decimal form, `scope` as a sorted array. This is the byte string signed and verified. Using JCS makes cA2A signatures cross-verifiable with agent-manifest and any other conforming implementation. See `ca2a_runtime.canonical`.
+The signed bytes are the RFC 8785 (JSON Canonicalization Scheme) encoding of the body: keys sorted by UTF-16 code units, JCS minimal string escaping, non-ASCII emitted literally as UTF-8, integers in shortest decimal form, `scope` as a sorted array. This is the byte string signed and verified. Using JCS makes the signed bytes deterministic and independently reproducible by conforming implementations of the cA2A credential schema. It does not make differently structured delegation objects signature-interchangeable. See `ca2a_runtime.canonical`.
 
 The wire object is strict: fields are not coerced, unknown fields are rejected,
 keys and signatures must use their exact lowercase hex encodings, `depth` must
@@ -81,4 +81,13 @@ Attenuation, the guarantee that a child grant cannot exceed its parent, is the c
 
 ## Relationship to agent-manifest
 
-These semantics mirror the signed A2A delegation chain implemented and tested in [agent-manifest](https://github.com/agentrust-io/agent-manifest), including cross-manifest replay protection and HITL approval signing. cA2A's runtime calls that verifier on inbound peer requests; this module is the runtime-side model.
+The cA2A delegation model shares security goals and delegation semantics with
+[agent-manifest](https://github.com/agentrust-io/agent-manifest), including
+signed delegation and scope attenuation. The wire objects are nevertheless
+distinct. cA2A signs `DelegationCredential` bodies, while agent-manifest signs
+`DelegationHop` objects with a different field set and signature pre-image.
+
+Sharing RFC 8785 canonicalization therefore does not make the two credential
+formats directly signature-interchangeable. Interoperability is at the level of
+delegation semantics and invariants unless an explicit cross-format binding is
+defined.
