@@ -21,9 +21,9 @@ That table is about *appraisal*. Collection is a separate axis, and a verifier v
 | Platform | Collector | Run on real silicon |
 |---|---|---|
 | TPM 2.0 | tpm2-pytss, platform AK with a transient fallback | **Yes**, 2026-08-01, Azure Trusted Launch vTPM |
-| AMD SEV-SNP (non-paravisor) | configfs-TSM, provider `sev_guest` | **No** |
+| AMD SEV-SNP (non-paravisor) | configfs-TSM, provider `sev_guest` | **Yes**, 2026-08-24, GCP `n2d-standard-4` (AMD Milan) |
 | AMD SEV-SNP (Azure paravisor) | Out of scope: the guest cannot set `REPORT_DATA`, so the channel key is rooted through the vTPM instead | n/a |
-| Intel TDX (non-paravisor) | configfs-TSM, provider `tdx_guest` | **No** |
+| Intel TDX (non-paravisor) | configfs-TSM, provider `tdx_guest` | **Yes**, 2026-08-24, GCP `c3-standard-4` |
 
 ## What these runs do and do not establish
 
@@ -45,6 +45,12 @@ attested, and the committed `examples/cross-operator-delegation` harness remains
 software-attested with synthetic vectors: the hardware runs are recorded here
 rather than shipped as fixtures, because the evidence embeds per-CPU
 identifiers.
+
+**As of 2026-08-24 the collectors have been run on real silicon for both SEV-SNP
+and TDX**, closing the gap the collection table above used to record as **No**.
+Both quotes were produced by this codebase's own providers through configfs-TSM
+and then appraised by this codebase's own verifiers to the vendor roots. See the
+collection section below.
 
 Verification is also bounded to a remote or rogue-admin adversary, not to one
 with physical access: [TEE.fail](https://tee.fail) extracts attestation keys from
@@ -187,21 +193,77 @@ is exercised against real vendor roots there.
 Note also that this is a Hyper-V vTPM, which is what Azure confidential and
 Trusted Launch VMs actually present, not a discrete TPM chip.
 
+## Collection on real silicon: SEV-SNP and TDX, GCP, 2026-08-24
+
+Both collectors were run on genuine confidential VMs in GCP `opaque-dev`,
+`us-central1-a`, and the evidence each produced was appraised by this codebase's
+own verifiers to the vendor roots. The VMs were ephemeral and deleted after the
+capture.
+
+**Intel TDX**, `c3-standard-4`, Ubuntu 24.04, kernel `6.17.0-1022-gcp`. The guest
+confirmed itself (`tdx: Guest detected`), `/sys/kernel/config/tsm/report` was
+present and `/dev/tdx_guest` existed (root-only, so collection needs root).
+`TdxProvider.detect()` returned `True` and `TdxProvider.attest` produced an
+**8000-byte DCAP v4 quote** whose `REPORTDATA` matched the derived binding and
+whose PCK chain arrived inside the quote. `verify_tdx_quote` then appraised it to
+the **Intel SGX Root CA** committed in `tests/fixtures`, giving version 4,
+`tee_type 0x81`, and a non-zero 48-byte MRTD.
+
+**AMD SEV-SNP**, `n2d-standard-4` pinned to AMD Milan, same image and kernel. The
+guest reported `Memory Encryption Features active: AMD SEV SEV-ES SEV-SNP`, with
+`/dev/sev-guest` present. `SevSnpProvider.attest` produced a **1184-byte report**
+and `auxblob` carried the AMD certificate table, 4763 bytes holding VCEK,
+`SEV-Milan` (ASK) and the self-signed `ARK-Milan`. `verify_sev_snp_report`
+appraised the report to that ARK and failed closed on a flipped bit in the signed
+body.
+
+Reproduce by pointing the gated tests at a capture directory:
+
+```
+CA2A_TDX_QUOTE=<dir>/tdx_quote.bin pytest tests/unit/test_tdx.py
+CA2A_SNP_FIXTURE_DIR=<dir> pytest tests/unit/test_sev_snp.py
+```
+
+where the SNP directory holds `snp_report.bin`, `vcek.der`, and a
+`cert_chain.pem` carrying **ASK then ARK only** — the test prepends the VCEK
+itself, so including it in the PEM duplicates the leaf and the chain fails to
+verify.
+
+The captures are not committed. A SEV-SNP report's 64-byte `CHIP_ID` is a per-CPU
+hardware identifier.
+
+### What the real host's PLATFORM_INFO said
+
+The SEV-SNP capture was the first chance to point the appraisal added for the
+`Platform state is not appraised` gap at a real cloud host rather than a
+synthetic vector. That host reported `PLATFORM_INFO = 0x0000000000000025`:
+
+| Bit | Field | Value |
+|---|---|---|
+| 0 | `smt_enabled` | **on** |
+| 1 | `tsme_enabled` | off |
+| 2 | `ecc_enabled` | **on** |
+| 3 | `rapl_disabled` | off |
+| 4 | `ciphertext_hiding_dram_enabled` | off |
+| 5 | `alias_check_complete` | **on** |
+| 7 | `tio_enabled` | off |
+
+So `require_platform={"alias_check_complete"}` is accepted on GCP: the firmware
+does complete the boot-time DRAM alias check, which is AMD's BadRAM mitigation
+(SB-3015). `forbid_platform={"smt_enabled"}` is **rejected**, because these hosts
+run with SMT enabled.
+
+Neither of those is a cA2A defect and neither is a GCP defect. The point is that
+**before this appraisal existed, that report verified exactly as cleanly as one
+from a host with SMT off**, because the signature, the chain and the measurement
+say which workload ran and never what the host was doing while it ran. A
+deployment that cares now has a way to say so and a way to find out.
+
 ## Not yet validated
 
 - **TPM certificate chain**: needs a quote signed by Azure's pre-provisioned AK
   (the one its NV certificate covers) plus Microsoft's `Global Virtual TPM CA`
   intermediate, which is not distributed with the certificate.
-- **SEV-SNP collection**: `SevSnpProvider.attest` requests a report over
-  configfs-TSM and has never run on an SNP guest. It needs a non-paravisor guest
-  (kernel 6.7+, the `sev-guest` driver registering a TSM provider) and root. The
-  run should confirm the provider string is `sev_guest`, that the returned
-  `REPORT_DATA` equals the derived `ca2a-snp-v1` binding, and that the report
-  verifies to the AMD root, ideally with the VCEK chain arriving in `auxblob`.
-  Note that the SEV-SNP appraisal above used an Azure capture, and Azure is
-  precisely where this collector does not apply.
-- **TDX collection**: `TdxProvider.attest` likewise. A GCP C3 guest is the
-  natural host, since the quote appraised above came from one.
 - **Mutual simultaneous attestation**: in the cross-TEE run above the attestation
   was one-directional. A appraised B's TDX quote; B's appraisal of A's SNP report
   was not exercised, and both peers were driven by one operator's harness. Two
