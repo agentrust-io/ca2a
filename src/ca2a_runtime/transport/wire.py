@@ -19,7 +19,6 @@ from ca2a_runtime.peer import PeerResult
 from ca2a_runtime.provenance import DelegationRecord
 from ca2a_runtime.tee.base import AttestationReport
 
-
 # Unpadded base64url alphabet only, matching transport.a2a_adapter's convention:
 # padding is added back on decode, so an embedded "=" (or any other out-of-alphabet
 # character) is rejected as malformed rather than silently ignored.
