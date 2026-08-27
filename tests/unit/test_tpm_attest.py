@@ -38,6 +38,7 @@ from ca2a_runtime.tee.tpm import (
     TpmQuote,
     tpm_qualifying_data,
 )
+from ca2a_runtime.transport import wire
 from ca2a_verify.tpm import (
     parse_tpmt_signature,
     tpm_verifier,
@@ -332,6 +333,42 @@ def test_tpm_offer_without_a_verifier_still_fails_closed() -> None:
     offer = ChannelOffer(channel_public_key=PUBLIC_KEY, report=report)
     with pytest.raises(AttestationFailed, match="requires a hardware verifier"):
         verify_offer(offer, expected_nonce=NONCE)
+
+
+def test_tpm_offer_survives_the_reference_transports_wire_codec() -> None:
+    """A hardware report must still reach assurance="hardware" after the exact
+    round trip the reference HTTP server/client run it through.
+
+    ``wire.serialize_channel_offer``/``parse_channel_offer`` is what
+    ``ca2a_runtime.transport.server`` sends on ``GET /.well-known/ca2a/channel``
+    and what ``ca2a_runtime.transport.client.handshake`` parses back. Encoding
+    only the claim fields (platform/measurement/public_key/nonce) and dropping
+    the evidence fields would make every hardware-attested offer unverifiable
+    over that transport, even though the provider produced a genuine quote.
+    """
+    report, root_pem = _report()
+    offer = ChannelOffer(channel_public_key=PUBLIC_KEY, report=report)
+
+    wire_body = wire.serialize_channel_offer(offer)
+    received = wire.parse_channel_offer(wire_body)
+
+    peer = verify_offer(received, expected_nonce=NONCE, verifier=tpm_verifier(root_pem))
+    assert peer.assurance == "hardware"
+    assert peer.measurement == "sha256:" + ("11" * 32)
+
+
+def test_software_only_offer_wire_body_has_no_evidence_keys() -> None:
+    """The evidence fields must be omitted, not sent as null, when absent -- so
+    a software-only offer's JSON is unchanged from before evidence traveled."""
+    bare = AttestationReport(
+        platform="software-only",
+        measurement="software-only-no-hardware-guarantee",
+        public_key=PUBLIC_KEY,
+        nonce=NONCE,
+    )
+    offer = ChannelOffer(channel_public_key=PUBLIC_KEY, report=bare)
+    body = wire.serialize_channel_offer(offer)
+    assert set(body["attestation"]) == {"platform", "measurement", "public_key", "nonce"}
 
 
 # ── collector checks ──────────────────────────────────────────────────────────
