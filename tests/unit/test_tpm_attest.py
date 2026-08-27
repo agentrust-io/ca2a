@@ -29,7 +29,7 @@ from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from cryptography.x509.oid import NameOID
 
 from ca2a_runtime.attestation import ChannelOffer, verify_offer
-from ca2a_runtime.errors import AttestationFailed, AttestationUnsupported
+from ca2a_runtime.errors import AttestationFailed, AttestationUnsupported, TransportError
 from ca2a_runtime.tee.base import AttestationReport
 from ca2a_runtime.tee.tpm import (
     TPM_GENERATED_VALUE,
@@ -369,6 +369,42 @@ def test_software_only_offer_wire_body_has_no_evidence_keys() -> None:
     offer = ChannelOffer(channel_public_key=PUBLIC_KEY, report=bare)
     body = wire.serialize_channel_offer(offer)
     assert set(body["attestation"]) == {"platform", "measurement", "public_key", "nonce"}
+
+
+def test_parse_channel_offer_rejects_evidence_with_invalid_alphabet() -> None:
+    """A malformed peer (or an attacker) can put anything in the JSON body.
+    A character outside the base64url alphabet (here "!") must fail closed
+    with a clear TransportError, not an uncaught exception."""
+    body = {
+        "channel_public_key": PUBLIC_KEY,
+        "attestation": {
+            "platform": "tpm",
+            "measurement": "sha256:" + ("11" * 32),
+            "public_key": PUBLIC_KEY,
+            "nonce": NONCE,
+            "raw_evidence": "not-valid-base64url!!",
+        },
+    }
+    with pytest.raises(TransportError, match="raw_evidence is not valid base64url"):
+        wire.parse_channel_offer(body)
+
+
+def test_parse_channel_offer_rejects_evidence_with_bad_length() -> None:
+    """A string that only uses base64url-alphabet characters can still be an
+    invalid length (e.g. a single character can never be valid base64). That
+    must also fail closed with a TransportError, not a raw binascii.Error."""
+    body = {
+        "channel_public_key": PUBLIC_KEY,
+        "attestation": {
+            "platform": "tpm",
+            "measurement": "sha256:" + ("11" * 32),
+            "public_key": PUBLIC_KEY,
+            "nonce": NONCE,
+            "quote_signature": "A",
+        },
+    }
+    with pytest.raises(TransportError, match="quote_signature is not valid base64url"):
+        wire.parse_channel_offer(body)
 
 
 # ── collector checks ──────────────────────────────────────────────────────────
