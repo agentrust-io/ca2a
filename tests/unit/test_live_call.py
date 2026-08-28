@@ -217,7 +217,7 @@ def test_parse_channel_offer_rejects_evidence_with_bad_length() -> None:
 
 
 def test_parse_channel_offer_rejects_evidence_that_is_the_empty_string() -> None:
-    """"" passes a `*`-quantified base64url check and decodes to b"", which is
+    """ "" passes a `*`-quantified base64url check and decodes to b"", which is
     not None -- letting a peer put a field there that is present but empty
     (see AttestationReport.raw_evidence's `is None` presence check). The regex
     requires at least one character, so this must fail closed instead."""

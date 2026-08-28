@@ -53,7 +53,6 @@ def _require_http_url(url: str) -> None:
         )
 
 
-
 def _read_bounded(resp: Any) -> bytes:
     """Read a response body, failing closed once it exceeds ``_MAX_RESPONSE``.
 
