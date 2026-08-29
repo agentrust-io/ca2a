@@ -9,9 +9,7 @@ those are separate Tier 2/3 checkboxes. See ``docs/spec/transport.md``.
 
 from __future__ import annotations
 
-import base64
 import copy
-import re
 from typing import Any
 
 from ca2a_runtime.attestation import ChannelOffer
@@ -19,6 +17,7 @@ from ca2a_runtime.delegation.credential import DelegationCredential
 from ca2a_runtime.delegation.holder import HolderProof
 from ca2a_runtime.errors import InvalidCredential, TransportError
 from ca2a_runtime.peer import PeerRequest
+from ca2a_runtime.transport._b64url import b64url_decode, b64url_encode
 from ca2a_runtime.transport.constants import (
     CA2A_METADATA_KEYS,
     KEY_CALLER_OFFER,
@@ -30,10 +29,6 @@ from ca2a_runtime.transport.constants import (
     KEY_SEALED_PAYLOAD,
 )
 from ca2a_runtime.transport.wire import parse_channel_offer, serialize_channel_offer
-
-# Unpadded base64url alphabet only; padding is added during decode, so an
-# embedded "=" (or any other character) is rejected as malformed.
-_BASE64URL_RE = re.compile(r"[A-Za-z0-9_-]*")
 
 
 def has_ca2a_metadata(metadata: dict[str, Any] | None) -> bool:
@@ -76,33 +71,6 @@ def collect_metadata(
     if metadata is not None:
         collected.update(metadata)
     return collected
-
-
-def _b64url_decode(value: str) -> bytes:
-    """Decode a base64url string, failing closed on any non-base64url input.
-
-    ``base64.urlsafe_b64decode`` silently ignores characters outside the
-    alphabet, so a malformed value like ``"abcd?"`` would otherwise be accepted
-    as opaque bytes. We validate the URL-safe alphabet (and reject embedded
-    padding) before decoding so present-but-malformed metadata fails closed.
-    """
-    if not _BASE64URL_RE.fullmatch(value):
-        raise TransportError(
-            "sealed_payload is not valid base64url",
-            detail="value contains characters outside the base64url alphabet",
-        )
-    try:
-        padded = value + "=" * (-len(value) % 4)
-        return base64.urlsafe_b64decode(padded.encode("ascii"))
-    except (ValueError, UnicodeEncodeError) as exc:
-        raise TransportError(
-            "sealed_payload is not valid base64url",
-            detail=str(exc),
-        ) from exc
-
-
-def _b64url_encode(value: bytes) -> str:
-    return base64.urlsafe_b64encode(value).decode("ascii").rstrip("=")
 
 
 def _credential_to_dict(cred: DelegationCredential) -> dict[str, Any]:
@@ -181,7 +149,7 @@ def parse_peer_request(
         sealed_raw = meta[KEY_SEALED_PAYLOAD]
         if not isinstance(sealed_raw, str):
             raise TransportError("sealed_payload must be a base64url string or null")
-        sealed_payload = _b64url_decode(sealed_raw)
+        sealed_payload = b64url_decode("sealed_payload", sealed_raw)
 
     # Optional, unlike parent_record_hash: an absent key means a caller that does
     # not attest, which is the common case and must parse. A key that is present
@@ -258,7 +226,7 @@ def attach_ca2a_metadata(
     if request.sealed_payload is None:
         meta.pop(KEY_SEALED_PAYLOAD, None)
     else:
-        meta[KEY_SEALED_PAYLOAD] = _b64url_encode(request.sealed_payload)
+        meta[KEY_SEALED_PAYLOAD] = b64url_encode(request.sealed_payload)
     if request.caller_offer is None:
         meta.pop(KEY_CALLER_OFFER, None)
     else:

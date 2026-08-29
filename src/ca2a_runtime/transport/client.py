@@ -36,6 +36,7 @@ from ca2a_runtime.transport.server import CHANNEL_PATH, TASK_PATH
 
 _TIMEOUT = 10.0
 _ALLOWED_SCHEMES = ("http", "https")
+_MAX_RESPONSE = 1 << 20
 
 
 def _require_http_url(url: str) -> None:
@@ -52,10 +53,29 @@ def _require_http_url(url: str) -> None:
         )
 
 
+def _read_bounded(resp: Any) -> bytes:
+    """Read a response body, failing closed once it exceeds ``_MAX_RESPONSE``.
+
+    A callee's ``Content-Length`` header is not trusted as the cap: a hostile
+    or simply broken peer can omit it, lie about it, or use chunked transfer
+    encoding, and ``http.client`` will still hand back whatever bytes arrive.
+    Reading one byte past the limit and checking the actual length -- the same
+    read-then-check shape ``server.py`` uses for the request side via
+    ``_MAX_BODY`` -- bounds memory regardless of what the peer claims.
+    """
+    body = resp.read(_MAX_RESPONSE + 1)
+    if len(body) > _MAX_RESPONSE:
+        raise TransportError(
+            "peer response exceeds the maximum allowed size",
+            detail=f"body must be at most {_MAX_RESPONSE} bytes",
+        )
+    return body
+
+
 def _get_json(url: str) -> dict[str, Any]:
     _require_http_url(url)
     with urllib.request.urlopen(url, timeout=_TIMEOUT) as resp:  # noqa: S310  # nosec B310
-        return json.loads(resp.read())
+        return json.loads(_read_bounded(resp))
 
 
 def _post_json(url: str, body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
@@ -66,9 +86,9 @@ def _post_json(url: str, body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
     )
     try:
         with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:  # noqa: S310  # nosec B310
-            return resp.status, json.loads(resp.read())
+            return resp.status, json.loads(_read_bounded(resp))
     except urllib.error.HTTPError as exc:
-        return exc.code, json.loads(exc.read())
+        return exc.code, json.loads(_read_bounded(exc))
 
 
 @dataclass(frozen=True)

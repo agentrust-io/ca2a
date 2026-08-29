@@ -5,6 +5,7 @@ via ``attach_ca2a_metadata`` to build real messages."""
 
 from __future__ import annotations
 
+import dataclasses
 import json
 import socket
 import threading
@@ -14,7 +15,7 @@ import urllib.request
 import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-from ca2a_runtime.attestation import seal_to_peer, verify_offer
+from ca2a_runtime.attestation import ChannelOffer, seal_to_peer, verify_offer
 from ca2a_runtime.delegation.credential import DelegationCredential, new_keypair
 from ca2a_runtime.delegation.holder import build_holder_proof
 from ca2a_runtime.errors import (
@@ -27,7 +28,11 @@ from ca2a_runtime.errors import (
 from ca2a_runtime.node import PeerNode
 from ca2a_runtime.peer import PeerRequest
 from ca2a_runtime.policy import LocalPolicy
+from ca2a_runtime.tee.base import AttestationReport
 from ca2a_runtime.transport import a2a_adapter, client, server, wire
+
+PUBLIC_KEY = "aa" * 32
+NONCE = "nonce-1"
 
 
 def _post_bytes(url: str, raw: bytes) -> tuple[int, dict]:
@@ -147,6 +152,140 @@ def test_channel_offer_wire_roundtrip() -> None:
     assert parsed.channel_public_key == offer.channel_public_key
     peer = verify_offer(parsed, expected_nonce="nonce-1")
     assert peer.public_key == node.channel_public_key
+
+
+def test_wire_carries_every_attestation_report_field() -> None:
+    """The claim/evidence field lists in wire.py are hand-written and read back
+    with getattr, so a field added to AttestationReport without a matching
+    entry in one of the two tuples would be silently dropped on the wire again
+    -- which is exactly the shape of the bug this module exists to fix. Pinning
+    the two tuples against dataclasses.fields makes that impossible to miss.
+    """
+    covered = set(wire._CLAIM_FIELDS) | set(wire._EVIDENCE_FIELDS)
+    declared = {f.name for f in dataclasses.fields(AttestationReport)}
+    assert covered == declared
+
+
+def test_software_only_offer_wire_body_has_no_evidence_keys() -> None:
+    """The evidence fields must be omitted, not sent as null, when absent -- so
+    a software-only offer's JSON is unchanged from before evidence traveled."""
+    bare = AttestationReport(
+        platform="software-only",
+        measurement="software-only-no-hardware-guarantee",
+        public_key=PUBLIC_KEY,
+        nonce=NONCE,
+    )
+    offer = ChannelOffer(channel_public_key=PUBLIC_KEY, report=bare)
+    body = wire.serialize_channel_offer(offer)
+    assert set(body["attestation"]) == {"platform", "measurement", "public_key", "nonce"}
+
+
+def test_parse_channel_offer_rejects_evidence_with_invalid_alphabet() -> None:
+    """A malformed peer (or an attacker) can put anything in the JSON body.
+    A character outside the base64url alphabet (here "!") must fail closed
+    with a clear TransportError, not an uncaught exception."""
+    body = {
+        "channel_public_key": PUBLIC_KEY,
+        "attestation": {
+            "platform": "tpm",
+            "measurement": "sha256:" + ("11" * 32),
+            "public_key": PUBLIC_KEY,
+            "nonce": NONCE,
+            "raw_evidence": "not-valid-base64url!!",
+        },
+    }
+    with pytest.raises(TransportError, match="raw_evidence is not valid base64url"):
+        wire.parse_channel_offer(body)
+
+
+def test_parse_channel_offer_rejects_evidence_with_bad_length() -> None:
+    """A string that only uses base64url-alphabet characters can still be an
+    invalid length (e.g. a single character can never be valid base64). That
+    must also fail closed with a TransportError, not a raw binascii.Error."""
+    body = {
+        "channel_public_key": PUBLIC_KEY,
+        "attestation": {
+            "platform": "tpm",
+            "measurement": "sha256:" + ("11" * 32),
+            "public_key": PUBLIC_KEY,
+            "nonce": NONCE,
+            "quote_signature": "A",
+        },
+    }
+    with pytest.raises(TransportError, match="quote_signature is not valid base64url"):
+        wire.parse_channel_offer(body)
+
+
+def test_parse_channel_offer_rejects_evidence_that_is_the_empty_string() -> None:
+    """ "" passes a `*`-quantified base64url check and decodes to b"", which is
+    not None -- letting a peer put a field there that is present but empty
+    (see AttestationReport.raw_evidence's `is None` presence check). The regex
+    requires at least one character, so this must fail closed instead."""
+    body = {
+        "channel_public_key": PUBLIC_KEY,
+        "attestation": {
+            "platform": "tpm",
+            "measurement": "sha256:" + ("11" * 32),
+            "public_key": PUBLIC_KEY,
+            "nonce": NONCE,
+            "raw_evidence": "",
+        },
+    }
+    with pytest.raises(TransportError, match="raw_evidence is not valid base64url"):
+        wire.parse_channel_offer(body)
+
+
+def test_oversized_channel_response_is_refused_by_the_client() -> None:
+    """The client-side mirror of test_oversized_body_is_refused_at_the_declared_bound.
+
+    Once a channel offer can carry base64-encoded evidence, its size is no
+    longer bounded by its shape the way four short claim strings were. A
+    hostile or broken callee returning an oversized handshake response must be
+    refused by the caller rather than buffered into memory in full.
+    """
+    big_evidence = "A" * (client._MAX_RESPONSE + 1)
+
+    class _Hostile(server._PeerHandler):  # type: ignore[misc]  # private class, test-only
+        def do_GET(self) -> None:  # noqa: N802
+            self._send_json(
+                200,
+                {
+                    "channel_public_key": PUBLIC_KEY,
+                    "attestation": {
+                        "platform": "tpm",
+                        "measurement": "sha256:" + ("11" * 32),
+                        "public_key": PUBLIC_KEY,
+                        "nonce": "n",
+                        "raw_evidence": big_evidence,
+                    },
+                },
+            )
+
+    srv = server.PeerHTTPServer(("127.0.0.1", 0), PeerNode(LocalPolicy.of({"read"})))
+    srv.RequestHandlerClass = _Hostile
+    port = srv.server_address[1]
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        url = f"http://127.0.0.1:{port}{server.CHANNEL_PATH}?nonce=n"
+        with pytest.raises(TransportError, match="exceeds the maximum allowed size"):
+            client._get_json(url)
+    finally:
+        srv.shutdown()
+        srv.server_close()
+
+
+def test_response_under_the_cap_is_read_normally() -> None:
+    """The boundary still opens: a response under the cap is read in full."""
+    node = PeerNode(LocalPolicy.of({"read"}))
+    srv = server.serve(node, host="127.0.0.1", port=0)
+    port = srv.server_address[1]
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        hs = client.handshake(f"http://127.0.0.1:{port}")
+        assert hs.peer.assurance == "none"
+    finally:
+        srv.shutdown()
+        srv.server_close()
 
 
 def test_serialize_result_shape() -> None:
