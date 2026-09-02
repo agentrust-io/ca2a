@@ -26,8 +26,14 @@ def test_a2a_sdk_extra_cannot_resolve_vulnerable_aiohttp() -> None:
 
 
 def test_docs_floor_excludes_vulnerable_pymdown_extensions() -> None:
+    # Compare parsed versions rather than the literal pin, so that raising the
+    # floor (which is always safer) does not fail this test. 11.0.1 is the first
+    # release without the advisory; anything at or above it is acceptable.
     requirements = Path("requirements-docs.txt").read_text(encoding="utf-8").splitlines()
-    assert "pymdown-extensions>=11.0.1" in requirements
+    pins = [line for line in requirements if line.startswith("pymdown-extensions>=")]
+    assert len(pins) == 1, f"expected exactly one pymdown-extensions floor, got {pins}"
+    floor = tuple(int(part) for part in pins[0].split(">=", 1)[1].strip().split("."))
+    assert floor >= (11, 0, 1)
 
 
 def test_governance_tooling_cannot_downgrade_runtime_dependencies() -> None:
