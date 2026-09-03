@@ -34,6 +34,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- TPM report verification now preserves the parsed `TPMT_SIGNATURE` algorithm
+  metadata alongside the signature when it delegates to Agent Manifest. Previously
+  cA2A parsed `sig_alg` and `hash_alg`, then passed only the bare signature to
+  the shared verifier's legacy defaults (RSASSA/SHA-256 for these RSA cases).
+  A valid RSAPSS/SHA-384 report therefore failed, while changing an
+  RSASSA/SHA-256 envelope to falsely
+  declare RSAPSS or SHA-384 did not change the verification decision. The
+  declared scheme and digest now govern verification, so their consistency
+  with the signature operation is checked, with regression tests for both
+  two-byte fields. The `TPMT_SIGNATURE` wrapper is not itself part of the
+  signed `TPMS_ATTEST` bytes. The lower-level bare-signature API retains its
+  compatibility defaults, and this change does not add an algorithm-strength
+  policy.
+
 - Offline delegation verification now requires an explicit trusted root issuer.
   The core `verify_chain` API also fails closed when callers omit the trust set,
   so a self-consistent chain minted by an attacker cannot be mistaken for an
