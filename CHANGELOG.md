@@ -44,9 +44,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   declared scheme and digest now govern verification, so their consistency
   with the signature operation is checked, with regression tests for both
   two-byte fields. The `TPMT_SIGNATURE` wrapper is not itself part of the
-  signed `TPMS_ATTEST` bytes. The lower-level bare-signature API retains its
-  compatibility defaults, and this change does not add an algorithm-strength
-  policy.
+  signed `TPMS_ATTEST` bytes. The lower-level bare-signature API now applies its
+  ECDSA/SHA-256 or RSASSA/SHA-256 compatibility default explicitly according to
+  the AK key type. It no longer lets a valid bare RSA signature whose first two
+  bytes resemble a TPM algorithm id be misparsed as an envelope. This change
+  does not add an algorithm-strength policy.
 
 - Offline delegation verification now requires an explicit trusted root issuer.
   The core `verify_chain` API also fails closed when callers omit the trust set,

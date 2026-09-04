@@ -18,6 +18,7 @@ from __future__ import annotations
 import hashlib
 import struct
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
@@ -56,6 +57,7 @@ _ALG_SHA384 = 0x000C
 
 PUBLIC_KEY = "aa" * 32
 NONCE = "deadbeef"
+_TPM_FIXTURES = Path(__file__).parents[1] / "fixtures" / "tpm"
 
 
 # ── qualifying data: the signed binding ───────────────────────────────────────
@@ -286,6 +288,22 @@ def test_parsed_rsapss_sha384_verifies_through_lower_level_api() -> None:
         x509.load_pem_x509_certificates(report.attestation_key_chain_pem),
         trusted_roots=[x509.load_pem_x509_certificate(root_pem)],
     )
+
+    assert quote.pcr_digest == b"\x11" * 32
+
+
+def test_bare_rsassa_signature_prefix_cannot_be_misparsed_as_tpmt_signature() -> None:
+    """A bare ``00 16`` prefix is signature data, not an RSAPSS discriminator."""
+    vector = _TPM_FIXTURES / "bare-rsa-prefix-0016"
+    attest = bytes.fromhex((vector / "attest.hex").read_text(encoding="ascii"))
+    signature = bytes.fromhex((vector / "signature.hex").read_text(encoding="ascii"))
+    chain = x509.load_pem_x509_certificates((vector / "ak-chain.pem").read_bytes())
+    roots = x509.load_pem_x509_certificates((vector / "trusted-root.pem").read_bytes())
+
+    assert len(signature) == 256
+    assert signature[:2] == _ALG_RSAPSS.to_bytes(2, "big")
+
+    quote = verify_tpm_quote(attest, signature, chain, trusted_roots=roots)
 
     assert quote.pcr_digest == b"\x11" * 32
 
