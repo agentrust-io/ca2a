@@ -18,13 +18,14 @@ from __future__ import annotations
 import hashlib
 import struct
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
 from cryptography import x509
 from cryptography.hazmat.primitives.asymmetric import ec, padding, rsa
 from cryptography.hazmat.primitives.asymmetric.utils import decode_dss_signature
-from cryptography.hazmat.primitives.hashes import SHA256, SHA384
+from cryptography.hazmat.primitives.hashes import SHA256, SHA384, HashAlgorithm
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
 from cryptography.x509.oid import NameOID
 
@@ -42,17 +43,21 @@ from ca2a_runtime.transport import wire
 from ca2a_verify.tpm import (
     parse_tpmt_signature,
     tpm_verifier,
+    verify_tpm_quote,
     verify_tpm_report,
 )
 from tests.unit.conftest import make_ec_cert
 from tests.unit.test_tpm import build_attest
 
 _ALG_RSASSA = 0x0014
+_ALG_RSAPSS = 0x0016
 _ALG_ECDSA = 0x0018
 _ALG_SHA256 = 0x000B
+_ALG_SHA384 = 0x000C
 
 PUBLIC_KEY = "aa" * 32
 NONCE = "deadbeef"
+_TPM_FIXTURES = Path(__file__).parents[1] / "fixtures" / "tpm"
 
 
 # ── qualifying data: the signed binding ───────────────────────────────────────
@@ -93,7 +98,7 @@ def test_qualifying_data_is_domain_separated() -> None:
     assert tpm_qualifying_data(PUBLIC_KEY, NONCE) != naive
 
 
-# ── TPMT_SIGNATURE, the format agent-manifest does not model ──────────────────
+# ── TPMT_SIGNATURE, delegated to agent-manifest with cA2A errors ──────────────
 
 
 def _tpmt_ecdsa(signature_der: bytes) -> bytes:
@@ -109,10 +114,10 @@ def _tpmt_ecdsa(signature_der: bytes) -> bytes:
     )
 
 
-def _tpmt_rsassa(signature: bytes) -> bytes:
-    return (
-        struct.pack(">HH", _ALG_RSASSA, _ALG_SHA256) + struct.pack(">H", len(signature)) + signature
-    )
+def _tpmt_rsa(
+    signature: bytes, *, sig_alg: int = _ALG_RSASSA, hash_alg: int = _ALG_SHA256
+) -> bytes:
+    return struct.pack(">HHH", sig_alg, hash_alg, len(signature)) + signature
 
 
 def test_parse_tpmt_signature_round_trips_ecdsa() -> None:
@@ -127,7 +132,7 @@ def test_parse_tpmt_signature_round_trips_ecdsa() -> None:
 def test_parse_tpmt_signature_round_trips_rsassa() -> None:
     key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
     sig = key.sign(b"message", padding.PKCS1v15(), SHA256())
-    parsed = parse_tpmt_signature(_tpmt_rsassa(sig))
+    parsed = parse_tpmt_signature(_tpmt_rsa(sig))
     assert parsed.sig_alg == _ALG_RSASSA
     assert parsed.signature == sig
 
@@ -196,6 +201,10 @@ def _report(
     qualifying_data: bytes | None = None,
     measurement: str | None = None,
     rsa_ak: bool = False,
+    rsa_padding: padding.AsymmetricPadding | None = None,
+    rsa_digest: HashAlgorithm | None = None,
+    declared_sig_alg: int = _ALG_RSASSA,
+    declared_hash_alg: int = _ALG_SHA256,
 ) -> tuple[AttestationReport, bytes]:
     """Build a signed synthetic TPM report. Returns (report, root_pem)."""
     if qualifying_data is None:
@@ -204,7 +213,15 @@ def _report(
 
     if rsa_ak:
         rsa_key, chain_pem, root_pem = _rsa_ak_chain()
-        sig_blob = _tpmt_rsassa(rsa_key.sign(attest, padding.PKCS1v15(), SHA256()))
+        sig_blob = _tpmt_rsa(
+            rsa_key.sign(
+                attest,
+                rsa_padding or padding.PKCS1v15(),
+                rsa_digest or SHA256(),
+            ),
+            sig_alg=declared_sig_alg,
+            hash_alg=declared_hash_alg,
+        )
         ak_pem = rsa_key.public_key().public_bytes(Encoding.PEM, PublicFormat.SubjectPublicKeyInfo)
     else:
         ec_key, chain_pem, root_pem = _ec_ak_chain()
@@ -237,6 +254,76 @@ def test_valid_rsa_report_verifies() -> None:
     """RSASSA is what the Azure vTPM signs with, so it must verify too."""
     report, root_pem = _report(rsa_ak=True)
     assert verify_tpm_report(report, NONCE, trusted_roots_pem=root_pem)
+
+
+def test_valid_rsapss_sha384_report_verifies() -> None:
+    """The report path must preserve the signature envelope's declared algorithms."""
+    report, root_pem = _report(
+        rsa_ak=True,
+        rsa_padding=padding.PSS(mgf=padding.MGF1(SHA384()), salt_length=padding.PSS.DIGEST_LENGTH),
+        rsa_digest=SHA384(),
+        declared_sig_alg=_ALG_RSAPSS,
+        declared_hash_alg=_ALG_SHA384,
+    )
+
+    assert verify_tpm_report(report, NONCE, trusted_roots_pem=root_pem)
+
+
+def test_parsed_rsapss_sha384_verifies_through_lower_level_api() -> None:
+    """The documented lower-level API accepts parsed signature metadata too."""
+    report, root_pem = _report(
+        rsa_ak=True,
+        rsa_padding=padding.PSS(mgf=padding.MGF1(SHA384()), salt_length=padding.PSS.DIGEST_LENGTH),
+        rsa_digest=SHA384(),
+        declared_sig_alg=_ALG_RSAPSS,
+        declared_hash_alg=_ALG_SHA384,
+    )
+    assert report.raw_evidence is not None
+    assert report.quote_signature is not None
+    assert report.attestation_key_chain_pem is not None
+
+    quote = verify_tpm_quote(
+        report.raw_evidence,
+        parse_tpmt_signature(report.quote_signature),
+        x509.load_pem_x509_certificates(report.attestation_key_chain_pem),
+        trusted_roots=[x509.load_pem_x509_certificate(root_pem)],
+    )
+
+    assert quote.pcr_digest == b"\x11" * 32
+
+
+def test_bare_rsassa_signature_prefix_cannot_be_misparsed_as_tpmt_signature() -> None:
+    """A bare ``00 16`` prefix is signature data, not an RSAPSS discriminator."""
+    vector = _TPM_FIXTURES / "bare-rsa-prefix-0016"
+    attest = bytes.fromhex((vector / "attest.hex").read_text(encoding="ascii"))
+    signature = bytes.fromhex((vector / "signature.hex").read_text(encoding="ascii"))
+    chain = x509.load_pem_x509_certificates((vector / "ak-chain.pem").read_bytes())
+    roots = x509.load_pem_x509_certificates((vector / "trusted-root.pem").read_bytes())
+
+    assert len(signature) == 256
+    assert signature[:2] == _ALG_RSAPSS.to_bytes(2, "big")
+
+    quote = verify_tpm_quote(attest, signature, chain, trusted_roots=roots)
+
+    assert quote.pcr_digest == b"\x11" * 32
+
+
+def test_report_with_false_signature_scheme_is_rejected() -> None:
+    """Changing RSASSA to RSAPSS in the envelope must not preserve success."""
+    report, root_pem = _report(rsa_ak=True, declared_sig_alg=_ALG_RSAPSS)
+
+    with pytest.raises(AttestationFailed) as exc_info:
+        verify_tpm_report(report, NONCE, trusted_roots_pem=root_pem)
+    assert exc_info.value.detail == "the AK signature or an expected binding did not match"
+
+
+def test_report_with_false_signature_digest_is_rejected() -> None:
+    """Changing SHA-256 to SHA-384 in the envelope must not preserve success."""
+    report, root_pem = _report(rsa_ak=True, declared_hash_alg=_ALG_SHA384)
+
+    with pytest.raises(AttestationFailed) as exc_info:
+        verify_tpm_report(report, NONCE, trusted_roots_pem=root_pem)
+    assert exc_info.value.detail == "the AK signature or an expected binding did not match"
 
 
 def test_substituted_public_key_is_rejected() -> None:
@@ -355,6 +442,45 @@ def test_tpm_offer_survives_the_reference_transports_wire_codec() -> None:
     peer = verify_offer(received, expected_nonce=NONCE, verifier=tpm_verifier(root_pem))
     assert peer.assurance == "hardware"
     assert peer.measurement == "sha256:" + ("11" * 32)
+
+
+def _verify_report_through_reference_wire(report: AttestationReport, root_pem: bytes) -> str:
+    offer = ChannelOffer(channel_public_key=report.public_key, report=report)
+    received = wire.parse_channel_offer(wire.serialize_channel_offer(offer))
+    peer = verify_offer(received, expected_nonce=NONCE, verifier=tpm_verifier(root_pem))
+    assert peer.assurance == "hardware"
+    return peer.measurement
+
+
+def test_rsapss_sha384_report_verifies_through_reference_wire() -> None:
+    """The programmatic handshake must retain and apply both algorithm ids."""
+    report, root_pem = _report(
+        rsa_ak=True,
+        rsa_padding=padding.PSS(mgf=padding.MGF1(SHA384()), salt_length=padding.PSS.DIGEST_LENGTH),
+        rsa_digest=SHA384(),
+        declared_sig_alg=_ALG_RSAPSS,
+        declared_hash_alg=_ALG_SHA384,
+    )
+
+    assert _verify_report_through_reference_wire(report, root_pem) == "sha256:" + ("11" * 32)
+
+
+def test_false_signature_scheme_is_rejected_through_reference_wire() -> None:
+    """A wire round trip must not make a false RSAPSS declaration acceptable."""
+    report, root_pem = _report(rsa_ak=True, declared_sig_alg=_ALG_RSAPSS)
+
+    with pytest.raises(AttestationFailed) as exc_info:
+        _verify_report_through_reference_wire(report, root_pem)
+    assert exc_info.value.detail == "the AK signature or an expected binding did not match"
+
+
+def test_false_signature_digest_is_rejected_through_reference_wire() -> None:
+    """A wire round trip must not make a false SHA-384 declaration acceptable."""
+    report, root_pem = _report(rsa_ak=True, declared_hash_alg=_ALG_SHA384)
+
+    with pytest.raises(AttestationFailed) as exc_info:
+        _verify_report_through_reference_wire(report, root_pem)
+    assert exc_info.value.detail == "the AK signature or an expected binding did not match"
 
 
 # ── collector checks ──────────────────────────────────────────────────────────

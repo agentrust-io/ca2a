@@ -19,6 +19,17 @@ delegation that keeps cA2A's error contract (:class:`AttestationFailed`) while t
 wire format itself lives in one place. cmcp carried a byte-identical copy of the
 same parse; both are retired.
 
+The complete parsed signature is passed to the shared verifier. Its ``sig_alg``
+and ``hash_alg`` declarations therefore select verification; cA2A does not
+discard them and silently fall back to the legacy bare-signature defaults.
+Those declarations are not themselves inside the signed ``TPMS_ATTEST`` bytes.
+Applying them to the verification operation is what checks that they describe
+the signature. At the lower-level compatibility API, cA2A explicitly tags a
+bare signature with the historical algorithm for the AK key type instead of
+asking the shared verifier to guess from attacker-controlled signature-prefix
+bytes. This path enforces algorithm consistency, not a deployment strength
+policy.
+
 There is no single published TPM root, so the caller supplies the vendor roots it
 trusts. :mod:`ca2a_verify.tpm_roots` carries the one root validated on hardware as
 an opt-in constant. Verifying against no root at all is refused.
@@ -29,6 +40,7 @@ from __future__ import annotations
 from agent_manifest import ParsedSignature, TpmVerificationError
 from agent_manifest import parse_tpmt_signature as _am_parse_tpmt_signature
 from cryptography import x509
+from cryptography.hazmat.primitives.asymmetric import ec, rsa
 from cryptography.hazmat.primitives.serialization import Encoding
 
 from ca2a_runtime.attestation import Verifier
@@ -47,9 +59,13 @@ __all__ = [
 # ParsedSignature is re-exported from agent-manifest, which owns the layout. Its
 # fields (sig_alg, hash_alg, signature) are unchanged from cA2A's former copy.
 
+_ALG_RSASSA = 0x0014
+_ALG_ECDSA = 0x0018
+_ALG_SHA256 = 0x000B
+
 
 def parse_tpmt_signature(blob: bytes) -> ParsedSignature:
-    """Unwrap a ``TPMT_SIGNATURE`` into a bare signature.
+    """Parse a ``TPMT_SIGNATURE`` into its algorithm ids and signature bytes.
 
     Delegates the layout to ``agent_manifest.parse_tpmt_signature`` and translates
     its error into cA2A's, so callers keep catching :class:`AttestationFailed`.
@@ -66,9 +82,33 @@ def parse_tpmt_signature(blob: bytes) -> ParsedSignature:
         raise AttestationFailed(str(exc)) from exc
 
 
+def _tag_legacy_bare_signature(
+    signature: bytes | ParsedSignature,
+    ak: x509.Certificate,
+) -> bytes | ParsedSignature:
+    """Make the legacy bare-signature interpretation explicit.
+
+    A bare RSA signature is arbitrary fixed-width data. Its first two bytes can
+    therefore equal a valid TPM algorithm id by chance. Passing such bytes to a
+    verifier that also accepts marshalled ``TPMT_SIGNATURE`` values makes the two
+    formats ambiguous. cA2A's public contract distinguishes them by Python type:
+    ``bytes`` means the historical SHA-256 default, while a parsed envelope is a
+    :class:`ParsedSignature`.
+    """
+    if isinstance(signature, ParsedSignature):
+        return signature
+
+    key = ak.public_key()
+    if isinstance(key, rsa.RSAPublicKey):
+        return ParsedSignature(_ALG_RSASSA, _ALG_SHA256, signature)
+    if isinstance(key, ec.EllipticCurvePublicKey):
+        return ParsedSignature(_ALG_ECDSA, _ALG_SHA256, signature)
+    return signature
+
+
 def _delegate(
     attest: bytes,
-    signature: bytes,
+    signature: bytes | ParsedSignature,
     ak_chain_pem: bytes,
     trusted_roots_pem: bytes,
     expected_qualifying_data: bytes | None,
@@ -104,7 +144,7 @@ def _delegate(
 
 def verify_tpm_quote(
     attest: bytes,
-    signature: bytes,
+    signature: bytes | ParsedSignature,
     ak_chain: list[x509.Certificate],
     *,
     trusted_roots: list[x509.Certificate],
@@ -113,9 +153,14 @@ def verify_tpm_quote(
 ) -> TpmQuote:
     """Appraise a TPM 2.0 quote offline. Raises AttestationFailed on any failure.
 
-    ``signature`` is the bare AK signature. For a marshalled ``TPMT_SIGNATURE``
-    (what real tooling emits), unwrap it with :func:`parse_tpmt_signature` first,
-    or use :func:`verify_tpm_report`, which does that for you.
+    ``signature`` may be the legacy bare AK signature or the result of
+    :func:`parse_tpmt_signature`. A ``bytes`` value is unconditionally the bare
+    compatibility form: cA2A explicitly applies ECDSA/SHA-256 or
+    RSASSA/SHA-256 according to the AK key type, so signature-prefix bytes are
+    never treated as an algorithm header. For a marshalled ``TPMT_SIGNATURE``
+    (what real tooling emits), parse it first so the declared scheme and digest
+    reach the verifier, or use :func:`verify_tpm_report`, which does that for
+    you.
     """
     if not ak_chain:
         raise AttestationFailed("no AK certificate chain was supplied")
@@ -128,7 +173,7 @@ def verify_tpm_quote(
     quote = TpmQuote.parse(attest)
     _delegate(
         attest,
-        signature,
+        _tag_legacy_bare_signature(signature, ak_chain[0]),
         b"".join(c.public_bytes(Encoding.PEM) for c in ak_chain),
         b"".join(c.public_bytes(Encoding.PEM) for c in trusted_roots),
         expected_qualifying_data,
@@ -185,7 +230,7 @@ def verify_tpm_report(
     quote = TpmQuote.parse(report.raw_evidence)
     _delegate(
         report.raw_evidence,
-        parsed.signature,
+        parsed,
         report.attestation_key_chain_pem,
         trusted_roots_pem,
         expected_qualifying_data,
