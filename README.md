@@ -108,6 +108,11 @@ does and does not claim; it makes no attestation claim.
 
 See [docs/quickstart.md](docs/quickstart.md) for the full walkthrough.
 
+For the official Python A2A SDK's card, client, and HTTP server path, run the
+[SDK loopback tutorial](docs/tutorials/integrating-with-a2a.md). This software-only
+example exercises an ordinary public-information reply, an authorized inventory
+read, and a local-policy refusal over real loopback HTTP.
+
 ---
 
 ## How it works

@@ -1,174 +1,137 @@
 # Integrating with A2A
 
-This tutorial walks through how cA2A attaches to an existing A2A deployment: where the delegation credential and sealing metadata ride, the order a peer enforces them on an inbound call, and, most important, the line between what an integrator can do today and what is still design.
+This example connects the official Python A2A SDK's client and HTTP server to
+cA2A's existing Agent Card and peer-verification APIs. It exercises an actual
+loopback connection with `a2a-sdk==1.1.2`. The operator owns the card, server,
+application routing, and tool handler; cA2A supplies the extension metadata and
+checks the delegated request before the application acts.
 
-Read this as a design tutorial with a working core. The offline half (build and verify chains, emit and verify provenance) runs against the shipped API right now. The live runtime peer path that reads these fields off the wire and enforces them on an inbound call is Tier 2 and is not yet built. See [LIMITATIONS.md](../../LIMITATIONS.md) and [ROADMAP.md](../../ROADMAP.md). Nothing below asks you to deploy unbuilt enforcement.
+The runnable implementation is
+[`examples/a2a-sdk/loopback.py`](https://github.com/agentrust-io/ca2a/blob/main/examples/a2a-sdk/loopback.py), with its
+released SDK dependencies in
+[`requirements.txt`](https://github.com/agentrust-io/ca2a/blob/main/examples/a2a-sdk/requirements.txt). This is a
+software-only integration example. It needs no model service, external credentials,
+TPM, or confidential-computing host.
 
-## What cA2A adds to A2A, and what it does not
+## Run the example
 
-A2A moves tasks between agents and authenticates a peer's domain with the Signed Agent Card. cA2A does not replace any of that. It rides inside A2A as an overlay and adds a trust envelope around a delegated task. Removing every cA2A field leaves a valid A2A task. For the full binding, see [transport.md](../spec/transport.md).
-
-Two pieces of cA2A data travel with a task, carried in A2A extension fields:
-
-- The **delegation credential**, or the chain root-to-leaf, naming issuer, subject, scope, depth, and parent link. See [delegation-chain.md](../spec/delegation-chain.md).
-- The **sealing metadata**, binding the task payload to the peer's attested measurement. Sealing itself is Tier 2 and fails closed today. See [sealed-channel.md](../spec/sealed-channel.md).
-
-A non-cA2A peer does not understand the extension fields and ignores them, handling the task as a plain A2A task. A cA2A peer reads them and enforces them before accepting. That asymmetry is what lets a cA2A deployment interoperate with A2A peers that have never heard of cA2A.
-
-## The intended inbound enforcement order
-
-When a cA2A peer receives an inbound task, the design calls for a fixed sequence. Cheap, offline, deterministic checks run first, and each step fails closed so a later step never runs against unverified input. Only step 1 and the record half of step 5 exist today. The full order and per-step status is specified in [call-graph.md](../spec/call-graph.md).
-
-```
-inbound A2A task
-      |
-      v
-1. verify delegation chain      verify_chain(chain, max_depth)   [IMPLEMENTED]
-      v
-2. verify peer attestation      expected measurement             [PENDING, Tier 3]
-      v
-3. intersect scope with policy  leaf scope AND local Cedar        [PENDING, Tier 2]
-      v
-4. seal payload to measurement  SealedChannel.seal(...)           [PENDING, Tier 2]
-      v
-5. emit linked provenance       record_for -> verify_dag          [record model IMPLEMENTED]
-      v
-   accept and act on the task
-```
-
-If any step raises, the call is denied. That is the fail-closed tenet in [SPEC.md](../SPEC.md): absence of evidence is denial, not a warning.
-
-## What you can do today
-
-Two things work now against the shipped API, both offline and deterministic. Neither requires the runtime peer path, hardware, or a live A2A connection.
-
-### 1. Build and verify a delegation chain
-
-Mint keys, issue attenuated credentials hop by hop, and verify the chain. `verify_chain` raises the specific `CA2AError` for the first invariant that fails.
-
-```python
-from ca2a_runtime.delegation.credential import (
-    DelegationCredential,
-    new_keypair,
-    verify_chain,
-)
-
-a_priv, a_pub = new_keypair()
-b_priv, b_pub = new_keypair()
-c_priv, c_pub = new_keypair()
-
-# A grants B a bounded slice of its authority.
-root = DelegationCredential(
-    credential_id="cred-a",
-    issuer=a_pub,
-    subject=b_pub,
-    scope=frozenset({"cap:read", "cap:write"}),
-    depth=0,
-    parent_id=None,
-).sign(a_priv)
-
-# B narrows further and delegates to C. Scope must be a subset of the parent.
-child = DelegationCredential(
-    credential_id="cred-b",
-    issuer=b_pub,
-    subject=c_pub,
-    scope=frozenset({"cap:read"}),
-    depth=1,
-    parent_id="cred-a",
-).sign(b_priv)
-
-chain = [root, child]
-verify_chain(chain, max_depth=8)  # raises on the first violation
-```
-
-The same chain verifies from a JSON file, which is what the CLI and `ca2a_verify` do:
-
-```python
-from ca2a_verify import verify_chain_file
-from ca2a_runtime.errors import CA2AError
-
-try:
-    result = verify_chain_file(
-        "examples/minimal/chain.json",
-        trusted_root_issuers={"<trusted-root-issuer-hex>"},
-    )
-    print(f"verified {result.hops} hops, leaf scope {result.leaf_scope}")
-except CA2AError as exc:
-    print(f"rejected: {exc.code}: {exc}")
-```
+From the repository root, with a virtual environment activated:
 
 ```bash
-ca2a verify-chain --chain examples/minimal/chain.json --trusted-root-issuer <trusted-root-issuer-hex>
-# {"verified": true, "hops": 2, "leaf_scope": ["cap:read"]}
+uv pip install -e '.[dev]' -r examples/a2a-sdk/requirements.txt
+python examples/a2a-sdk/loopback.py
+python -m pytest tests/unit/test_a2a_sdk_loopback.py -v
 ```
 
-This is exactly step 1 of the inbound order above. A chain extracted from A2A extension fields is the same `list[DelegationCredential]` the CLI verifies from a file. For a full walkthrough that breaks each invariant, see [verify-a-delegation-chain.md](verify-a-delegation-chain.md) and [authoring-a-delegation-credential.md](authoring-a-delegation-credential.md).
+The example starts an SDK server on an ephemeral loopback port, fetches its
+Agent Card through the SDK, and sends ordinary and cA2A messages through the
+SDK client. The scenarios distinguish a harmless public-information reply,
+an authorized read, and a write refused by local policy. The server is closed
+when the run ends.
+The tests in
+[`test_a2a_sdk_loopback.py`](https://github.com/agentrust-io/ca2a/blob/main/tests/unit/test_a2a_sdk_loopback.py) check
+the wire path and the application handler's invocation count.
 
-### 2. Emit and verify provenance
+The successful run prints a JSON summary with:
 
-For each hop, build a `DelegationRecord` linked to its parent record by hash, then verify the resulting DAG offline. This is the runtime-evidence side of the profile (step 5's record model).
+- `ordinary: "ordinary"`, for the public-information reply;
+- `allowed`, containing item `"widget"` and quantity `3`;
+- `denied: "SCOPE_NOT_PERMITTED"`, for the requested write;
+- `protected_handler_invocations: 1`;
+- `callee_assurance: "none"` and `caller_attestation: "not_offered"`.
 
-```python
-from ca2a_runtime.provenance import record_for, verify_dag, cross_check_chain
+## Keep ownership explicit
 
-# Root hop: no parent link.
-rec_a = record_for(root, record_id="rec-a", parent_record_hash=None)
-# Child hop: linked to the parent record's hash.
-rec_b = record_for(child, record_id="rec-b", parent_record_hash=rec_a.record_hash())
+The operator constructs an unsigned `AgentCard` with the application's own
+identity, interface, URL, and skills. `merge_agent_card(card, node)` copies it
+and adds cA2A's declaration, derived from the `PeerNode` that will check calls.
+The extension remains `required=false`, so an ordinary A2A caller can ignore it.
+The official SDK serves the card; this example adds no card-serving behavior
+to `ca2a start` or the reference cA2A transport.
 
-records = [rec_a, rec_b]
-verify_dag(records)                 # raises PROVENANCE_LINK_BROKEN on tampering
-cross_check_chain(records, chain)   # record i must match credential i (id + subject)
-```
+The SDK client fetches that card, and `inspect_agent_card` reports its cA2A
+declaration. Discovery establishes what a card advertises, not whether its
+publisher is trusted. The example neither signs nor authenticates the card,
+and does not bind its identity to the delegation keys.
 
-`verify_dag` recomputes each record's hash and checks it against the child's stored `parent_record_hash`, so a tampered or reparented record is caught. `cross_check_chain` ties each record back to the credential it acted under. See [emit-and-verify-provenance.md](emit-and-verify-provenance.md) and [provenance-dag.md](../spec/provenance-dag.md).
+For protected requests, this application requires both the HTTP
+`A2A-Extensions` opt-in and the extension URI in `Message.extensions`.
+That is an explicit example routing policy, not a new profile requirement.
+An incomplete cA2A request is refused rather than treated as ordinary traffic.
+Ordinary messages receive only a harmless public-information response; they
+cannot dispatch the protected inventory lookup. The example implements no
+write operation: a write request is refused before the lookup handler runs.
 
-### Validate the runtime config surface
+## What the protected request verifies
 
-The runtime peer path is not built, but its configuration surface is defined and validated today. You can author and check a config so a deployment is ready when Tier 2 lands.
+The harness creates a root issuer, a delegate, and a holder, with two signed
+credentials at depths 0 and 1. Both credentials carry validity bounds. The
+holder's grant includes read and write, while the callee's local policy permits
+only read. This makes the write refusal a local-policy decision rather than
+a capability the holder was never granted.
 
-```yaml
-# ca2a config
-attestation:
-  provider: auto
-  enforcement_mode: enforcing
-max_delegation_depth: 8
-```
+The callee's trusted issuer set is configured from the harness's authorized
+root key, independently of the received request. A presented chain cannot
+authorize its own root. The same rule applies when using `verify_chain`
+directly: pass the verifier's explicit `trusted_root_issuers` set; the default
+empty set trusts no issuer.
 
-```bash
-ca2a validate-config --config ca2a.yaml
-# ok: provider=auto enforcement=enforcing
-```
+The example's `/demo/channel` bootstrap endpoint returns the callee's
+software-only channel offer and holder challenge. This is an application
+endpoint, separate from the SDK's standard card and message routes. The client
+checks the offer's nonce, confirms `assurance="none"`, and seals the public
+fixture bytes `b"widget"` to the offered channel key.
 
-`Ca2aConfig` accepts `provider` from `auto`, `tpm`, `sev-snp`, `tdx`, `opaque`, `software-only`, and `enforcement_mode` from `enforcing`, `advisory`, `silent`. A provider `detect()`s to `True` only where it can actually attest, so `auto` never selects one that would then fail; `software-only` is never auto-selected at all. `max_delegation_depth` is passed straight through to `verify_chain`. The config is parsed and validated now; the runtime that consumes it on a live inbound call is Tier 2.
+The holder then signs a proof for the callee's issued challenge and channel-key
+audience, binding the credential, requested capability, record ID, parent link,
+and sealed payload. No caller attestation offer is supplied, and the proof's
+caller-channel binding is `None`. The callee uses the default
+`require_caller_attestation="none"`, so its caller-attestation outcome is
+`not_offered`. This is not a successful hardware appraisal.
 
-## What awaits Tier 2 and Tier 3
+On receipt, the application's SDK executor converts message metadata with
+`metadata_from_sdk_message` and calls `node.handle` before its private tool
+handler. Existing cA2A code verifies the chain and holder proof, applies local
+policy, and opens the sealed payload. The executor requires the returned
+plaintext to equal `b"widget"` before calling its private `_lookup` method.
+That method returns the fixed stock quantity. A refusal does not increment
+its invocation count.
 
-Do not present any of the following as usable. They are design today, and the code fails closed rather than pretend otherwise.
+The SDK carries metadata through protobuf `Struct`, whose numbers are doubles.
+The existing bridge restores integral `depth`, `not_before`, and `not_after`
+values before strict credential parsing. The loopback regression checks that
+the signed chain still verifies after the real client/server serialization.
 
-| Capability | Step | Status | What happens today |
-|---|---|---|---|
-| Runtime peer-call enforcement | reads chain off the wire, gates the inbound call | Tier 2, not built | No live path accepts a credential on an inbound A2A task |
-| Peer attestation check | 2 | Tier 3, partly built | `tpm` collects and verifies a real quote; `sev-snp` / `tdx` / `opaque` verify but cannot collect. No live inbound path runs the check yet, and verification fails closed (`ATTESTATION_UNSUPPORTED` / `ATTESTATION_FAILED`) |
-| Cedar scope intersection | 3 | Tier 2, not built | Runtime does not consult a policy; `policy_bundle_path` only reserves the surface |
-| Sealed payload channel | 4 | Tier 2, fails closed | `SealedChannel.seal` / `open` raise `SEALED_CHANNEL_ERROR` rather than send plaintext |
-| Live provenance emission | 5b | Tier 2, not built | The runtime does not emit and link records automatically on the inbound path |
+## Payload and evidence limits
 
-Two consequences follow directly for an integrator:
+The fixed inventory lookup takes its input from the opened **sealed payload**.
+It does not interpret `Message.parts` as authenticated tool arguments: those
+parts are outside the holder proof. Applications adding arguments must define
+their binding and use the verified payload before acting; copying unbound
+message text into a protected handler would exceed what this example establishes.
 
-- **Do not send confidential task payloads across a trust boundary and assume they are protected.** The sealed channel is not implemented; it fails closed. Confidentiality of the payload is a Tier 2 guarantee.
-- **Do not describe a cA2A deployment as attested across trust domains.** No hardware backend verifies a quote yet. Attestation (step 2) is Tier 3 and is the sequenced-first critical path shared with cmcp.
+The public `b"widget"` fixture passes through the real sealing and opening
+code, but no secret data is sent. Bootstrap and message traffic use loopback
+HTTP, and the offered channel key has only software assurance. This run
+establishes neither endpoint authentication nor confidentiality across an
+adversarial trust boundary.
 
-## A staged integration path
+Challenges are stateless and expire after their TTL. They are not consumed:
+the same valid challenge and proof can be used repeatedly before expiry.
+Neither this example nor that challenge mechanism provides at-most-once
+redemption or exactly-once execution.
 
-Given the above, the honest way to adopt cA2A today:
+The accepted response contains an unsigned diagnostic provenance record;
+refusals return an error code. Diagnostic record hashes and links can support
+consistency checks, but do not authenticate the operator
+or prove that a tool executed. The signed credentials and holder proof establish
+different, narrower facts; they do not turn these diagnostics into signed
+decision receipts or authenticated TRACE execution evidence.
 
-1. **Issue and carry credentials.** Have your delegating agent mint attenuated `DelegationCredential`s hop by hop and attach the chain in A2A extension fields. Removing them leaves a valid A2A task, so this is non-breaking.
-2. **Verify offline at the receiving end.** Reconstruct the chain from the extension fields and run `verify_chain` before your own application logic acts on the task. This gives you bounded authority (step 1) today, out of band from the transport.
-3. **Emit provenance.** For each hop, build a `DelegationRecord` and keep the DAG so any third party can verify who delegated what to whom, offline, without trusting an operator.
-4. **Stage the config.** Author a `Ca2aConfig` with `enforcement_mode: enforcing` so the deployment is ready to fail closed when the runtime path lands.
-5. **Wait for Tier 2/3 before relying on peer integrity, local-policy intersection, or payload confidentiality.** These are not shortcuts you can turn on; the code fails closed until the backends exist.
-
-## What you proved
-
-You attached cA2A's trust envelope to an A2A task and verified bounded delegated authority and its provenance offline, without trusting whoever produced them. That is the property cA2A carries into the runtime peer path once attestation, scope intersection, and sealing land. For the adversary this staged posture still admits, see the residual-risks section of [threat-model.md](../spec/threat-model.md).
+This establishes the exercised Python SDK integration path and its local
+authorization behavior. It does not establish authenticated network transport,
+hardware provenance, key residency, agent/TPM co-location, runtime integrity,
+or safe agent behavior. The upstream A2A TCK and cross-language interoperability
+work in [the roadmap](../../ROADMAP.md) remains pending. See
+[the transport specification](../spec/transport.md) and
+[LIMITATIONS.md](../../LIMITATIONS.md) for the wider protocol boundaries.

@@ -1,0 +1,3 @@
+# Tested Python SDK/HTTP server surface, not a lock of all transitive dependencies.
+a2a-sdk[http-server]==1.1.2
+uvicorn==0.52.4
