@@ -208,7 +208,9 @@ async def test_sdk_loopback_closes_port_even_when_client_work_fails(node, abort)
                 raise ClientFailure
     except ClientFailure:
         assert abort
-    async with httpx.AsyncClient(timeout=1, trust_env=False) as http:
+    # Windows can take longer than one second to report a refused connection.
+    # Still require refusal: a connect/read timeout must not count as cleanup.
+    async with httpx.AsyncClient(timeout=5, trust_env=False) as http:
         with pytest.raises(httpx.ConnectError):
             await http.get(f"{url}/.well-known/agent-card.json")
 
@@ -236,6 +238,6 @@ async def test_sdk_loopback_closes_port_when_caller_is_cancelled(node):
         task.cancel()
         with pytest.raises(asyncio.CancelledError):
             await asyncio.wait_for(task, timeout=10)
-    async with httpx.AsyncClient(timeout=1, trust_env=False) as http:
+    async with httpx.AsyncClient(timeout=5, trust_env=False) as http:
         with pytest.raises(httpx.ConnectError):
             await http.get(f"{url}/.well-known/agent-card.json")
