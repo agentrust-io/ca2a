@@ -1,203 +1,72 @@
 # Emit and Verify Provenance
 
-A verified delegation chain tells you who was allowed to act. A provenance DAG is the runtime evidence that the delegation actually happened, in order, and was not edited after the fact. This tutorial takes a signed chain, emits one `DelegationRecord` per hop, verifies the linked records offline, tampers with one record to watch the link break, and binds the provenance back to the delegation credentials it claims to act under.
+Build an unsigned record path, detect a broken link, and see why consistent hashes alone do not authenticate evidence. First run the Python blocks in [authoring a delegation credential](authoring-a-delegation-credential.md), which install the package and define a verified `chain` and independently retained `trusted_roots`. Continue in the same script or session.
 
-Everything here runs offline with no hardware. It mirrors `experiments/claim5-provenance-dag-integrity`. For the model behind these records, see [provenance-dag.md](../spec/provenance-dag.md); for the credential model see [delegation-chain.md](../spec/delegation-chain.md).
-
-## What a record is
-
-Each delegation hop emits a `DelegationRecord`. The record names the credential it acted under, repeats that credential's `subject` and `scope`, and carries `parent_record_hash`: the SHA-256 of the previous record's canonical body. The hash link is what makes the DAG tamper-evident. Change any field of a record and its `record_hash()` changes, so the child that pointed at the old hash no longer lines up.
+## Emit one record per credential
 
 ```python
-from dataclasses import dataclass
+from ca2a_runtime.provenance import record_for, verify_dag, cross_check_chain
 
-@dataclass(frozen=True)
-class DelegationRecord:
-    record_id: str
-    credential_id: str
-    subject: str
-    scope: frozenset[str]
-    parent_record_hash: str | None = None
+records = []
+parent_hash = None
+for i, credential in enumerate(chain):
+    record = record_for(credential, record_id=f"rec-{i}", parent_record_hash=parent_hash)
+    records.append(record)
+    parent_hash = record.record_hash()
+
+verify_dag(records)
+cross_check_chain(records, chain)
+print("3 records: links and credential references match")
 ```
 
-`record_hash()` is SHA-256 over the canonical body (`record_id`, `credential_id`, `subject`, sorted `scope`, `parent_record_hash`). The canonicalization is the same RFC 8785 (JCS) encoding used to sign credentials, so an auditor recomputes the exact bytes.
+Each record copies its credential's ID, subject, and delegated scope. The scope is the grant, not proof of completed actions. The canonical hash also covers caller-appraisal and any populated denial fields. These locally constructed records carry no independent signatures and do not show that a task ran.
 
-## 1. Build a signed chain
-
-Start from a correctly signed root-to-leaf delegation chain. This is the same setup used in [verify-a-delegation-chain.md](verify-a-delegation-chain.md); here we build it in code so we have the credentials in hand to emit records from.
+## Detect an unrepaired change
 
 ```python
-from ca2a_runtime.delegation.credential import DelegationCredential, new_keypair
-
-
-def build_chain(scopes: list[frozenset[str]]) -> list[DelegationCredential]:
-    chain: list[DelegationCredential] = []
-    priv, pub = new_keypair()
-    parent_id: str | None = None
-    for depth, scope in enumerate(scopes):
-        next_priv, next_pub = new_keypair()
-        cred = DelegationCredential(
-            credential_id=f"cred-{depth}",
-            issuer=pub,
-            subject=next_pub,
-            scope=scope,
-            depth=depth,
-            parent_id=parent_id,
-        ).sign(priv)
-        chain.append(cred)
-        parent_id = cred.credential_id
-        priv, pub = next_priv, next_pub
-    return chain
-
-
-chain = build_chain(
-    [
-        frozenset({"cap:a", "cap:b", "cap:c"}),
-        frozenset({"cap:a", "cap:b"}),
-        frozenset({"cap:a"}),
-    ]
-)
-```
-
-Each hop's `issuer` is the previous hop's `subject`, and scope narrows at every step. `new_keypair()` returns an `Ed25519PrivateKey` and its public key as raw hex.
-
-## 2. Emit one record per hop
-
-Walk the chain and call `record_for()` for each credential, threading the running `parent_record_hash`. The root record has no parent, so it starts at `None`.
-
-```python
-from ca2a_runtime.provenance import DelegationRecord, record_for
-
-
-def records_from_chain(chain: list[DelegationCredential]) -> list[DelegationRecord]:
-    records: list[DelegationRecord] = []
-    parent_hash: str | None = None
-    for i, cred in enumerate(chain):
-        rec = record_for(cred, record_id=f"rec-{i}", parent_record_hash=parent_hash)
-        records.append(rec)
-        parent_hash = rec.record_hash()
-    return records
-
-
-records = records_from_chain(chain)
-```
-
-`record_for(credential, record_id, parent_record_hash)` copies `credential_id`, `subject`, and `scope` off the credential and stamps in the parent link you pass. After appending a record you recompute `record_hash()` and feed it forward as the next record's parent.
-
-## 3. Verify the DAG
-
-`verify_dag()` walks the records root to leaf and returns them in order on success. It enforces three things: the first record must be a root (no parent link), every later record's `parent_record_hash` must equal the recomputed hash of the immediately preceding record, and no `record_id` may repeat.
-
-```python
-from ca2a_runtime.provenance import verify_dag
-
-verified = verify_dag(records)
-print(f"verified {len(verified)} records")
-# verified 3 records
-```
-
-If it returns without raising, the linked hash chain is intact.
-
-## 4. Tamper with a record
-
-Now edit one field of a record without touching anything else. Because `record_hash()` covers `scope`, adding a capability flips roughly half of the 256 hash bits (the SHA-256 avalanche), so record 1's new hash no longer matches the `parent_record_hash` that record 2 still stores.
-
-```python
+from dataclasses import replace
 from ca2a_runtime.errors import ProvenanceLinkBroken
 
-original = records[1]
-tampered = DelegationRecord(
-    record_id=original.record_id,
-    credential_id=original.credential_id,
-    subject=original.subject,
-    scope=frozenset(original.scope | {"cap:injected"}),
-    parent_record_hash=original.parent_record_hash,
-)
-
-tampered_records = list(records)
-tampered_records[1] = tampered
-
+tampered = list(records)
+tampered[1] = replace(records[1], scope=records[1].scope | {"cap:injected"})
 try:
-    verify_dag(tampered_records)
-except ProvenanceLinkBroken as exc:
-    print(f"{exc.code}: {exc}")
-# PROVENANCE_LINK_BROKEN: record 2 parent link does not match the previous record's hash
+    verify_dag(tampered)
+except ProvenanceLinkBroken:
+    print("parent edit detected at its child")
+else:
+    raise AssertionError("broken parent link accepted")
 ```
 
-`ProvenanceLinkBroken` carries code `PROVENANCE_LINK_BROKEN` and HTTP status 409. The message names the position where the link failed, and `exc.detail` reads `a tampered or reparented record was detected`. Note that the tampered record is at position 1, but the break is detected at position 2: the verifier catches the edit at the first child whose stored link no longer matches.
-
-## 5. Reparent a record
-
-The same mechanism catches a record repointed at a different parent, even when the record's own fields are untouched. Here the leaf is made to claim the root's hash as its parent instead of record 1's.
+Record 1's hash changed while record 2 still holds its old hash. Reparenting record 2 to the root instead of the preceding record is likewise rejected:
 
 ```python
-leaf = records[2]
-reparented = DelegationRecord(
-    record_id=leaf.record_id,
-    credential_id=leaf.credential_id,
-    subject=leaf.subject,
-    scope=leaf.scope,
-    parent_record_hash=records[0].record_hash(),  # should be records[1]'s hash
-)
-
-reparented_records = list(records)
-reparented_records[2] = reparented
-
+reparented = list(records)
+reparented[2] = replace(records[2], parent_record_hash=records[0].record_hash())
 try:
-    verify_dag(reparented_records)
-except ProvenanceLinkBroken as exc:
-    print(f"{exc.code}: {exc}")
-# PROVENANCE_LINK_BROKEN: record 2 parent link does not match the previous record's hash
+    verify_dag(reparented)
+except ProvenanceLinkBroken:
+    print("reparenting detected")
+else:
+    raise AssertionError("wrong parent accepted")
 ```
 
-You cannot splice a record into a different position in the DAG without breaking the link, because the stored `parent_record_hash` must equal the hash of the record that actually precedes it.
+## See the boundary
 
-## 6. Bind provenance to authority
-
-`verify_dag()` proves the records are internally consistent, but on its own it does not prove they describe the delegation you think they do. Records could be internally valid yet name credentials that never existed. `cross_check_chain()` closes that gap: record `i` must reference credential `i` and carry the same subject.
+An attacker who can rewrite the entire unsigned path can recompute downstream links. The credential cross-check compares IDs and subjects, not every record field. This counterexample deliberately changes scope while retaining those references:
 
 ```python
-from ca2a_runtime.provenance import cross_check_chain
-
-cross_check_chain(records, chain)  # returns None on success
-print("provenance bound to the delegation chain")
+repaired = list(tampered)
+repaired[2] = replace(repaired[2], parent_record_hash=repaired[1].record_hash())
+verify_dag(repaired)
+cross_check_chain(repaired, chain)
+assert repaired[1].scope != chain[1].scope
+print("rewritten unsigned path passes consistency checks; authenticity is not established")
 ```
 
-Forge a `credential_id` on any record and the cross-check rejects it:
+This does not change the signed delegation or grant additional runtime authority. It shows that hash consistency and credential references do not authenticate the record producer. A leaf edit has no child link to break at all.
 
-```python
-mismatch = list(records)
-mismatch[0] = DelegationRecord(
-    record_id=records[0].record_id,
-    credential_id="FORGED-CRED-ID",
-    subject=records[0].subject,
-    scope=records[0].scope,
-    parent_record_hash=None,
-)
+## Use signed evidence for authenticity
 
-try:
-    cross_check_chain(mismatch, chain)
-except ProvenanceLinkBroken as exc:
-    print(f"{exc.code}: {exc}")
-# PROVENANCE_LINK_BROKEN: record 0 credential_id does not match the chain
-```
+The implemented TRACE binding signs records carrying delegation links. `verify_trace_dag` requires the recipient's trusted signing keys and checks signatures, structure, and parent links. `cross_check_trace_dag` then aligns non-root credential IDs with a separately verified chain. See the [verification library](../spec/verification-library.md).
 
-`cross_check_chain()` also raises `ProvenanceLinkBroken` if the record list and the chain are different lengths, or if any record's `subject` does not match its credential's `subject`. Run both checks together and a valid provenance DAG cannot be fabricated independently of the signed authority it claims.
-
-## What you proved
-
-You emitted a linked provenance record per delegation hop, verified the DAG offline, and watched a single-field edit and a reparent both surface as `ProvenanceLinkBroken`. `cross_check_chain()` ties every record back to the credential it acted under, so the evidence trail is bound to the signed delegation chain, not free-floating. An auditor replays `verify_dag()` and `cross_check_chain()` against the recorded records and credentials without trusting the runtime that emitted them.
-
-## Scope and limits
-
-This is the runtime-evidence side of the cA2A profile and it works today. What it is not:
-
-- These records are a hash-linked evidence trail. They are not yet the full TRACE binding; that lands with the Tier 2 provenance work. See [trace-a2a-profile.md](../spec/trace-a2a-profile.md).
-- The DAG is verified after the fact from recorded records. cA2A does not yet enforce peer behavior at runtime (Tier 2), so a peer must still emit honest records for the trail to mean anything. See [threat-model.md](../spec/threat-model.md) and [LIMITATIONS.md](../../LIMITATIONS.md).
-- The verifier walks a single root-to-leaf sequence. Branching DAGs and the wire format for transmitting records are on the [roadmap](../../ROADMAP.md).
-
-## Next steps
-
-- Reproduce the numbers behind this page: [reproducing-the-claims.md](reproducing-the-claims.md).
-- Author the credentials the records point at: [authoring-a-delegation-credential.md](authoring-a-delegation-credential.md).
-- The full provenance model and record schema: [provenance-dag.md](../spec/provenance-dag.md).
+Both path verifiers accept one ordered root-to-leaf sequence, not an arbitrary branching graph. Even signed authorization evidence does not establish task completion or completeness of the submitted history. For runtime checks, see [inbound peer-call decision](../spec/call-graph.md).

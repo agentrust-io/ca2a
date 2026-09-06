@@ -36,7 +36,7 @@ from ca2a_runtime.errors import (  # noqa: E402
 
 def build_chain(
     scopes: list[frozenset[str]], *, prefix: str
-) -> list[DelegationCredential]:
+) -> tuple[list[DelegationCredential], str]:
     """Build a correctly signed root-to-leaf chain with unique credential ids.
 
     Each hop's issuer is the previous hop's subject, depth increments from 0,
@@ -44,6 +44,7 @@ def build_chain(
     """
     chain: list[DelegationCredential] = []
     priv, pub = new_keypair()
+    trusted_root = pub  # Local fixture authority, not learned from incoming data.
     parent_id: str | None = None
     for depth, scope in enumerate(scopes):
         next_priv, next_pub = new_keypair()
@@ -58,7 +59,7 @@ def build_chain(
         chain.append(cred)
         parent_id = cred.credential_id
         priv, pub = next_priv, next_pub
-    return chain
+    return chain, trusted_root
 
 
 def section(title: str) -> None:
@@ -84,7 +85,7 @@ def main() -> int:
     rejected = 0
 
     # Two independent chains, each with its own key material and id namespace.
-    chain_a = build_chain(
+    chain_a, root_a = build_chain(
         [
             frozenset({"cap:a", "cap:b", "cap:c"}),
             frozenset({"cap:a", "cap:b"}),
@@ -92,7 +93,7 @@ def main() -> int:
         ],
         prefix="a",
     )
-    chain_b = build_chain(
+    chain_b, root_b = build_chain(
         [
             frozenset({"cap:x", "cap:y", "cap:z"}),
             frozenset({"cap:x", "cap:y"}),
@@ -105,9 +106,9 @@ def main() -> int:
     # Property 1: control, both chains verify
     # ------------------------------------------------------------------
     section("1. Control: two independent valid chains verify")
-    for name, chain in (("A", chain_a), ("B", chain_b)):
+    for name, chain, root in (("A", chain_a, root_a), ("B", chain_b, root_b)):
         try:
-            verify_chain(chain)
+            verify_chain(chain, trusted_root_issuers={root})
             result(f"chain {name} ({len(chain)} hops)", "VALID", True)
         except CA2AError as exc:
             result(f"chain {name} ({len(chain)} hops)", f"rejected: {exc}", False)
@@ -122,7 +123,7 @@ def main() -> int:
     duped = chain_a[1].credential_id
     result("duplicated credential_id", duped)
     try:
-        verify_chain(replay_chain)
+        verify_chain(replay_chain, trusted_root_issuers={root_a})
         result("verify_chain raised", "nothing: replay NOT caught", False)
         failures += 1
     except CredentialReplay as exc:
@@ -145,7 +146,7 @@ def main() -> int:
     splice_chain = [chain_b[0], spliced, chain_b[2]]
     result("spliced credential_id", f"{spliced.credential_id} (from chain A)")
     try:
-        verify_chain(splice_chain)
+        verify_chain(splice_chain, trusted_root_issuers={root_b})
         result("verify_chain raised", "nothing: splice NOT caught", False)
         failures += 1
     except (BrokenDelegationLink, CredentialReplay) as exc:

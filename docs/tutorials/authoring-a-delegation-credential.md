@@ -4,6 +4,12 @@ The [verify-a-delegation-chain](verify-a-delegation-chain.md) tutorial takes an 
 
 Everything here uses `ca2a_runtime.delegation`. For the field semantics and the full invariant table, see [the delegation chain spec](../spec/delegation-chain.md).
 
+## Setup
+
+Use Python 3.11+. Clone `https://github.com/agentrust-io/ca2a.git`, enter the checkout, create and activate a virtual environment, then run `python -m pip install -e .`. Run the Python blocks below in order in one script or interactive session. The negative examples catch their expected errors so execution can continue.
+
+The example credentials omit validity bounds to keep the field walkthrough short. Use bounded grants for deployed systems; the [quick start](../quickstart.md) shows those fields.
+
 ## 1. Generate keypairs
 
 Each hop is signed by its issuer and names a subject. Both are Ed25519 public keys, encoded as raw hex. `new_keypair()` returns the private key object and its public key hex.
@@ -12,6 +18,7 @@ Each hop is signed by its issuer and names a subject. Both are Ed25519 public ke
 from ca2a_runtime.delegation import new_keypair
 
 a_priv, a_pub = new_keypair()  # root agent A
+trusted_roots = {a_pub}       # retain our local authority independently of the chain
 b_priv, b_pub = new_keypair()  # agent B
 c_priv, c_pub = new_keypair()  # agent C
 ```
@@ -40,13 +47,17 @@ The root credential must have `depth=0` and `parent_id=None`; `verify_chain` rej
 `sign()` checks that the signing key matches the `issuer` field. Signing with the wrong key raises `INVALID_CREDENTIAL`:
 
 ```python
-root_wrong = DelegationCredential(
-    credential_id="cred-0",
-    issuer=a_pub,
-    subject=b_pub,
-    scope=frozenset({"cap:read"}),
-    depth=0,
-).sign(b_priv)  # raises InvalidCredential: signing key does not match credential issuer
+from ca2a_runtime.errors import InvalidCredential
+
+try:
+    DelegationCredential(
+        credential_id="cred-0", issuer=a_pub, subject=b_pub,
+        scope=frozenset({"cap:read"}), depth=0,
+    ).sign(b_priv)
+except InvalidCredential:
+    print("wrong signing key rejected")
+else:
+    raise AssertionError("wrong signing key accepted")
 ```
 
 ## 3. Extend the chain with narrowing scope
@@ -85,14 +96,21 @@ Order the credentials root to leaf and call `verify_chain`. It returns `None` on
 from ca2a_runtime.delegation import verify_chain
 
 chain = [root, mid, leaf]
-verify_chain(chain)  # returns None: all invariants hold
+verify_chain(chain, trusted_root_issuers=trusted_roots)
 print("verified", len(chain), "hops; leaf scope", sorted(leaf.scope))
 ```
 
 `verify_chain` takes an optional `max_depth` keyword (default `8`). A hop whose `depth` exceeds it raises `DELEGATION_DEPTH_EXCEEDED`.
 
 ```python
-verify_chain(chain, max_depth=1)  # raises DelegationDepthExceeded at hop 2
+from ca2a_runtime.errors import DelegationDepthExceeded
+
+try:
+    verify_chain(chain, max_depth=1, trusted_root_issuers=trusted_roots)
+except DelegationDepthExceeded:
+    print("depth limit enforced")
+else:
+    raise AssertionError("depth limit bypassed")
 ```
 
 ## 5. Watch a child over-scope
@@ -112,10 +130,12 @@ over = DelegationCredential(
 from ca2a_runtime.errors import ScopeEscalation
 
 try:
-    verify_chain([root, mid, over])
+    verify_chain([root, mid, over], trusted_root_issuers=trusted_roots)
 except ScopeEscalation as exc:
     print(exc.code, "-", exc, "|", exc.detail)
     # SCOPE_ESCALATION - hop 2 scope exceeds parent grant | added: ['cap:admin']
+else:
+    raise AssertionError("scope escalation accepted")
 ```
 
 The signature on `over` is valid; C really did sign it. That is the point. A well-formed signature proves only that C authored the grant, not that C was entitled to make it. The subset check on `scope` is what forecloses the confused-deputy move where a delegate quietly widens its own authority. See [the delegation chain spec](../spec/delegation-chain.md#attenuation-is-the-whole-point).
@@ -138,6 +158,6 @@ A malformed dict (missing field, wrong type) raises `INVALID_CREDENTIAL` from `f
 
 ## What you built
 
-You produced a three-hop chain of delegated authority whose scope provably narrows at each hop, and you confirmed that a child cannot silently widen its grant. This chain verifies offline, with no trust in whoever produced it, using only the issuers' public keys embedded in the credentials.
+You produced and verified a narrowing three-hop chain against a separately retained root authority. A correctly signed child that exceeded its parent's scope was rejected. A production verifier must obtain trusted roots through its own approval process; an incoming chain cannot choose them.
 
-The cA2A runtime calls this same verifier on the inbound peer path. Runtime peer enforcement, intersecting a verified scope against the peer's local Cedar policy, is Tier 2 and not yet implemented; see [LIMITATIONS](../../LIMITATIONS.md) and the [Cedar policy](../spec/cedar-policy.md) design. To carry these credentials into a checkable provenance DAG, continue to [emit and verify provenance](emit-and-verify-provenance.md).
+The runtime uses the same verifier before holder proof and local-policy enforcement. See [Cedar policy](../spec/cedar-policy.md) for the implemented policy path. Continue to [verify a saved chain](verify-a-delegation-chain.md) or [emit and verify provenance](emit-and-verify-provenance.md).

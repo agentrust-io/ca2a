@@ -1,109 +1,50 @@
 # Inbound Peer-Call Decision
 
-When a cA2A peer receives an inbound A2A task, it runs a fixed sequence of checks before it acts on the task and after it acts. The order is not arbitrary: cheap, offline, deterministic checks run first, and each step fails closed so a later step never runs against unverified input. This page states the full intended enforcement order and marks, for each step, what the code does today versus what is design.
-
-Steps 1 (chain verification), 3 (scope intersection), 4 (opening a sealed payload), and 5 (provenance emission) are composed into one transport-agnostic handler, `ca2a_runtime.peer.handle_peer_request`, which takes a parsed `PeerRequest` and runs the pipeline fail-closed. The `ca2a_runtime.transport` adapter parses actual A2A extension metadata into that `PeerRequest`, and a reference HTTP server/client (`ca2a_runtime.transport.server`/`client`) now drive the whole path live in software mode. Step 2 is what remains for a cross-trust-domain deployment: a SEV-SNP verifier exists (`ca2a_verify.sev_snp`, used counterparty-side to seal to a peer before sending), but producing a report needs real hardware, and the `verifier` seam in `ca2a_runtime.attestation` is not yet driven off a live hardware quote. The profile itself still mandates no wire protocol (the reference transport is a convenience, not part of it). See [LIMITATIONS.md](../../LIMITATIONS.md) and [ROADMAP.md](../../ROADMAP.md).
+The inbound handler checks a caller's authority and identity before returning a task payload to the application. The reference HTTP transport and `PeerNode` use this handler; the profile does not mandate that transport.
 
 ## Decision flow
 
-```
-inbound A2A task
-      |
-      v
-1. verify delegation chain      verify_chain(chain, max_depth)   [IMPLEMENTED]
-      |  signature, continuity, attenuation, depth, replay
-      v
-2. verify peer attestation      provider.attest / expected measurement   [PENDING, Tier 3]
-      |  measurement must match an expected value
-      v
-3. intersect scope with policy  effective_scope(chain, local_policy)   [IMPLEMENTED (decision core)]
-      |  the effective grant is delegated scope AND local policy
-      v
-4. seal payload to measurement  SealedChannel(peer_pub).seal(...)   [IMPLEMENTED (crypto); attestation binding pending]
-      |  payload readable only with the peer's enclave-bound key
-      v
-5. emit linked provenance       enforce_peer_call(...) -> DelegationRecord
-      |  DelegationRecord chained to the parent record   [IMPLEMENTED]
-      v
-   accept and act on the task
-```
+For a parsed `PeerRequest`, `ca2a_runtime.peer.handle_peer_request` runs these steps:
 
-If any step raises, the call is denied. Absence of evidence is denial, not a warning (see the fail-closed tenet in [SPEC.md](../SPEC.md)).
+1. Verify the chain against locally trusted root issuers.
+2. Verify the caller holds the leaf subject key (required by default).
+3. Intersect delegated scope with local policy.
+4. Appraise the caller's runtime under the configured requirement.
+5. Decide the capability and construct an allow or denial record.
+6. Open any sealed payload with the callee's private key.
+7. Return `PeerResult` to the application.
 
-## Status
+An exception stops the pipeline. A denial never returns the payload. An allow record describes an authorization decision; it does not prove the application completed the task. The decision record is constructed **before** payload opening, which can itself fail.
 
-| Step | What it enforces | Function / type | Status |
-|---|---|---|---|
-| 1. Chain verification | Signature, continuity, attenuation, depth bound, anti-replay | `verify_chain` | Implemented |
-| 2. Peer attestation | Peer measurement matches an expected value | `ca2a_verify.sev_snp.verify_sev_snp_report` | SEV-SNP verifier implemented; not yet wired into the call path; report needs hardware |
-| 3. Scope intersection | Delegated scope intersected with local policy | `ca2a_runtime.peer.effective_scope`, `enforce_peer_call` | Implemented (decision core); Cedar engine binding pending (#10) |
-| 4. Payload sealing | Payload sealed to the peer's attested key | `SealedChannel.seal`, `open_sealed` | Implemented (crypto); binding to a verified report on the live path pending |
-| 5. Provenance record | A `DelegationRecord` emitted and linked to its parent | `enforce_peer_call`, `record_for`, `verify_dag` | Implemented (emitted by the decision core) |
-| Inbound pipeline handler | Verify, enforce, open sealed payload, emit record off a parsed request | `handle_peer_request`, `PeerRequest` | Implemented (transport-agnostic) |
-| A2A wire parsing into a `PeerRequest` | Parse actual A2A extension fields into the handler's input | `ca2a_runtime.transport.a2a_adapter`, and the reference `transport.server`/`client` and `PeerNode` | Implemented (software mode); the profile still mandates no specific transport |
+## Checks and trust inputs
 
-## Step 1: verify the delegation chain (implemented)
+| Step | Implementation | Required context |
+|---|---|---|
+| Chain | `verify_chain` | Locally approved `trusted_root_issuers`, depth limit, credential validity windows |
+| Holder proof | `verify_caller_holds_leaf` | Callee audience and challenge secret; proof commits to the requested operation |
+| Policy | `policy.intersect` | `LocalPolicy` allow set or `CedarPolicy` |
+| Caller appraisal | `appraise_caller_runtime` | Challenge context, verifier, and `require_caller_attestation` |
+| Capability | `decide_capability` | Requested capability must be in the effective scope |
+| Payload | `open_sealed` | Callee's channel private key; authenticated ciphertext |
 
-The inbound credential is verified as the leaf of a root-to-leaf chain. `verify_chain` raises the specific error for the first invariant that fails: signature (`INVALID_CREDENTIAL`), continuity and depth-step (`BROKEN_DELEGATION_LINK`), depth bound (`DELEGATION_DEPTH_EXCEEDED`), attenuation (`SCOPE_ESCALATION`), and anti-replay (`CREDENTIAL_REPLAY`). See [delegation-chain.md](delegation-chain.md) and [error-codes.md](error-codes.md).
+Chain verification checks signatures, continuity, attenuation, depth, validity, and duplicate credential IDs within the supplied chain. It does not maintain a global history that makes each credential single-use. Root keys must come from local policy, not from an untrusted incoming chain.
 
-```python
-from ca2a_runtime.delegation import DelegationCredential, verify_chain
+Holder proof establishes that this caller controls the key named as the leaf subject. Attestation establishes a separate claim about its runtime. `require_holder_proof=False` exists for offline replay and must not be used on a live peer path. Chain and holder failures occur before policy evaluation and emit no decision record.
 
-# chain is the root-to-leaf list carried with the inbound task.
-verify_chain(chain, max_depth=8)  # raises on the first violation
-leaf = chain[-1]
-delegated_scope = leaf.scope  # frozenset[str], the authority to enforce below
-```
+## Caller appraisal
 
-`max_depth` comes from `Ca2aConfig.max_delegation_depth` (default 8). This step is deterministic and offline: it contacts no operator and depends only on the signed bytes. It is the only step that gates an inbound call in this release.
+The default `require_caller_attestation="none"` accepts a caller that offers no attestation and records `not_offered`. `"any"` requires an appraisable offer, including software assurance. `"hardware"` requires hardware assurance. A present but invalid offer is rejected at every setting.
 
-## Step 2: verify peer attestation (pending, Tier 3)
+The record carries the appraisal outcome: `not_offered`, `software-only`, `hardware`, or `failed`. Appraisal refusal and capability denial can carry linked denial records. See [mutual attestation](mutual-attestation.md) for the challenge protocol and assurance requirements.
 
-The runtime confirms the peer is running attested, measured code before it is trusted with the task, by checking the peer's report measurement against an expected value under a fresh nonce. A SEV-SNP verifier exists (`ca2a_verify.sev_snp.verify_sev_snp_report`: VCEK chain, report-signature, measurement binding), but it is not yet wired into this call path, producing a report requires real SEV-SNP hardware, and TDX/TPM backends are not implemented. Verification fails closed when evidence is absent. Do not treat this step as active on the live path yet. See [attestation.md](attestation.md).
+## Sending is a separate path
 
-## Step 3: intersect scope with local policy (implemented as a decision core)
+Before sending, the **caller** appraises the **callee's** channel offer and seals the payload to its verified channel key. On receipt, the **callee** checks the caller and opens that payload. These are separate directions of trust; a successful outbound appraisal does not establish inbound caller authority.
 
-The effective authority for the task is the intersection of the delegated leaf scope (from step 1) with what the peer's own local policy permits. Delegation can only narrow authority, never widen it, so the peer's policy is an independent second bound on top of attenuation. This is implemented in `ca2a_runtime.peer`:
+The encrypted channel works in software mode. Protection from a host operator additionally depends on verified hardware evidence, expected measurements, and private-key custody in the measured environment. See [sealed channel](sealed-channel.md) and [hardware validation](../hardware-validation.md) for the evidence and remaining deployment gaps.
 
-```python
-from ca2a_runtime.peer import effective_scope, enforce_peer_call
-from ca2a_runtime.policy import LocalPolicy
+## Decision core versus full handler
 
-policy = LocalPolicy.of(["read", "audit"])
-effective_scope(chain, policy)                       # delegated leaf scope AND policy allow
-enforce_peer_call(chain, "read", policy=policy, record_id="rec-c")  # raises SCOPE_NOT_PERMITTED if not in the effective scope
-```
+`effective_scope` and `enforce_peer_call` are lower-level helpers for chain verification and policy decisions. They do not perform the full handler's holder proof, caller appraisal, or payload opening. Integrations should use the full peer path described in [transport binding](transport.md).
 
-A capability is granted only when it is both delegated down the chain and allowed by the local policy; a capability in one but not the other is denied with `SCOPE_NOT_PERMITTED`. The `LocalPolicy` here is a capability allow set; a full Cedar policy engine (as cMCP uses) is also available via `ca2a_runtime.cedar.CedarPolicy`. `enforce_peer_call` is the decision the runtime makes; the reference `PeerNode` and HTTP server now drive it off an actual A2A request in software mode. See [cedar-policy.md](cedar-policy.md).
-
-## Step 4: seal the payload to the peer's attested key (crypto implemented)
-
-Once the peer's attested public key is known (from its report, step 2), the task payload is sealed to it so only the holder of the peer's private key can open it. The channel is implemented (`SealedChannel(peer_pub).seal(...)` and `open_sealed(...)`, an HPKE-style X25519 -> HKDF-SHA256 -> ChaCha20-Poly1305 scheme). `open_sealed` fails closed with `SEALED_CHANNEL_ERROR` on a wrong key or tampered ciphertext. On a live call the handshake (`ca2a_runtime.attestation.verify_offer`) gates the seal on a channel key the caller has appraised under a fresh nonce. As of 2026-07-27 that appraisal has run at `assurance="hardware"` off a live SEV-SNP quote, so the property that the payload decrypts *only inside the attested measurement* now rests on a hardware-verified measurement rather than on a software-mode stand-in. It holds one-directionally: the caller appraised the callee, and mutual simultaneous attestation is still outstanding. In software mode the appraisal remains `assurance="none"`, which is what the committed examples exercise. See [sealed-channel.md](sealed-channel.md).
-
-## Step 5: emit a linked provenance record (implemented)
-
-After the task is accepted, `enforce_peer_call` emits a `DelegationRecord` that references its parent record by hash and names the credential it acted under. The record model, the offline DAG verifier, and the binding to the delegation chain exist today:
-
-```python
-from ca2a_runtime.provenance import record_for, verify_dag, cross_check_chain
-
-# Build this hop's record, linked to the parent record's hash.
-record = record_for(leaf, record_id="rec-c", parent_record_hash=parent_hash)
-
-# Offline: parent links match recomputed hashes, no record_id repeats.
-verify_dag(records)                # raises PROVENANCE_LINK_BROKEN on tampering
-cross_check_chain(records, chain)  # record i must match credential i (id + subject)
-```
-
-`enforce_peer_call` produces this record for the accepted hop, linked to the parent by hash. `verify_dag` raises `PROVENANCE_LINK_BROKEN` if a record was tampered with or reparented, because the stored `parent_record_hash` no longer matches the recomputed hash of the preceding record, and `cross_check_chain` ties provenance to authority. The reference `PeerNode`/HTTP server now drive this emission off a live inbound A2A request in software mode. The record format and DAG semantics are the runtime-evidence side of the profile; see [trace-a2a-profile.md](trace-a2a-profile.md) and [provenance-dag.md](provenance-dag.md).
-
-## Why this order
-
-Each step is a precondition for the next, so ordering is a safety property:
-
-- Chain verification (1) runs first because it is offline and deterministic and establishes the delegated scope every later step reasons about.
-- Attestation (2) precedes sealing (4) because the payload is sealed to the measurement attestation produces; sealing to an unverified measurement would be meaningless.
-- Scope intersection (3) precedes acting on the task because the effective grant, not the raw delegated scope, is what the peer is allowed to exercise.
-- Provenance emission (5) runs after the task is accepted so the record reflects what was actually done, and it links to the parent record so the workflow forms a verifiable DAG.
-
-This release enforces bounded authority and local-policy intersection (steps 1 and 3) and emits and verifies linked provenance records (step 5) through the `enforce_peer_call` decision core, and the reference transport drives the whole path off a live A2A request in software mode. What it does not yet do is enforce hardware peer integrity or hardware-measured payload confidentiality (steps 2 and 4): those need a real attestation quote through the `verifier` seam. See the residual-risks section of the [threat-model.md](threat-model.md).
+For a runnable local example, start with the [quick start](../quickstart.md). For signed evidence verification, see the [verification library](verification-library.md).

@@ -44,7 +44,7 @@ Upon host organization acceptance, governance transitions from the current Proje
 
 ## 4. Intellectual Property Policy
 
-All contributions must be made under the terms of [LICENSE](LICENSE). Contributors must sign commits with the Developer Certificate of Origin (DCO). No contribution may incorporate material covered by a patent the contributor is unwilling to license royalty-free to conforming implementations.
+All contributions must be made under the terms of [LICENSE](https://github.com/agentrust-io/ca2a/blob/main/LICENSE). Contributors must sign commits with the Developer Certificate of Origin (DCO). No contribution may incorporate material covered by a patent the contributor is unwilling to license royalty-free to conforming implementations.
 
 ## 5. Trademark Policy
 

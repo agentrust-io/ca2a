@@ -69,8 +69,8 @@ def main() -> int:
     print(f"  [4] tampered payload fails closed: {'OK' if tamper_caught else 'FAIL'}")
 
     if passed == checks:
-        print(f"KEY RESULT: {passed}/{checks} sealed to the attested key; only the "
-              "enclave-bound private key opens it; path sees ciphertext; tamper fails closed")
+        print(f"KEY RESULT: {passed}/{checks} encryption checks passed; matching key opens; "
+              "wrong key and tamper rejected (software keys; no hardware assurance)")
         return 0
     print(f"KEY RESULT: FAIL ({passed}/{checks} passed)")
     return 1

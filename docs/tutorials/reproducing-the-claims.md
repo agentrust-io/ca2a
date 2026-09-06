@@ -1,188 +1,56 @@
 # Reproducing the Claims
 
-Every technical claim in the cA2A profile is backed by a script under `experiments/`. This tutorial runs all six. Three are validated today (C1, C2, C5) and print a `KEY RESULT` line you can check. Three are gated on unbuilt tiers (C3, C4, C6) and SKIP with exit 0, matching what [LIMITATIONS.md](../../LIMITATIONS.md) says is not yet built. Nothing here needs a TEE or any hardware.
+Run six software experiments from the source checkout. They exercise delegation, policy intersection, encrypted payloads, hash links, and synthetic attestation. None requires a TEE. Their results establish the specific cases below, not hardware protection or complete profile conformance.
 
-Each experiment imports directly from `ca2a_runtime`, so it exercises the real API described in [The Verification Library](../spec/verification-library.md), not a mock.
+## Install and run
 
-## 1. Install
-
-Run from the repo root:
+Use Python 3.11 or later:
 
 ```bash
-pip install -e ".[dev]"
+git clone https://github.com/agentrust-io/ca2a.git
+cd ca2a
+python -m venv .venv
 ```
 
-The `[dev]` extra pulls in `pytest`, so the same install runs both the standalone experiment scripts and the CI unit tests. Two of the scripts (`claim3` and `claim6`) import `ca2a_runtime` with no `sys.path` fallback, so the editable install is required for the full suite.
-
-## 2. The map
-
-| Dir | Claim | Status | What it proves |
-|-----|-------|--------|----------------|
-| `claim1-attenuation-soundness` | C1 | validated | A child grant can never exceed its parent |
-| `claim2-cross-chain-replay` | C2 | validated | Replayed or spliced credentials are rejected |
-| `claim3-scope-policy-intersection` | C3 | gated (Tier 2) | Delegated scope intersected with local Cedar policy |
-| `claim4-sealed-payload-confidentiality` | C4 | gated (Tier 2) | Payload decrypts only inside the attested peer |
-| `claim5-provenance-dag-integrity` | C5 | validated | Linked records are tamper-evident, bound to authority |
-| `claim6-cross-operator-attestation` | C6 | gated (Tier 3) | Mutual attestation, binary-swap detection |
-
-Gated experiments SKIP (exit 0) until the implementation they depend on lands. Each gated dependency is a line item on [ROADMAP.md](../../ROADMAP.md): Tier 2 is runtime peer-delegation enforcement and the sealed channel; Tier 3 is a real hardware attestation backend.
-
-## 3. C1: attenuation soundness (validated)
+Activate with `source .venv/bin/activate` on macOS/Linux or `.venv\Scripts\Activate.ps1` in PowerShell. Then:
 
 ```bash
+python -m pip install -e ".[dev]"
 python experiments/claim1-attenuation-soundness/run.py
-```
-
-The script builds 200 strictly narrowing chains with `DelegationCredential`, `new_keypair`, and `sign`, then verifies each with `verify_chain`. It then builds 200 escalating variants in which one hop adds a capability no ancestor held, and confirms each is rejected with `ScopeEscalation`.
-
-```text
-[1] Narrowing chains accepted
-    trials: 200
-    accepted: 200/200
-
-[2] Escalation attempts rejected
-    trials: 200
-    rejected with ScopeEscalation: 200/200
-    example: hop 3 scope exceeds parent grant (added: ['cap:escalate-0'])
-
-============================================================
-KEY RESULT: 200/200 narrowing chains accepted; 200/200 escalation attempts rejected (ScopeEscalation)
-```
-
-Exit code 0. See [Delegation Chain](../spec/delegation-chain.md) for the attenuation rule and [Error Codes](../spec/error-codes.md) for `SCOPE_ESCALATION`.
-
-## 4. C2: cross-chain replay (validated)
-
-```bash
 python experiments/claim2-cross-chain-replay/run.py
-```
-
-Two independent chains verify as a control. Then a credential is duplicated inside one chain (`CredentialReplay`), and a credential minted for chain A is spliced into chain B, breaking continuity (`BrokenDelegationLink`).
-
-```text
-    spliced credential_id: a-1 (from chain A)
-    verify_chain raised: BrokenDelegationLink  OK
-    error detail: hop 1 parent_id does not match previous credential_id
-
-============================================================
-KEY RESULT: 2/2 replay attacks rejected (1 CredentialReplay, 1 BrokenDelegationLink); 2/2 control chains valid
-```
-
-Exit code 0. These are the anti-replay invariants in the [Threat Model](../spec/threat-model.md).
-
-## 5. C5: provenance DAG integrity (validated)
-
-```bash
-python experiments/claim5-provenance-dag-integrity/run.py
-```
-
-The script emits one `DelegationRecord` per hop with `record_for`, chaining `parent_record_hash`, and verifies the DAG with `verify_dag`. It then tampers one record's scope, measures the SHA-256 avalanche across `record_hash()`, and confirms the tamper and a reparent both raise `ProvenanceLinkBroken`. Finally `cross_check_chain` binds each record to its credential and rejects a forged `credential_id`.
-
-```text
-[4. cross_check_chain ties record i to credential i]
-    aligned records: cross_check_chain passes  OK
-    credential_id mismatch: ProvenanceLinkBroken raised  OK
-
-============================================================
-KEY RESULT: tamper flips ~50% of hash bits (120/256), ProvenanceLinkBroken raised; reparent detected; provenance bound to authority
-```
-
-Exit code 0. The bit count varies run to run around 128/256 because the key material is freshly generated; the property is that it is close to half, not an exact value. See the [Provenance DAG](../spec/provenance-dag.md) page.
-
-## 6. C3: scope-policy intersection (gated on Tier 2)
-
-```bash
 python experiments/claim3-scope-policy-intersection/run.py
-```
-
-This SKIPs. Two runtime pieces do not exist yet: there is no request-time gate on an inbound peer call, and there is no wiring from a verified delegated scope to a Cedar policy engine. Both are Tier 2 on [ROADMAP.md](../../ROADMAP.md). The script prints a small hard-coded set intersection labeled as illustrative only; it is not the Cedar engine.
-
-```text
-SKIP: Tier 2 runtime scope-policy intersection is not implemented.
-  - runtime peer-delegation enforcement not built (no call-time gate)
-  - Cedar intersection not wired (no delegated-scope AND local-policy path)
-See ROADMAP.md. Exiting 0 so CI and dev hosts pass.
-...
-KEY RESULT: SKIP (gated on Tier 2). Effective permission = delegated scope
-            intersected with local Cedar policy; enforcement path not built.
-```
-
-Exit code 0. See [Cedar Policy](../spec/cedar-policy.md) for the intended intersection.
-
-## 7. C4: sealed-payload confidentiality (gated on Tier 2)
-
-```bash
 python experiments/claim4-sealed-payload-confidentiality/run.py
-```
-
-The sealed channel is a fail-closed placeholder. This script does not demonstrate confidentiality; it demonstrates the honest current behavior, that `SealedChannel.seal()` and `open()` raise `SealedChannelError` (code `SEALED_CHANNEL_ERROR`) rather than silently emitting plaintext. The confidentiality property itself is pending Tier 2.
-
-```text
-[1. seal() fails closed]
-    seal(payload) raised: SealedChannelError  OK
-    error code: SEALED_CHANNEL_ERROR  OK
-    detail names Tier 2: YES  OK
-    plaintext emitted: NO  OK
-...
-KEY RESULT: SealedChannel fails closed. seal()/open() raise
-SEALED_CHANNEL_ERROR instead of emitting plaintext. This is
-the honest current behavior. The confidentiality claim itself
-(payload decrypts only under the attested peer measurement) is
-PENDING Tier 2 and is not demonstrated here.
-```
-
-Exit code 0. See the [Sealed Channel](../spec/sealed-channel.md) page.
-
-## 8. C6: cross-operator attestation (gated on Tier 3)
-
-```bash
+python experiments/claim5-provenance-dag-integrity/run.py
 python experiments/claim6-cross-operator-attestation/run.py
 ```
 
-This SKIPs. The SEV-SNP and TDX collectors are Tier 3 and not implemented, so on the SEV-SNP path this experiment exercises no provider that can produce a quote. (`TpmProvider.attest` does now produce a real quote on a Linux host with a TPM, but this experiment is written against SEV-SNP.) The script probes for a provider, finds none, prints a software-only illustration of the `AttestationReport` shape clearly marked as carrying no assurance, then SKIPs.
+Each script should exit 0 and print `KEY RESULT`. A traceback, nonzero exit, or `SKIP` is not a successful reproduction. The delegation experiments retain the locally generated root authority separately and pass it explicitly to verification. Do not infer production trust from an incoming chain's own root.
 
-```text
-KEY RESULT: SKIP: cross-operator attestation is gated on Tier 3 (real
-hardware attestation backend). No provider can produce a verifiable quote
-yet, so mutual attestation and binary-swap detection cannot be demonstrated.
-The reports above are software-only and carry no assurance. See ROADMAP.md.
-Exiting 0 so CI and dev hosts pass.
-```
+## Read the results
 
-Exit code 0. See [Attestation](../spec/attestation.md).
+| Experiment | Expected result | Boundary |
+|---|---|---|
+| C1: attenuation soundness | 200 narrowing chains accepted; 200 correctly signed escalations rejected with `ScopeEscalation` | Exercises scope attenuation on generated chains |
+| C2: cross-chain replay | Two control chains accepted; duplicate ID and splice rejected | No global single-use credential database |
+| C3: scope-policy intersection | `read` allowed; `write`, `audit`, and `admin` denied | Uses `LocalPolicy`; separate tests cover Cedar |
+| C4: sealed-payload confidentiality | Four encryption checks pass, including wrong-key and tamper rejection | Keys live in software memory; no enclave custody demonstrated |
+| C5: provenance integrity | Unrepaired parent changes, reparenting, and credential-ID mismatch detected | Unsigned hash links do not authenticate the producer or prevent a fully recomputed rewrite |
+| C6: cross-operator attestation | Four checks pass with synthetic reports and certificates | Locally generated test root; no genuine hardware quote or live cross-operator deployment |
 
-## 9. Run them all
+C5's changed-bit count varies because the keys are random. The exact count is not a security acceptance threshold. C6's measurement mismatch is simulated by changing a synthetic report, not by swapping a binary on real hardware.
 
-```bash
-pip install -e ".[dev]"
-python experiments/claim1-attenuation-soundness/run.py
-python experiments/claim2-cross-chain-replay/run.py
-python experiments/claim3-scope-policy-intersection/run.py       # SKIP (Tier 2)
-python experiments/claim4-sealed-payload-confidentiality/run.py  # fail-closed (Tier 2)
-python experiments/claim5-provenance-dag-integrity/run.py
-python experiments/claim6-cross-operator-attestation/run.py      # SKIP (Tier 3)
-```
+## CI coverage
 
-Every script exits 0. The validated three print a `KEY RESULT` asserting their property; the gated three print a SKIP banner and exit 0 so they never break CI or a laptop with no TEE.
-
-## 10. The CI tests
-
-Each claim also has a unit test under `tests/unit/test_claim*.py`, run by the `test` job in `.github/workflows/ci.yml`. The validated claims assert their property directly. For example, `test_claim1_attenuation.py` verifies a known narrowing chain and asserts a re-broadening child raises `ScopeEscalation` at the offending hop.
-
-The gated claims register a `pytest.mark.skip` with a reason that names the tier and points at the roadmap, so CI records them as skipped rather than failed until the dependency lands:
-
-```python
-@pytest.mark.skip(
-    reason="Tier 2: runtime scope-policy intersection not implemented; see ROADMAP.md"
-)
-def test_effective_scope_is_delegation_intersect_local_policy() -> None:
-    ...
-```
-
-Run the suite:
+`tests/unit/test_documented_experiments.py` runs these exact script entry points and checks their positive-control results. To reproduce that check:
 
 ```bash
-pytest tests/unit -v
+python -m pytest tests/unit/test_documented_experiments.py
 ```
 
-You will see the C1, C2, and C5 tests pass and the C3, C4, and C6 tests reported as skipped. That skip count is the honest ledger of what cA2A has not yet built. As Tier 2 and Tier 3 land on [ROADMAP.md](../../ROADMAP.md), those skips flip to real assertions.
+For the actual Cedar engine and the runtime's authentication/appraisal ordering:
+
+```bash
+python -m pytest tests/unit/test_cedar.py tests/unit/test_holder_binding.py tests/unit/test_mutual_attestation.py
+```
+
+Continue to [hardware validation](../hardware-validation.md) for recorded hardware evidence, or [integrating with A2A](integrating-with-a2a.md) for a local transport walkthrough.

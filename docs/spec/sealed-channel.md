@@ -1,31 +1,39 @@
 # Sealed Peer Channel
 
-The sealed channel binds a task payload to the key a peer's attestation vouches for, so it decrypts only with the private key held inside that peer's verified enclave. The channel is implemented; the guarantee that the private key is enclave-bound is what attestation establishes, and driving the seal off a verified report on a live call is runtime wiring still to come.
-
-## Threat it addresses
-
-When A sends B a task payload, that payload crosses a network and lands in B's memory. If B is in another trust domain, mTLS protects the pipe but not the endpoint: the operator hosting B, or a connectivity provider between them, can read plaintext. Sealing the payload to the key bound to B's measurement means only a B that booted the expected, measured code holds the private key that can open it.
+The sealed channel encrypts a task to a peer's X25519 public key. Only the matching private key can open it. The reference runtime connects this encryption to channel-offer appraisal; software mode exercises the same encryption without proving hardware isolation.
 
 ## Scheme
 
-HPKE-style, using only primitives from the `cryptography` library:
+The module uses X25519 key agreement, HKDF-SHA256, and ChaCha20-Poly1305 from `cryptography`. The sealed blob contains a version, ephemeral public key, nonce, and authenticated ciphertext. This is an HPKE-style construction, not a claim of RFC 9180 interoperability.
 
-1. The peer generates an X25519 channel keypair (inside its enclave on hardware) and vouches for the public key through its attestation report.
-2. The sender does an ephemeral X25519 ECDH to that public key, derives a 32-byte key with HKDF-SHA256, and encrypts the payload with ChaCha20-Poly1305.
-3. The sealed blob is `version || ephemeral_public_key || nonce || ciphertext`. Only the holder of the peer's private key can reconstruct the shared secret and decrypt.
+## Try the cryptographic layer
 
-## Interface
+Run this after installing the source checkout as shown in the [quick start](../quickstart.md):
 
 ```python
 from ca2a_runtime.channel import SealedChannel, generate_channel_keypair, open_sealed
+from ca2a_runtime.errors import SealedChannelError
 
-peer_priv, peer_pub = generate_channel_keypair()   # peer side, in the enclave on hardware
-sealed = SealedChannel(peer_pub).seal(payload, aad=b"session-id")  # sender side
-opened = open_sealed(sealed, peer_priv, aad=b"session-id")         # only the peer's key opens it
+peer_private, peer_public = generate_channel_keypair()
+payload = b"reconcile this ledger"
+sealed = SealedChannel(peer_public).seal(payload, aad=b"session-1")
+assert open_sealed(sealed, peer_private, aad=b"session-1") == payload
+
+wrong_private, _ = generate_channel_keypair()
+try:
+    open_sealed(sealed, wrong_private, aad=b"session-1")
+except SealedChannelError:
+    print("wrong key rejected")
+else:
+    raise AssertionError("wrong key accepted")
 ```
 
-`open_sealed` fails closed with `SEALED_CHANNEL_ERROR` on a malformed blob, a wrong key, or a tampered ciphertext (AEAD authentication failure); it never returns unauthenticated plaintext. `aad` binds context (for example a session id) into the authentication tag.
+Malformed blobs, changed ciphertext, wrong keys, or mismatched additional authenticated data raise `SEALED_CHANNEL_ERROR`; no unauthenticated plaintext is returned. Both sides must supply the same `aad` when using that low-level option.
 
-## What rests on hardware
+## Attestation and key custody
 
-The cryptographic confidentiality of the payload to the attested key is implemented and tested here. The stronger property, that the payload decrypts *only inside the attested measurement*, holds because the private key is generated in and never leaves the peer's enclave; that is a hardware property established by [attestation](attestation.md), not by this module. Binding the seal to a verified report on a live inbound call is tracked on the [roadmap](../../ROADMAP.md). The connectivity path sees ciphertext; the only thing that leaves the enclave in the clear is the signed TRACE record.
+In a live call, the sender appraises the recipient's channel offer before sealing to it. The recipient performs its inbound checks before opening the payload. See [inbound peer-call decision](call-graph.md).
+
+Encryption to a key does not by itself prove where the private key lives. Protection against the recipient's host operator depends on accepted hardware evidence binding the key to the expected measured environment, and on that environment retaining the private key. This example generates its keys in ordinary process memory and demonstrates no such protection.
+
+The encrypted payload does not hide all transport metadata, offers, or evidence records. See [attestation](attestation.md), [hardware validation](../hardware-validation.md), and [limitations](../../LIMITATIONS.md) for the deployment-specific assurance boundary.

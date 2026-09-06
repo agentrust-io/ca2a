@@ -1,63 +1,39 @@
 # Component Model
 
-The cA2A runtime is a set of small, composable modules under `src/`. Each maps to one primitive in [How It Works](../concepts.md). This page describes what each component is, what it exposes, and whether it is implemented today or a placeholder for pending Tier 2/Tier 3 work. Nothing here describes behavior that is not in the source.
+cA2A composes delegation verification, local policy, caller authentication, attestation, encrypted payloads, and evidence records. The reference runtime and HTTP transport implement this path; hardware assurance depends on the provider and evidence available in the deployment.
 
 ## Components
 
-### delegation
+| Component | Module | Responsibility |
+|---|---|---|
+| Delegation | `ca2a_runtime.delegation.credential` | Signed credentials; root trust, continuity, scope attenuation, depth and validity checks |
+| Holder proof | `ca2a_runtime.delegation.holder` | Bind the caller to the leaf subject key and challenged request |
+| Policy | `ca2a_runtime.policy`, `ca2a_runtime.cedar` | Allow-set or Cedar policy evaluation |
+| Inbound handler | `ca2a_runtime.peer` | Verify, authenticate, appraise, authorize, and open the payload |
+| Channel | `ca2a_runtime.channel` | X25519 key agreement and authenticated encryption; reject wrong keys and altered ciphertext |
+| Attestation | `ca2a_runtime.attestation` | Challenge-bound channel offers and peer appraisal |
+| Providers | `ca2a_runtime.tee` | Software evidence or hardware collection for TPM, SEV-SNP, and TDX; OPAQUE has no collector |
+| Provenance | `ca2a_runtime.provenance` | Hash-linked decision records and consistency checks |
+| TRACE binding | `ca2a_runtime.trace_binding` | Signed TRACE records carrying delegation links |
+| Offline verification | `ca2a_verify.verify`, `ca2a_verify.dag` | Verify credentials and signed TRACE record paths against caller-supplied trust anchors |
+| Configuration | `ca2a_runtime.config`, `ca2a_runtime.bootstrap` | Validate configuration and build a node with policy, provider, and trusted roots |
+| Node and transport | `ca2a_runtime.node`, `ca2a_runtime.transport` | Compose the handler with reference HTTP and A2A adapters |
+| CLI | `ca2a_runtime.cli` | Offline validation commands and `ca2a start` |
 
-`ca2a_runtime.delegation.credential` holds the credential model and the offline chain verifier. `DelegationCredential` is a frozen dataclass with a signed `body()` (everything but the signature) and a detached Ed25519 `signature`. `new_keypair()` returns a fresh `Ed25519PrivateKey` and its raw-hex public key. `verify_chain(chain, *, max_depth=8)` walks a root-to-leaf list and raises the specific error for the first failed invariant: signature, continuity, attenuation, depth, and anti-replay. This is the implemented core. See [delegation chain](delegation-chain.md).
+## How they compose
 
-### provenance
+The caller appraises a callee's channel offer and seals the task to that key. The callee receives a parsed `PeerRequest`, checks its delegation and holder proof, evaluates policy and caller appraisal, and decides whether to open the payload. [Inbound peer-call decision](call-graph.md) gives the exact order and failure behavior.
 
-`ca2a_runtime.provenance` is the runtime-evidence side. `DelegationRecord` is a frozen dataclass whose `record_hash()` is a SHA-256 over its canonical body, so any field change breaks a child's link. `record_for(credential, record_id, parent_record_hash)` builds the record a hop emits. `verify_dag(records)` confirms a root-to-leaf provenance chain (root has no parent link, each later record's `parent_record_hash` equals the recomputed hash of the previous record, no repeated `record_id`). `cross_check_chain(records, chain)` ties provenance to authority: record `i` must reference credential `i` and carry the same subject. Implemented. The full TRACE binding lands with Tier 2. See [TRACE A2A profile](trace-a2a-profile.md) and [provenance DAG](provenance-dag.md).
+`enforce_peer_call` is a lower-level authorization helper. Calling it directly does not perform the full handler's holder proof or caller appraisal.
 
-### verify
+## Evidence has two forms
 
-`ca2a_verify.verify` is a thin offline wrapper over the delegation verifier. `verify_delegation_chain(chain, *, trusted_root_issuers, max_depth=8)` returns a `ChainResult` (`hops`, `root_issuer`, `leaf_subject`, `leaf_scope`); `verify_chain_file(path, *, trusted_root_issuers, max_depth=8)` loads a chain from JSON (a list, or `{"chain": [...]}`) and verifies it. The explicit local root trust set is mandatory: signatures alone establish consistency, not authorization. `VerificationError` is re-exported as `CA2AError` so callers catch one type. Implemented. See [verification library](verification-library.md).
+`DelegationRecord` is an unsigned, hash-linked decision record. `verify_dag` checks one ordered root-to-leaf path; `cross_check_chain` checks its credential IDs and subjects. These consistency checks do not authenticate the record producer or prove task completion.
 
-### channel
+The separate TRACE binding and `verify_trace_dag` add signed-record verification against trusted keys. The current APIs check ordered paths, not an arbitrary branching graph. See [provenance DAG](provenance-dag.md) and [verification library](verification-library.md).
 
-`ca2a_runtime.channel.sealed` defines `SealedChannel`, the measurement-bound peer channel. Instantiation is allowed so the runtime can be wired against the interface, but `seal()` and `open()` fail closed with `SEALED_CHANNEL_ERROR` today. This is Tier 2 and not yet implemented; do not send confidential payloads across a trust boundary and assume they are protected. See [sealed channel](sealed-channel.md) and [LIMITATIONS.md](../../LIMITATIONS.md).
+## Deployment boundaries
 
-### tee
+Software mode exercises delegation, policy, encryption, and signed evidence without hardware isolation. A hardware platform name alone is insufficient: the verifier needs valid evidence, an accepted trust chain, and the expected measurement. Provider collection, verifier support, and end-to-end deployment validation are separate facts; consult [hardware validation](../hardware-validation.md).
 
-`ca2a_runtime.tee.base` defines the provider interface and evidence model. `AttestationReport` is a frozen dataclass binding a `public_key` to a `measurement` under a `nonce` on a named `platform`, plus four optional evidence fields (`raw_evidence`, `quote_signature`, `attestation_key_pem`, `attestation_key_chain_pem`) that make those claims checkable. `BaseProvider` is an ABC with `detect()` and `attest(public_key, nonce)`, and the two must agree: `detect()` is True only where `attest()` works. TPM, SEV-SNP and TDX all have collectors, the latter two through the kernel configfs-TSM interface; OPAQUE has a verifier but no collector, so its `attest()` raises and verification fails closed. See [attestation](attestation.md).
-
-### config
-
-`ca2a_runtime.config` holds `Ca2aConfig`, a frozen dataclass validated by `from_dict()` / `load()`: `provider` (from `VALID_PROVIDERS`), `enforcement_mode` (from `VALID_ENFORCEMENT`), `max_delegation_depth`, `policy_bundle_path`, `local_policy`, and `listen_addr`. Invalid values raise `CONFIG_ERROR`. `ca2a_runtime.bootstrap` turns a validated config into a running `PeerNode`: it resolves the policy from `local_policy` or `policy_bundle_path` and the provider from `provider`, both fail-closed. `enforcement_mode` is still only recorded; the peer path always fails closed on a denial.
-
-### errors
-
-`ca2a_runtime.errors` is the central registry. Every error is a `CA2AError` subclass carrying a stable `code` and an `http_status`: `CONFIG_ERROR`, `INVALID_CREDENTIAL`, `SCOPE_ESCALATION`, `BROKEN_DELEGATION_LINK`, `DELEGATION_DEPTH_EXCEEDED`, `CREDENTIAL_REPLAY`, `ATTESTATION_UNSUPPORTED`, `ATTESTATION_FAILED`, `SEALED_CHANNEL_ERROR`, `PROVENANCE_LINK_BROKEN`. See [error codes](error-codes.md).
-
-### cli
-
-`ca2a_runtime.cli` exposes the `ca2a` command. `validate-config --config` loads and validates a `Ca2aConfig`, `verify-chain --chain --trusted-root-issuer [--max-depth]` calls `verify_chain_file`, and `verify-dag --dag [--chain --trusted-root-issuer]` verifies a provenance DAG; all three operate offline. `start --config` is the one online command: it builds a `PeerNode` through `ca2a_runtime.bootstrap` and serves it with `ca2a_runtime.transport.server`.
-
-## Component map
-
-| Component | Module | Key API | Status |
-|---|---|---|---|
-| delegation | `ca2a_runtime.delegation.credential` | `DelegationCredential`, `new_keypair`, `verify_chain` | Implemented |
-| provenance | `ca2a_runtime.provenance` | `DelegationRecord`, `record_for`, `verify_dag`, `cross_check_chain` | Implemented |
-| verify | `ca2a_verify.verify` | `verify_delegation_chain`, `verify_chain_file`, `ChainResult` | Implemented |
-| config | `ca2a_runtime.config` | `Ca2aConfig` | Implemented |
-| bootstrap | `ca2a_runtime.bootstrap` | `load_policy`, `select_provider`, `build_peer_node` | Implemented |
-| errors | `ca2a_runtime.errors` | `CA2AError` and subclasses | Implemented |
-| cli | `ca2a_runtime.cli` | `ca2a validate-config`, `ca2a verify-chain`, `ca2a verify-dag`, `ca2a start` | Implemented |
-| channel | `ca2a_runtime.channel.sealed` | `SealedChannel` | Placeholder, fails closed (Tier 2) |
-| tee | `ca2a_runtime.tee.base` | `BaseProvider`, `AttestationReport` | Interface only; hardware backends pending (Tier 3) |
-
-## How they compose on an inbound peer call
-
-The intended peer path threads these components together. Steps 2 through 5 below are the target composition; the implemented parts today are the chain and provenance verification an offline verifier can run over signed evidence.
-
-1. A hands B a child credential with `scope ⊆` A's scope. This is the [delegation](delegation-chain.md) model, implemented.
-2. Before B accepts, the runtime verifies the chain with `verify_chain` and intersects the delegated scope with a local Cedar policy under B's `enforcement_mode`. Chain verification is implemented; runtime enforcement and Cedar scope intersection are Tier 2 and not yet built. See [Cedar policy](cedar-policy.md).
-3. B's `tee` provider produces an `AttestationReport`; the runtime checks the measurement. The interface exists, but no hardware backend verifies a quote yet (Tier 3), so this fails closed. See [attestation](attestation.md).
-4. The task payload is sealed to B's measurement through `SealedChannel`. Tier 2, fails closed today. See [sealed channel](sealed-channel.md).
-5. B emits a `DelegationRecord` linking to A's record via `record_for`, and any verifier can later run `verify_dag` and `cross_check_chain` offline. Implemented. See [TRACE A2A profile](trace-a2a-profile.md).
-
-What ships today is the offline path: given signed credentials and records, `ca2a_verify` and `provenance` reconstruct and check the delegation tree without trusting the operators that produced it. The runtime peer enforcement, sealed channel, Cedar intersection, and hardware attestation that would gate a live call are pending. See [failure modes](failure-modes.md), [ROADMAP.md](../../ROADMAP.md), and [LIMITATIONS.md](../../LIMITATIONS.md).
+The configuration accepts three enforcement-mode names, but all currently enforce denial on the peer path. The reference transport is an implementation option; the [profile](profile.md) remains transport-independent.

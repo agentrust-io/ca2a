@@ -3,10 +3,8 @@
 callee's local policy. A peer can exercise a capability only if BOTH its
 delegation chain granted it AND the callee's local policy allows it.
 
-Validated experiment (no hardware). Uses the enforcement decision core in
-ca2a_runtime.peer. Binding a full Cedar policy engine as the local policy is
-tracked separately (issue #10); the intersection semantics are what this claim
-establishes.
+Software experiment using the enforcement decision core in ca2a_runtime.peer.
+This uses LocalPolicy; tests/unit/test_cedar.py exercises the Cedar engine.
 """
 # ruff: noqa: T201
 from __future__ import annotations
@@ -22,9 +20,10 @@ from ca2a_runtime.peer import effective_scope, enforce_peer_call  # noqa: E402
 from ca2a_runtime.policy import LocalPolicy  # noqa: E402
 
 
-def build_chain(scopes: list[frozenset[str]]) -> list[DelegationCredential]:
+def build_chain(scopes: list[frozenset[str]]) -> tuple[list[DelegationCredential], str]:
     chain: list[DelegationCredential] = []
     priv, pub = new_keypair()
+    trusted_root = pub  # Retain the local fixture authority separately.
     parent_id: str | None = None
     for depth, scope in enumerate(scopes):
         next_priv, next_pub = new_keypair()
@@ -35,17 +34,17 @@ def build_chain(scopes: list[frozenset[str]]) -> list[DelegationCredential]:
         chain.append(cred)
         parent_id = cred.credential_id
         priv, pub = next_priv, next_pub
-    return chain
+    return chain, trusted_root
 
 
 def main() -> int:
     # Delegated down to a leaf scope of {read, write}; the root held admin too.
-    chain = build_chain([frozenset({"read", "write", "admin"}), frozenset({"read", "write"})])
+    chain, trusted_root = build_chain([frozenset({"read", "write", "admin"}), frozenset({"read", "write"})])
     # The callee's local policy allows {read, audit}. Note write is delegated but
     # not locally allowed, and audit is locally allowed but never delegated.
     policy = LocalPolicy.of(["read", "audit"])
 
-    eff = effective_scope(chain, policy)
+    eff = effective_scope(chain, policy, trusted_root_issuers={trusted_root})
     print("Claim 3: effective permission = delegated scope INTERSECT local policy")
     print(f"  leaf delegated scope: {sorted(chain[-1].scope)}")
     print(f"  local policy allows:  {sorted(policy.allow)}")
@@ -60,7 +59,8 @@ def main() -> int:
     allowed = denied = 0
     for cap, expect_allowed in cases.items():
         try:
-            enforce_peer_call(chain, cap, policy=policy, record_id="rec-0")
+            enforce_peer_call(chain, cap, policy=policy, record_id="rec-0",
+                              trusted_root_issuers={trusted_root})
             got = True
         except ScopeNotPermitted:
             got = False

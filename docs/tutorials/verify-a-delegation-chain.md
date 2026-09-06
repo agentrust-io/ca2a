@@ -1,64 +1,62 @@
-# Tutorial: Verify a Delegation Chain
+# Verify a Saved Delegation Chain
 
-This tutorial verifies a chain, then deliberately breaks each invariant to see the verifier reject it. No hardware needed.
+Save a locally generated chain, verify it using a separately retained root key, then detect an edited signature. This walkthrough builds on [authoring a delegation credential](authoring-a-delegation-credential.md): install that checkout and run its Python blocks first, in the same session. They define `chain`, `a_pub`, and `trusted_roots`, and already test a correctly signed scope escalation.
 
-## 1. Generate a valid chain
-
-```bash
-python scripts/gen_example_chain.py
-ca2a verify-chain --chain examples/minimal/chain.json --trusted-root-issuer <trusted-root-issuer-hex>
-# {"verified": true, "hops": 3, "leaf_scope": ["cap:read"]}
-```
-
-The chain grants `admin` at the root, narrows to `read+write`, then to `read`.
-
-## 2. Break attenuation
-
-Open `examples/minimal/chain.json` and add `"cap:admin"` to the `scope` of the last hop (the leaf held only `cap:read`). Re-run:
-
-```bash
-ca2a verify-chain --chain examples/minimal/chain.json --trusted-root-issuer <trusted-root-issuer-hex>
-# {"verified": false, "code": "SCOPE_ESCALATION", ...}
-```
-
-The leaf claimed authority its parent did not hold. Regenerate to restore.
-
-## 3. Break the link
-
-Regenerate, then change the `parent_id` of the middle hop to `"nope"`:
-
-```bash
-ca2a verify-chain --chain examples/minimal/chain.json --trusted-root-issuer <trusted-root-issuer-hex>
-# {"verified": false, "code": "BROKEN_DELEGATION_LINK", ...}
-```
-
-## 4. Tamper with a signed field
-
-Regenerate, then change any signed field (for example a `scope` entry) without re-signing:
-
-```bash
-ca2a verify-chain --chain examples/minimal/chain.json --trusted-root-issuer <trusted-root-issuer-hex>
-# {"verified": false, "code": "INVALID_CREDENTIAL", ...}
-```
-
-The signature no longer matches the canonical body.
-
-## 5. Verify in code
+## Save and verify
 
 ```python
+import json
+from pathlib import Path
 from ca2a_verify import verify_chain_file
-from ca2a_runtime.errors import CA2AError
 
-try:
-    result = verify_chain_file(
-        "examples/minimal/chain.json",
-        trusted_root_issuers={"<trusted-root-issuer-hex>"},
-    )
-    print(f"verified {result.hops} hops, leaf scope {result.leaf_scope}")
-except CA2AError as exc:
-    print(f"rejected: {exc.code}: {exc}")
+Path("chain.json").write_text(json.dumps({
+    "chain": [credential.body() | {"signature": credential.signature} for credential in chain]
+}), encoding="utf-8")
+Path("trusted-root.txt").write_text(a_pub, encoding="utf-8")
+
+result = verify_chain_file("chain.json", trusted_root_issuers=trusted_roots)
+assert result.hops == 3
+assert result.leaf_scope == ["cap:read"]
+print("verified 3 hops; leaf scope cap:read")
 ```
 
-## What you proved
+The trusted root was retained when you created the local authority. For an incoming production chain, obtain the approved root through your own trust configuration. Reading its issuer field and trusting it would let the chain authorize itself.
 
-You verified a chain of delegated authority, offline, without trusting whoever produced it. That is the property cA2A carries into the runtime peer path once attestation and sealing land.
+## Change a signed field
+
+```python
+from ca2a_runtime.errors import InvalidCredential
+
+document = json.loads(Path("chain.json").read_text(encoding="utf-8"))
+document["chain"][-1]["scope"].append("cap:admin")
+Path("tampered-chain.json").write_text(json.dumps(document), encoding="utf-8")
+
+try:
+    verify_chain_file("tampered-chain.json", trusted_root_issuers=trusted_roots)
+except InvalidCredential:
+    print("edited signature rejected: INVALID_CREDENTIAL")
+else:
+    raise AssertionError("edited signed field accepted")
+```
+
+This checks signature integrity. To exercise attenuation, the overbroad grant must have a valid signature; the authoring walkthrough does that. Editing a signed `parent_id` also fails signature verification before it can demonstrate a continuity error.
+
+## Use the CLI
+
+In Bash:
+
+```bash
+ca2a verify-chain --chain chain.json --trusted-root-issuer "$(cat trusted-root.txt)"
+```
+
+In PowerShell:
+
+```powershell
+ca2a verify-chain --chain chain.json --trusted-root-issuer (Get-Content trusted-root.txt -Raw)
+```
+
+Expect exit 0 and `{"verified": true, "hops": 3, "leaf_scope": ["cap:read"]}`. Substituting `tampered-chain.json` should exit nonzero with `INVALID_CREDENTIAL`.
+
+## What this establishes
+
+You checked signed grants against a trusted issuer and rejected an edited credential. This does not execute a task, establish caller possession of the leaf key, or appraise hardware. Continue to [inbound peer-call decision](../spec/call-graph.md) for those runtime checks.

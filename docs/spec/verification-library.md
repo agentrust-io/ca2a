@@ -1,6 +1,6 @@
 # Verification Library
 
-`ca2a-verify` verifies a delegation chain, and eventually the delegation DAG, offline. It does not require trusting any operator: a chain is checked against the issuers' public keys and the attenuation invariants alone.
+`ca2a-verify` checks delegation credentials and signed TRACE record paths offline. The caller supplies trusted credential issuers and record-signing keys; cryptographic consistency alone does not establish authorization.
 
 ## API
 
@@ -26,8 +26,12 @@ All verification failures are subtypes of `CA2AError`, re-exported as `Verificat
 
 ## Offline by design
 
-The verifier reads only the chain document. It contacts no server, trusts no operator signature over the transport, and produces the same verdict anywhere. This is what makes a delegation chain usable as evidence in an audit or a procurement review, not just at runtime.
+Chain verification contacts no server. For reproducible historical checks, preserve the document, trust set, verifier version, and evaluation time. The default current-time validity check can change its verdict as credentials expire.
 
-## Not yet implemented
+## Signed TRACE record paths
 
-The delegation DAG verifier, which links each hop's TRACE record to its parent and checks the whole tree, lands with the Tier 2 provenance work. See [ROADMAP.md](../../ROADMAP.md).
+`verify_trace_dag(records, trusted_keys=..., max_age_seconds=None)` verifies signatures from trusted keys, record structure, and parent hashes along one ordered root-to-leaf path. It returns a `TraceDagResult`. The default omits a record-age limit for historical audits; supply `max_age_seconds` when freshness is required.
+
+`cross_check_trace_dag(records, chain)` then checks path length and non-root credential IDs. Run credential and signed-record verification first. This cross-check does not independently bind TRACE subjects to credential subjects or prove task completion.
+
+The API name uses DAG terminology, but the input is one ordered path, not an arbitrary branching tree. The unsigned `DelegationRecord` helper has a separate `verify_dag` consistency check; it is not a substitute for signature verification. See [provenance DAG](provenance-dag.md) and [TRACE A2A profile](trace-a2a-profile.md).

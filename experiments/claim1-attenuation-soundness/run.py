@@ -36,7 +36,7 @@ ROOT_CAPS = [f"cap:{c}" for c in "abcdef"]
 
 def build_signed_chain(
     scopes: list[frozenset[str]],
-) -> list[DelegationCredential]:
+) -> tuple[list[DelegationCredential], str]:
     """Build a correctly signed root-to-leaf chain granting scopes[i] at hop i.
 
     Continuity holds: each hop's issuer is the previous hop's subject, depth
@@ -44,6 +44,7 @@ def build_signed_chain(
     """
     chain: list[DelegationCredential] = []
     priv, pub = new_keypair()
+    trusted_root = pub  # Retain our generated authority before constructing input.
     parent_id: str | None = None
     for depth, scope in enumerate(scopes):
         next_priv, next_pub = new_keypair()
@@ -58,7 +59,7 @@ def build_signed_chain(
         chain.append(cred)
         parent_id = cred.credential_id
         priv, pub = next_priv, next_pub
-    return chain
+    return chain, trusted_root
 
 
 def narrowing_scopes(trial: int) -> list[frozenset[str]]:
@@ -101,9 +102,9 @@ def main() -> int:
     section("[1] Narrowing chains accepted")
     accepted = 0
     for trial in range(TRIALS):
-        chain = build_signed_chain(narrowing_scopes(trial))
+        chain, trusted_root = build_signed_chain(narrowing_scopes(trial))
         try:
-            verify_chain(chain)
+            verify_chain(chain, trusted_root_issuers={trusted_root})
             accepted += 1
         except Exception as exc:  # noqa: BLE001
             print(f"    trial {trial} UNEXPECTED rejection: {type(exc).__name__}: {exc}")
@@ -118,9 +119,9 @@ def main() -> int:
     other = 0
     example = ""
     for trial in range(TRIALS):
-        chain = build_signed_chain(escalating_scopes(trial))
+        chain, trusted_root = build_signed_chain(escalating_scopes(trial))
         try:
-            verify_chain(chain)
+            verify_chain(chain, trusted_root_issuers={trusted_root})
             print(f"    trial {trial} ESCALATION NOT CAUGHT: chain verified")
         except ScopeEscalation as exc:
             rejected += 1
