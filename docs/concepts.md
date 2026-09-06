@@ -28,6 +28,10 @@ Linked TRACE records carry the decision and parent references. Verifiers check s
 
 The diagram follows the callee's inbound runtime checks. It shows the accepted path; a failed required check stops processing before payload opening.
 
+Scroll the diagram horizontally on smaller screens. The text below explains the same boundaries.
+
+<div class="at-diagram" role="region" aria-label="cA2A inbound checks; scroll horizontally" tabindex="0" markdown>
+
 ```mermaid
 flowchart TB
     caller[Caller: credential chain and request] --> chain
@@ -45,6 +49,8 @@ flowchart TB
     record --> result[Payload and decision returned to integration]
     payload --> result
 ```
+
+</div>
 
 Before sending a sealed payload, the caller must obtain and appraise the callee's channel offer. That outbound step and the callee's appraisal of the caller are distinct directions. The runtime box is a process boundary in software mode; verified confidential-computing deployments can add hardware isolation. The surrounding agents and their tools do not automatically move inside it.
 
