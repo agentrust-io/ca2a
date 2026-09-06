@@ -1,9 +1,9 @@
 # Privacy
 
-cA2A (the ca2a runtime) collects and transmits no personal data.
+cA2A processes delegation credentials, task payloads, policy inputs, and provenance supplied by your application. These can contain sensitive metadata or content. Review the artifacts you retain or share; a provenance record is not automatically anonymous.
 
-It runs locally as a Python library. It processes only the inputs you give it, entirely on your machine, and sends no telemetry, analytics, or usage data to the cA2A project or any third party. There is no account, login, or tracking, and no cookies or background network calls.
+The runtime sends configured task and delegation data to the peer your application calls. Local signing and verification do not send project telemetry or analytics. Peer transport, application logging, and configured attestation or verification services determine the rest of the data flow.
 
-It transmits delegation metadata only to the peer you explicitly call, over the transport you configure; it sends nothing to the project.
+Uninstalling the package does not delete generated credentials, provenance files, keys, logs, backups, or data already sent to a peer. Manage those artifacts through your application's retention and deletion procedures.
 
-Uninstalling removes it completely. Questions or corrections: https://github.com/agentrust-io/ca2a/issues
+[Report a correction](https://github.com/agentrust-io/ca2a/issues).

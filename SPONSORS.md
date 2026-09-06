@@ -15,6 +15,6 @@ project's confidential-computing integrations.
 ## Recognition policy
 
 Sponsor recognition records support for the project. Adopters are listed
-separately in [ADOPTERS.md](ADOPTERS.md), maintainers in
-[MAINTAINERS.md](MAINTAINERS.md), and governance roles in
+separately in [ADOPTERS.md](https://github.com/agentrust-io/ca2a/blob/main/ADOPTERS.md), maintainers in
+[MAINTAINERS.md](https://github.com/agentrust-io/ca2a/blob/main/MAINTAINERS.md), and governance roles in
 [GOVERNANCE.md](GOVERNANCE.md).
