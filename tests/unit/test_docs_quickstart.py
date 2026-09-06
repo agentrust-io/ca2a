@@ -1,4 +1,5 @@
 """Run the documented grant and rejection examples, then verify its saved chain."""
+
 import json
 import re
 import subprocess
@@ -18,8 +19,20 @@ def test_first_chain(tmp_path, capsys):
     assert run.returncode == 0, run.stdout + run.stderr
     assert run.stdout.count("PASS:") == 3
     root = (tmp_path / "trusted-root.txt").read_text()
-    assert main(["verify-chain", "--chain", str(tmp_path / "demo-chain.json"),
-                 "--trusted-root-issuer", root]) == 0
+    assert (
+        main(
+            [
+                "verify-chain",
+                "--chain",
+                str(tmp_path / "demo-chain.json"),
+                "--trusted-root-issuer",
+                root,
+            ]
+        )
+        == 0
+    )
     assert json.loads(capsys.readouterr().out) == {
-        "verified": True, "hops": 2, "leaf_scope": ["cap:read"]
+        "verified": True,
+        "hops": 2,
+        "leaf_scope": ["cap:read"],
     }
