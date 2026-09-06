@@ -1,42 +1,63 @@
 # How It Works
 
-cA2A is a trust profile layered on A2A. It does not move tasks or replace the transport. It adds the trust guarantees A2A's Signed Agent Card leaves out, by composing four primitives.
+cA2A layers delegation and peer trust checks onto A2A communication. Start with the [offline chain example](quickstart.md) to see grant validation; the live runtime adds caller authentication, local policy, optional appraisal, and payload handling.
 
 ## The gap cA2A closes
 
-A2A's Signed Agent Card answers one question: did the domain owner issue this card. It does not establish that a peer runs attested code, that a delegating agent actually holds the authority it passes on, that the task payload is confidential to the peer, or that there is an unbroken record of who delegated what to whom. See [the threat model](spec/threat-model.md) for the adversary this admits.
+A signed identity document does not establish every authority or runtime property needed for a delegated task. The relying party must decide which root issuers, capabilities, measurements, and evidence it accepts. See the [threat model](spec/threat-model.md).
 
 ## The four primitives
 
 ### 1. Attenuated delegation
 
-Each hop carries a signed delegation credential. The scope granted at a hop must be a provable subset of its parent's scope. Depth is bounded, and a credential cannot be replayed into another chain. This is the hardest primitive to get right, and it is already implemented and tested in [agent-manifest](https://github.com/agentrust-io/agent-manifest); cA2A reuses those semantics. See [delegation chain](spec/delegation-chain.md).
+Each child grant is signed by the parent subject and must narrow or preserve the parent's scope. Verification checks trusted roots, signatures, parent links, credential IDs, depth, and validity windows. A valid chain establishes a grant; it does not authenticate the caller currently presenting it. The live path separately checks proof of possession of the leaf key. See [delegation chains](spec/delegation-chain.md).
 
 ### 2. Runtime attestation
 
-Before a peer is trusted with a delegated task, it proves it is running attested, measured code. cA2A reuses the pluggable TEE provider abstraction from cmcp: a provider produces an attestation report binding a public key to a hardware measurement. See [attestation](spec/attestation.md).
+A provider produces evidence intended to bind a key to a measured runtime. The relying party must verify that evidence and apply its own measurement and assurance requirements. Software evidence does not establish hardware provenance. See [attestation](spec/attestation.md) and [limitations](../LIMITATIONS.md).
 
 ### 3. Sealed peer channel
 
-The task payload is sealed to the peer's attested measurement, so it decrypts only inside the peer's verified enclave. A connectivity provider or a peer in another trust domain sees ciphertext. See [sealed channel](spec/sealed-channel.md).
+The caller encrypts a payload to the callee's appraised channel key. Hardware isolation depends on the verified provider and key binding. In software mode, this does not protect the key or plaintext from a privileged host. See [sealed channels](spec/sealed-channel.md).
 
 ### 4. Provenance record
 
-Each hop emits a TRACE record that references its parent record's hash and the delegation credential id. Across A to B to C this produces a delegation DAG that any verifier can check offline, without trusting an operator. See [the TRACE A2A profile](spec/trace-a2a-profile.md).
+Linked TRACE records carry the decision and parent references. Verifiers check signatures and links separately from credential-chain validation. The offline grant example does not execute a task or establish a provenance DAG. See [the TRACE A2A profile](spec/trace-a2a-profile.md).
 
 ## How they compose on a peer call
 
-```
-Agent A --(delegation cred, scope S_A)--> Agent B --(scope S_B ⊆ S_A)--> Agent C
+The diagram follows the callee's inbound runtime checks. It shows the accepted path; a failed required check stops processing before payload opening.
+
+Scroll the diagram horizontally on smaller screens. The text below explains the same boundaries.
+
+<div class="at-diagram" role="region" aria-label="cA2A inbound checks; scroll horizontally" tabindex="0" markdown>
+
+```mermaid
+flowchart TB
+    caller[Caller: credential chain and request] --> chain
+    subgraph callee[Callee cA2A runtime]
+        chain[Verify chain against trusted roots] --> holder[Verify caller holds leaf key]
+        holder --> scope[Intersect grant with local policy]
+        scope --> appraisal[Appraise caller if required or offered]
+        appraisal --> decision[Enforce capability and create decision record]
+        decision --> payload[Open sealed payload if present]
+        decision --> record[Linked decision record]
+    end
+    roots[Approved root issuers] --> chain
+    policy[Local capability policy] --> scope
+    evidence[Appraisal requirements and evidence] --> appraisal
+    record --> result[Payload and decision returned to integration]
+    payload --> result
 ```
 
-1. A issues B a child credential with `S_B ⊆ S_A`, signed over the canonical form of the grant.
-2. Before B accepts, the cA2A runtime verifies the chain, verifies B's attestation measurement, and intersects `S_B` with B's local Cedar policy.
-3. The payload is sealed to B's measurement.
-4. B emits a TRACE record linking to A's record.
+</div>
+
+Before sending a sealed payload, the caller must obtain and appraise the callee's channel offer. That outbound step and the callee's appraisal of the caller are distinct directions. The runtime box is a process boundary in software mode; verified confidential-computing deployments can add hardware isolation. The surrounding agents and their tools do not automatically move inside it.
+
+The effective authority is the intersection of the delegated scope and local policy. Delegation cannot grant a capability that local policy refuses. Invalid chains or holder proofs are rejected before policy decisions and do not receive signed denial records; authenticated policy and appraisal denials have their own evidence behavior. See the [peer implementation](https://github.com/agentrust-io/ca2a/blob/main/src/ca2a_runtime/peer.py) for the exact ordering and failure paths.
 
 ## Profile, not protocol
 
-cA2A binds to A2A the way TRACE binds to IETF RATS, EAT, and SCITT: it is an overlay, not a competitor. This keeps it neutral across org, cloud, and TEE-vendor boundaries, which is the claim a vendor-anchored verifier cannot make.
+The profile defines trust fields and checks. The reference HTTP transport makes the peer path runnable, and an A2A SDK bridge is also available. Transport choice does not establish hardware assurance or replace the relying party's trust policy.
 
-The profile mandates no wire protocol. A reference HTTP transport ships (`ca2a_runtime.transport.server`/`client`) so the peer path is runnable off hardware, but it is a convenience, not part of the profile: any A2A server can carry the extension fields instead.
+Continue with [configuration](configuration.md), the [profile](spec/profile.md), or the [limitations](../LIMITATIONS.md).

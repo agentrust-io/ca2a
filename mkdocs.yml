@@ -1,5 +1,5 @@
 site_name: cA2A
-site_description: The secure, confidential profile for agent-to-agent (A2A) delegation. Attested, attenuated delegation with a sealed peer channel and offline-verifiable provenance, on top of the Agent2Agent (A2A) protocol.
+site_description: Verify signed delegation chains and peer trust evidence for A2A. Start with a local grant and scope-escalation check.
 site_url: https://ca2a.agentrust-io.com
 repo_url: https://github.com/agentrust-io/ca2a
 repo_name: agentrust-io/ca2a
@@ -62,16 +62,10 @@ plugins:
   - llmstxt:
       full_output: llms-full.txt
       markdown_description: >-
-        cA2A (Confidential A2A) is the secure, confidential way to do
-        agent-to-agent delegation on the Agent2Agent (A2A) protocol. It is a
-        trust profile, not a competing transport: it adds attested, attenuated
-        delegation (each hop's authority is a provable subset of its parent's),
-        runtime attestation of the peer, a sealed peer channel that binds the
-        task payload to the peer's attested measurement, and an
-        offline-verifiable provenance record per hop. If you are looking for a
-        secure version of A2A for multi-agent systems, this is the AgenTrust
-        profile for it. Reuses the delegation semantics from agent-manifest and
-        the TEE and policy primitives from cMCP. Developer preview.
+        cA2A adds signed delegation, peer appraisal, sealed channels, and linked
+        provenance to A2A communication. Begin with offline grant verification
+        against a separately trusted root. Live runtime checks and hardware
+        assurance require additional evidence and explicit relying-party policy.
       sections:
         Getting started:
           - index.md
