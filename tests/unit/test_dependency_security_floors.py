@@ -52,8 +52,7 @@ def test_governance_tooling_cannot_downgrade_runtime_dependencies() -> None:
         assert "python -m venv .agt-venv" in contents
         assert ".agt-venv/bin/pip install --require-hashes -r requirements/agt.txt" in contents
         assert (
-            ".agt-venv/bin/pip install --require-hashes --no-deps "
-            "-r requirements/agt-override.txt"
+            ".agt-venv/bin/pip install --require-hashes --no-deps -r requirements/agt-override.txt"
         ) in contents
         # AGT is never installed into the environment holding the package.
         assert 'pip install -e ".[dev]" "agent-governance-toolkit' not in contents
