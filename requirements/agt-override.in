@@ -1,6 +1,0 @@
-# Applied with --no-deps inside .agt-venv only, to lift cryptography past the
-# ceiling AGT 4.1 declares. Deliberately not resolvable alongside agt.in.
-# Compile with:
-#   uv pip compile requirements/agt-override.in --generate-hashes --universal \
-#     --python-version 3.11 -o requirements/agt-override.txt
-cryptography>=50.0

@@ -97,8 +97,10 @@ jobs:
       - name: Install governance tooling in an isolated environment
         run: |
           python -m venv .agt-venv
-          .agt-venv/bin/pip install --require-hashes -r requirements/agt.txt
-          .agt-venv/bin/pip install --require-hashes --no-deps -r requirements/agt-override.txt
+          # --no-deps because the lock already lists every transitive
+          # dependency, and pip would otherwise re-resolve and reject the
+          # cryptography override the compile deliberately applied.
+          .agt-venv/bin/pip install --require-hashes --no-deps -r requirements/agt.txt
 
       - name: Generate evidence file
         run: python scripts/gen_agt_evidence.py

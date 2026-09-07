@@ -50,21 +50,23 @@ def test_governance_tooling_cannot_downgrade_runtime_dependencies() -> None:
     for workflow in ("ci.yml", "release.yml"):
         contents = Path(".github/workflows", workflow).read_text(encoding="utf-8")
         assert "python -m venv .agt-venv" in contents
-        assert ".agt-venv/bin/pip install --require-hashes -r requirements/agt.txt" in contents
         assert (
-            ".agt-venv/bin/pip install --require-hashes --no-deps -r requirements/agt-override.txt"
+            ".agt-venv/bin/pip install --require-hashes --no-deps -r requirements/agt.txt"
         ) in contents
         # AGT is never installed into the environment holding the package.
         assert 'pip install -e ".[dev]" "agent-governance-toolkit' not in contents
         assert 'pip install -e "." "agent-governance-toolkit' not in contents
-        assert "agent-governance-toolkit" not in contents.replace(
-            "requirements/agt.txt", ""
-        ).replace("requirements/agt-override.txt", "")
+        assert "agent-governance-toolkit" not in contents.replace("requirements/agt.txt", "")
 
 
-def test_agt_override_lifts_cryptography_past_the_toolkit_ceiling() -> None:
-    """The override lock must actually carry a cryptography at or above the floor."""
-    override = Path("requirements/agt-override.txt").read_text(encoding="utf-8")
+def test_agt_lock_carries_no_cryptography_below_the_floor() -> None:
+    """The scanner lock is compiled with an override, so it must land at or above 50.
+
+    A lock that names a vulnerable cryptography is one Dependabot will flag
+    forever, even when install order means it never runs. Compiling the override
+    in keeps the vulnerable version out of the file entirely.
+    """
+    override = Path("requirements/agt.txt").read_text(encoding="utf-8")
     pins = [
         line.split("==", 1)[1].split()[0]
         for line in override.splitlines()

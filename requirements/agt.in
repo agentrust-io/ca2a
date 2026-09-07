@@ -1,11 +1,11 @@
-# The governance scanner, installed into its own venv on purpose.
+# The governance scanner, resolved for its own isolated venv.
 #
-# AGT 4.1 depends on cryptography>=46.0.7,<49.0 while this runtime requires
-# >=50.0, so the two cannot be resolved together and the scanner must not share
-# an environment with the package under test. This lock is AGT's own resolution;
-# requirements/agt-override.txt then lifts cryptography past AGT's stale ceiling
-# inside that isolated venv, which is what the unpinned two-step did before.
+# agent-governance-toolkit caps cryptography below 49.0, which sits under this
+# runtime's floor and under the first release without PYSEC-2026-3552, so the
+# compile applies an override rather than accepting that stale ceiling. See
+# requirements/agt-overrides.txt.
+#
 # Compile with:
-#   uv pip compile requirements/agt.in --generate-hashes --universal \
-#     --python-version 3.11 -o requirements/agt.txt
+#   uv pip compile requirements/agt.in --override requirements/agt-overrides.txt \
+#     --generate-hashes --universal --python-version 3.11 -o requirements/agt.txt
 agent-governance-toolkit[full]>=4.1
