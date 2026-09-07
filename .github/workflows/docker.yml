@@ -76,7 +76,7 @@ jobs:
       - name: Sign the image (keyless, by digest)
         env:
           DIGEST: ${{ steps.build.outputs.digest }}
-        run: cosign sign --yes ghcr.io/agentrust-io/ca2a-runtime@${DIGEST}
+        run: cosign sign --yes "ghcr.io/agentrust-io/ca2a-runtime@${DIGEST}"
 
       - name: Attest build provenance (SLSA)
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
