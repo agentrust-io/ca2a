@@ -37,10 +37,40 @@ def test_docs_floor_excludes_vulnerable_pymdown_extensions() -> None:
 
 
 def test_governance_tooling_cannot_downgrade_runtime_dependencies() -> None:
+    """AGT stays in its own venv, and cryptography is lifted past its ceiling there.
+
+    AGT 4.1 declares cryptography>=46.0.7,<49.0 while this runtime requires
+    >=50.0, so the two genuinely cannot be resolved together. The invariant is
+    that the scanner never shares an environment with the package under test,
+    and that the override still happens inside the isolated venv.
+
+    Asserted against the lock files rather than the literal install lines, so
+    that pinning or re-pinning does not break a test about isolation.
+    """
     for workflow in ("ci.yml", "release.yml"):
         contents = Path(".github/workflows", workflow).read_text(encoding="utf-8")
         assert "python -m venv .agt-venv" in contents
-        assert '.agt-venv/bin/pip install "agent-governance-toolkit[full]>=4.1"' in contents
-        assert '.agt-venv/bin/pip install --upgrade --no-deps "cryptography>=50.0"' in contents
+        assert ".agt-venv/bin/pip install --require-hashes -r requirements/agt.txt" in contents
+        assert (
+            ".agt-venv/bin/pip install --require-hashes --no-deps "
+            "-r requirements/agt-override.txt"
+        ) in contents
+        # AGT is never installed into the environment holding the package.
         assert 'pip install -e ".[dev]" "agent-governance-toolkit' not in contents
         assert 'pip install -e "." "agent-governance-toolkit' not in contents
+        assert "agent-governance-toolkit" not in contents.replace(
+            "requirements/agt.txt", ""
+        ).replace("requirements/agt-override.txt", "")
+
+
+def test_agt_override_lifts_cryptography_past_the_toolkit_ceiling() -> None:
+    """The override lock must actually carry a cryptography at or above the floor."""
+    override = Path("requirements/agt-override.txt").read_text(encoding="utf-8")
+    pins = [
+        line.split("==", 1)[1].split()[0]
+        for line in override.splitlines()
+        if line.startswith("cryptography==")
+    ]
+    assert len(pins) == 1, f"expected exactly one cryptography pin, got {pins}"
+    floor = tuple(int(part) for part in pins[0].split("."))
+    assert floor >= (50, 0), floor
