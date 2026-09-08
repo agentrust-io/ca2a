@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **`ca2a start` can demand caller attestation (#160).** The `attestation` block
+  gains `require_caller_attestation` (`none` | `any` | `hardware`),
+  `caller_verifier` (`platform` plus a `trusted_roots_path` PEM bundle), and
+  `challenge_ttl_seconds`, threaded through `bootstrap.build_peer_node` to the
+  `PeerNode` arguments that have existed since the mutual-attestation work. Until
+  now those arguments were reachable only from Python, so a config-driven callee
+  could never appraise its callers. All new paths fail closed: an unknown rung, a
+  `hardware` rung with no verifier, a missing or empty roots file, and a verifier
+  platform with no report-level verifier (`sev-snp`, `tdx`) are each a
+  `CONFIG_ERROR` at startup naming the field, not a callee that appears to appraise
+  and does not. Only `tpm` can be built today. The startup line now prints the rung
+  alongside the provider, and a node with no verifier is told that hardware offers
+  will be refused as unappraisable. `require_holder_proof` is deliberately not
+  exposed.
+
 - **PLATFORM_INFO appraisal on the SEV-SNP path (LIMITATIONS: "Platform state is not
   appraised").** `SevSnpReport.platform_info` decodes the bitfield at offset `0x40`, and
   `verify_sev_snp_report` takes `require_platform`, `forbid_platform` and
