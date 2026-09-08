@@ -11,6 +11,11 @@ transport.
 attestation:
   provider: auto            # auto | tpm | sev-snp | tdx | opaque | software-only
   enforcement_mode: enforcing  # enforcing | advisory | silent
+  require_caller_attestation: none   # none | any | hardware
+  # caller_verifier:                 # required for `hardware`, optional for `any`
+  #   platform: tpm                  # tpm today; sev-snp and tdx are refused (see below)
+  #   trusted_roots_path: vtpm-roots.pem
+  challenge_ttl_seconds: 60
 
 max_delegation_depth: 8     # reject chains deeper than this
 listen_addr: "127.0.0.1:8443"
@@ -33,6 +38,9 @@ local_policy: ["read", "write"]   # allow-set for scope intersection (or use Ced
 |---|---|---|
 | `attestation.provider` | `auto` | TEE provider for peer attestation. `auto` selects a detected hardware provider and fails if there is none; it never falls back to `software-only`, which has to be named explicitly. `opaque` is not implemented. |
 | `attestation.enforcement_mode` | `enforcing` | Intended mode. The peer path always fails closed on cA2A denials today; advisory and silent are accepted in config but not applied on the wire. |
+| `attestation.require_caller_attestation` | `none` | What the callee demands of a caller's own attestation, per [mutual-attestation.md](spec/mutual-attestation.md). `none` records the outcome and demands nothing; `any` requires an offer that appraises, software assurance included; `hardware` requires hardware assurance. At every rung an offer that is present and does not appraise is refused. |
+| `attestation.caller_verifier` | none | How to appraise a hardware report a caller offers. `platform` plus `trusted_roots_path` (a PEM bundle, resolved relative to the config file). Required when the rung is `hardware`; without it, a hardware offer at `none` or `any` is refused as unappraisable rather than accepted. Only `tpm` can be built today, via `ca2a_verify.tpm.tpm_verifier`. `sev-snp` and `tdx` are accepted by the vocabulary and refused at startup with the reason: their verifiers take raw evidence and a certificate chain, and no report-level wrapper exists yet. |
+| `attestation.challenge_ttl_seconds` | `60` | Lifetime of the challenge the callee issues for a caller to bind its offer into. The secret behind it is per-process and never persisted. |
 | `max_delegation_depth` | `8` | Chains deeper than this are rejected with `DELEGATION_DEPTH_EXCEEDED`. |
 | `listen_addr` | `127.0.0.1:8443` | Address `ca2a start` binds. The host is never defaulted, so serving on every interface has to be written out. |
 | `trusted_root_issuers` | none | Ed25519 public keys allowed to originate delegation chains. At least one is required by `ca2a start`; an internally valid chain from any other root is denied before policy evaluation. |
@@ -55,8 +63,13 @@ ca2a validate-config --config examples/minimal/ca2a-config.yaml
 ca2a start --config examples/minimal/ca2a-config.yaml
 # note: software-only provider, callers appraise this channel key as
 # assurance="none" and the seal carries no hardware guarantee
-# ca2a listening on 127.0.0.1:8443 (provider=software-only)
+# note: require_caller_attestation=none with no caller_verifier; software offers
+# appraise, hardware offers are refused as unappraisable
+# ca2a listening on 127.0.0.1:8443 (provider=software-only, require_caller_attestation=none)
 ```
+
+`require_holder_proof` is not a config field. It is on for every node `ca2a start`
+builds; a program with a reason to turn it off constructs the `PeerNode` itself.
 
 `ca2a start` needs no extra install: the reference transport is standard library
 only. It is one way to run the peer path, not part of the profile. A program that

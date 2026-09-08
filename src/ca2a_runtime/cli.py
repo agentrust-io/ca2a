@@ -161,7 +161,9 @@ def _cmd_start(args: argparse.Namespace) -> int:
         node = build_peer_node(cfg, config_dir=Path(args.config).resolve().parent)
         host, port = cfg.listen_host_port()
     except ConfigError as exc:
-        print(f"invalid config: {exc}", file=sys.stderr)
+        # The detail is the part that says what to change, so it goes with the message.
+        suffix = f" ({exc.detail})" if exc.detail else ""
+        print(f"invalid config: {exc}{suffix}", file=sys.stderr)
         return 1
 
     if cfg.enforcement_mode != "enforcing":
@@ -180,6 +182,17 @@ def _cmd_start(args: argparse.Namespace) -> int:
             file=sys.stderr,
         )
 
+    if node.caller_verifier is None:
+        # "Demands nothing" still refuses a caller whose offer is present and does
+        # not appraise, and with no verifier every hardware offer is exactly that.
+        # Say so, or the first hardware-attested caller looks like a bug.
+        print(
+            f"note: require_caller_attestation={node.require_caller_attestation} with no "
+            "caller_verifier; software offers appraise, hardware offers are refused as "
+            "unappraisable",
+            file=sys.stderr,
+        )
+
     try:
         server = serve(node, host=host, port=port)
     except OSError as exc:
@@ -188,7 +201,11 @@ def _cmd_start(args: argparse.Namespace) -> int:
 
     # Flushed, because an operator redirecting stdout to a log needs to see the
     # peer come up rather than wait on a full buffer.
-    print(f"ca2a listening on {host}:{port} (provider={node.provider.platform})", flush=True)
+    print(
+        f"ca2a listening on {host}:{port} (provider={node.provider.platform}, "
+        f"require_caller_attestation={node.require_caller_attestation})",
+        flush=True,
+    )
     try:
         server.serve_forever()
     except KeyboardInterrupt:

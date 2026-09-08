@@ -1,6 +1,10 @@
 attestation:
   provider: software-only   # auto | tpm | sev-snp | tdx | opaque | software-only
   enforcement_mode: enforcing  # the peer path always fails closed today
+  require_caller_attestation: none   # none | any | hardware; see docs/configuration.md
+  # caller_verifier:                 # needed for `hardware`; TPM roots only today
+  #   platform: tpm
+  #   trusted_roots_path: vtpm-roots.pem
 
 max_delegation_depth: 8
 listen_addr: "127.0.0.1:8443"

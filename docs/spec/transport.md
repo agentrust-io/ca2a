@@ -158,7 +158,7 @@ message = attach_ca2a_metadata(message, request)
 
 ## Running the reference transport
 
-A library caller builds a `PeerNode` and hands it to `ca2a_runtime.transport.server.serve`. `ca2a start` is the same thing driven from a config file: it resolves the policy (`local_policy` or a Cedar `policy_bundle_path`) and the attestation provider, builds the node, and binds `listen_addr`.
+A library caller builds a `PeerNode` and hands it to `ca2a_runtime.transport.server.serve`. `ca2a start` is the same thing driven from a config file: it resolves the policy (`local_policy` or a Cedar `policy_bundle_path`), the attestation provider, and the caller-appraisal posture (`require_caller_attestation` and, where one can be built, a `caller_verifier`), builds the node, and binds `listen_addr`.
 
 ```bash
 ca2a start --config examples/minimal/ca2a-config.yaml

@@ -166,6 +166,11 @@ client.send_task(base_url, chain, "read", "r0",
                  payload=b"...", caller_provider=SoftwareProvider())
 ```
 
+The same rung is reachable from a config file. `ca2a start` reads
+`attestation.require_caller_attestation`, builds the `caller_verifier` from
+`attestation.caller_verifier` (TPM roots today; see
+[configuration](../configuration.md)), and passes both to the `PeerNode` it serves.
+
 | Piece | Where |
 |---|---|
 | Stateless challenge (`v1.<expiry>.<random>.<mac>`) | `ca2a_runtime.challenge` |

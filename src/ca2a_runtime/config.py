@@ -12,10 +12,19 @@ from typing import Any
 
 import yaml
 
+from ca2a_runtime.challenge import DEFAULT_TTL_SECONDS
 from ca2a_runtime.errors import ConfigError
+from ca2a_runtime.peer import REQUIRE_HARDWARE, REQUIRE_NONE, REQUIREMENT_VALUES
 
 VALID_PROVIDERS = frozenset({"auto", "tpm", "sev-snp", "tdx", "opaque", "software-only"})
 VALID_ENFORCEMENT = frozenset({"enforcing", "advisory", "silent"})
+
+# Platforms a config can name under ``attestation.caller_verifier.platform``. This
+# is the set of platforms the config *vocabulary* knows, not the set that can be
+# appraised today; bootstrap refuses the ones with no report-level verifier and
+# says why, so a config that names ``sev-snp`` fails at startup rather than
+# silently appraising nothing.
+VALID_VERIFIER_PLATFORMS = frozenset({"tpm", "sev-snp", "tdx"})
 
 DEFAULT_LISTEN_ADDR = "127.0.0.1:8443"
 
@@ -55,6 +64,10 @@ class Ca2aConfig:
 
     provider: str = "auto"
     enforcement_mode: str = "enforcing"
+    require_caller_attestation: str = REQUIRE_NONE
+    caller_verifier_platform: str | None = None
+    caller_verifier_trusted_roots_path: str | None = None
+    challenge_ttl_seconds: int = DEFAULT_TTL_SECONDS
     max_delegation_depth: int = 8
     policy_bundle_path: str | None = None
     local_policy: frozenset[str] | None = None
@@ -84,6 +97,44 @@ class Ca2aConfig:
                 f"unknown enforcement_mode: {enforcement!r}",
                 detail=f"expected one of {sorted(VALID_ENFORCEMENT)}",
             )
+
+        requirement = attestation.get("require_caller_attestation", REQUIRE_NONE)
+        if requirement not in REQUIREMENT_VALUES:
+            raise ConfigError(
+                f"unknown attestation.require_caller_attestation: {requirement!r}",
+                detail=f"expected one of {sorted(REQUIREMENT_VALUES)}",
+            )
+
+        verifier = attestation.get("caller_verifier")
+        verifier_platform: str | None = None
+        verifier_roots: str | None = None
+        if verifier is not None:
+            if not isinstance(verifier, dict):
+                raise ConfigError("attestation.caller_verifier must be a mapping")
+            verifier_platform = verifier.get("platform")
+            verifier_roots = verifier.get("trusted_roots_path")
+            if verifier_platform not in VALID_VERIFIER_PLATFORMS:
+                raise ConfigError(
+                    f"unknown attestation.caller_verifier.platform: {verifier_platform!r}",
+                    detail=f"expected one of {sorted(VALID_VERIFIER_PLATFORMS)}",
+                )
+            if not isinstance(verifier_roots, str) or not verifier_roots:
+                raise ConfigError(
+                    "attestation.caller_verifier.trusted_roots_path must be a non-empty path",
+                    detail="a PEM bundle of roots the caller's attestation key chain must reach",
+                )
+        if requirement == REQUIRE_HARDWARE and verifier is None:
+            # PeerNode refuses this at construction too. Naming the config field
+            # here means the operator sees which line to add, not which argument.
+            raise ConfigError(
+                "attestation.require_caller_attestation 'hardware' needs attestation.caller_verifier",
+                detail="a hardware report cannot be appraised without one, so every call "
+                "would be refused",
+            )
+
+        ttl = attestation.get("challenge_ttl_seconds", DEFAULT_TTL_SECONDS)
+        if not isinstance(ttl, int) or isinstance(ttl, bool) or ttl < 1:
+            raise ConfigError("attestation.challenge_ttl_seconds must be a positive integer")
 
         depth = data.get("max_delegation_depth", 8)
         if not isinstance(depth, int) or depth < 1:
@@ -140,6 +191,10 @@ class Ca2aConfig:
         return cls(
             provider=provider,
             enforcement_mode=enforcement,
+            require_caller_attestation=requirement,
+            caller_verifier_platform=verifier_platform,
+            caller_verifier_trusted_roots_path=verifier_roots,
+            challenge_ttl_seconds=ttl,
             max_delegation_depth=depth,
             policy_bundle_path=bundle,
             local_policy=local_policy,
