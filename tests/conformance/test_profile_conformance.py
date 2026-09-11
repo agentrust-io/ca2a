@@ -68,6 +68,19 @@ class _ActionEvidence:
 
 @dataclass(frozen=True)
 class _ActionEvidenceResult:
+    """The ACTION helper's verdict.
+
+    ``provenance_status``, ``authorization_decision``, and ``controller_outcome``
+    report three separate questions (see tests/conformance/README.md, Group 7)
+    so a correct denial or a correct rejection is never confused with a
+    provenance defect. ``classification`` and ``code`` are the pre-existing
+    broad category and exact reason, kept for compatibility with callers that
+    only look at those two fields.
+    """
+
+    provenance_status: str
+    authorization_decision: str
+    controller_outcome: str
     classification: str
     code: str
 
@@ -149,18 +162,67 @@ def _verify_action_evidence(
     evidence: _ActionEvidence,
     policy: LocalPolicy,
 ) -> _ActionEvidenceResult:
+    """Check delegation-linked ACTION evidence and report three axes.
+
+    Security order: provenance is checked first. authorization_decision is
+    only meaningful once provenance is verified, so a provenance failure
+    reports authorization and controller reporting as not_evaluated rather
+    than guessing at either. controller_outcome is reported only once
+    authorization allows the request, for the same reason.
+    """
+    # No delegation chain is claimed at all: there is nothing here for a
+    # delegation-provenance check to evaluate. This is a check deliberately
+    # outside this helper's scope, not a failed or incomplete one, so every
+    # axis is not_evaluated rather than invalid or missing.
+    if not chain:
+        return _ActionEvidenceResult(
+            "not_evaluated",
+            "not_evaluated",
+            "not_evaluated",
+            "outside_helper_scope",
+            "NO_DELEGATION_CHAIN",
+        )
+
+    # A provenance check needs a full record for every hop the chain claims.
+    # A short or empty record set is not evidence that failed verification;
+    # it is evidence that was never supplied, so it is reported as missing
+    # rather than invalid.
+    hops = [record for record in records if not record.denied]
+    if not records or len(hops) != len(chain):
+        return _ActionEvidenceResult(
+            "missing",
+            "not_evaluated",
+            "not_evaluated",
+            "provenance_invalid",
+            ProvenanceLinkBroken.code,
+        )
+
     try:
         verify_delegation_chain(chain, trusted_root_issuers={chain[0].issuer})
         verify_dag(records)
         cross_check_chain(records, chain)
     except CA2AError as exc:
-        return _ActionEvidenceResult("provenance_invalid", exc.code)
+        return _ActionEvidenceResult(
+            "invalid", "not_evaluated", "not_evaluated", "provenance_invalid", exc.code
+        )
 
     leaf = records[-1]
     if evidence.trace_record_hash != leaf.record_hash():
-        return _ActionEvidenceResult("provenance_invalid", ProvenanceLinkBroken.code)
+        return _ActionEvidenceResult(
+            "invalid",
+            "not_evaluated",
+            "not_evaluated",
+            "provenance_invalid",
+            ProvenanceLinkBroken.code,
+        )
     if evidence.credential_id != leaf.credential_id:
-        return _ActionEvidenceResult("provenance_invalid", ProvenanceLinkBroken.code)
+        return _ActionEvidenceResult(
+            "invalid",
+            "not_evaluated",
+            "not_evaluated",
+            "provenance_invalid",
+            ProvenanceLinkBroken.code,
+        )
 
     try:
         # Offline replay of recorded evidence: the auditor is re-deciding an
@@ -179,11 +241,15 @@ def _verify_action_evidence(
             require_holder_proof=False,
         )
     except ScopeNotPermitted as exc:
-        return _ActionEvidenceResult("authorization_invalid", exc.code)
+        return _ActionEvidenceResult(
+            "verified", "denied", "not_evaluated", "authorization_invalid", exc.code
+        )
 
     if evidence.controller_decision == "rejected":
-        return _ActionEvidenceResult("valid_negative_outcome", "CONTROLLER_REJECTED")
-    return _ActionEvidenceResult("verified", "ACCEPTED")
+        return _ActionEvidenceResult(
+            "verified", "allowed", "rejected", "valid_negative_outcome", "CONTROLLER_REJECTED"
+        )
+    return _ActionEvidenceResult("verified", "allowed", "accepted", "verified", "ACCEPTED")
 
 
 # --- Group 1: Delegation ---
@@ -444,7 +510,9 @@ def test_action_001_valid_delegated_action_evidence() -> None:
         _action_evidence(records),
         LocalPolicy.of(["robot.move", "robot.inspect"]),
     )
-    assert result == _ActionEvidenceResult("verified", "ACCEPTED")
+    assert result == _ActionEvidenceResult(
+        "verified", "allowed", "accepted", "verified", "ACCEPTED"
+    )
 
 
 def test_action_002_parent_trace_hash_mismatch_is_provenance_invalid() -> None:
@@ -463,7 +531,9 @@ def test_action_002_parent_trace_hash_mismatch_is_provenance_invalid() -> None:
         _action_evidence(records),
         LocalPolicy.of(["robot.move"]),
     )
-    assert result == _ActionEvidenceResult("provenance_invalid", "PROVENANCE_LINK_BROKEN")
+    assert result == _ActionEvidenceResult(
+        "invalid", "not_evaluated", "not_evaluated", "provenance_invalid", "PROVENANCE_LINK_BROKEN"
+    )
 
 
 def test_action_003_missing_parent_trace_record_is_provenance_invalid() -> None:
@@ -475,7 +545,9 @@ def test_action_003_missing_parent_trace_record_is_provenance_invalid() -> None:
         _action_evidence(records),
         LocalPolicy.of(["robot.move"]),
     )
-    assert result == _ActionEvidenceResult("provenance_invalid", "PROVENANCE_LINK_BROKEN")
+    assert result == _ActionEvidenceResult(
+        "missing", "not_evaluated", "not_evaluated", "provenance_invalid", "PROVENANCE_LINK_BROKEN"
+    )
 
 
 def test_action_004_unknown_delegation_credential_id_is_provenance_invalid() -> None:
@@ -487,7 +559,9 @@ def test_action_004_unknown_delegation_credential_id_is_provenance_invalid() -> 
         _action_evidence(records, credential_id="unknown-credential"),
         LocalPolicy.of(["robot.move"]),
     )
-    assert result == _ActionEvidenceResult("provenance_invalid", "PROVENANCE_LINK_BROKEN")
+    assert result == _ActionEvidenceResult(
+        "invalid", "not_evaluated", "not_evaluated", "provenance_invalid", "PROVENANCE_LINK_BROKEN"
+    )
 
 
 def test_action_005_action_outside_delegated_scope_is_authorization_invalid() -> None:
@@ -499,7 +573,9 @@ def test_action_005_action_outside_delegated_scope_is_authorization_invalid() ->
         _action_evidence(records, requested_capability="robot.stop"),
         LocalPolicy.of(["robot.move", "robot.stop"]),
     )
-    assert result == _ActionEvidenceResult("authorization_invalid", "SCOPE_NOT_PERMITTED")
+    assert result == _ActionEvidenceResult(
+        "verified", "denied", "not_evaluated", "authorization_invalid", "SCOPE_NOT_PERMITTED"
+    )
 
 
 def test_action_006_local_policy_denial_is_authorization_invalid() -> None:
@@ -511,7 +587,9 @@ def test_action_006_local_policy_denial_is_authorization_invalid() -> None:
         _action_evidence(records, requested_capability="robot.inspect"),
         LocalPolicy.of(["robot.move"]),
     )
-    assert result == _ActionEvidenceResult("authorization_invalid", "SCOPE_NOT_PERMITTED")
+    assert result == _ActionEvidenceResult(
+        "verified", "denied", "not_evaluated", "authorization_invalid", "SCOPE_NOT_PERMITTED"
+    )
 
 
 def test_action_007_controller_rejection_is_valid_negative_outcome() -> None:
@@ -523,7 +601,9 @@ def test_action_007_controller_rejection_is_valid_negative_outcome() -> None:
         _action_evidence(records, controller_decision="rejected"),
         LocalPolicy.of(["robot.move"]),
     )
-    assert result == _ActionEvidenceResult("valid_negative_outcome", "CONTROLLER_REJECTED")
+    assert result == _ActionEvidenceResult(
+        "verified", "allowed", "rejected", "valid_negative_outcome", "CONTROLLER_REJECTED"
+    )
 
 
 def test_action_008_invalid_delegation_signature_is_provenance_invalid() -> None:
@@ -542,18 +622,26 @@ def test_action_008_invalid_delegation_signature_is_provenance_invalid() -> None
 
     # The controls establish both downstream classifications that invalid provenance must preempt.
     assert _verify_action_evidence(chain, records, evidence, restrictive_policy) == (
-        _ActionEvidenceResult("authorization_invalid", "SCOPE_NOT_PERMITTED")
+        _ActionEvidenceResult(
+            "verified", "denied", "not_evaluated", "authorization_invalid", "SCOPE_NOT_PERMITTED"
+        )
     )
     assert _verify_action_evidence(chain, records, evidence, permissive_policy) == (
-        _ActionEvidenceResult("valid_negative_outcome", "CONTROLLER_REJECTED")
+        _ActionEvidenceResult(
+            "verified", "allowed", "rejected", "valid_negative_outcome", "CONTROLLER_REJECTED"
+        )
     )
 
     # ACTION-008 verifies provenance validation precedes authorization and controller outcome classification.
     assert _verify_action_evidence(bad_chain, records, evidence, restrictive_policy) == (
-        _ActionEvidenceResult("provenance_invalid", "INVALID_CREDENTIAL")
+        _ActionEvidenceResult(
+            "invalid", "not_evaluated", "not_evaluated", "provenance_invalid", "INVALID_CREDENTIAL"
+        )
     )
     assert _verify_action_evidence(bad_chain, records, evidence, permissive_policy) == (
-        _ActionEvidenceResult("provenance_invalid", "INVALID_CREDENTIAL")
+        _ActionEvidenceResult(
+            "invalid", "not_evaluated", "not_evaluated", "provenance_invalid", "INVALID_CREDENTIAL"
+        )
     )
 
 
@@ -572,7 +660,9 @@ def test_action_009_multi_hop_attenuation_verifies() -> None:
         _action_evidence(records),
         LocalPolicy.of(["robot.move", "robot.inspect"]),
     )
-    assert result == _ActionEvidenceResult("verified", "ACCEPTED")
+    assert result == _ActionEvidenceResult(
+        "verified", "allowed", "accepted", "verified", "ACCEPTED"
+    )
 
 
 def test_action_010_intermediate_scope_widening_is_provenance_invalid() -> None:
@@ -590,7 +680,9 @@ def test_action_010_intermediate_scope_widening_is_provenance_invalid() -> None:
         _action_evidence(records),
         LocalPolicy.of(["robot.move", "robot.inspect"]),
     )
-    assert result == _ActionEvidenceResult("provenance_invalid", "SCOPE_ESCALATION")
+    assert result == _ActionEvidenceResult(
+        "invalid", "not_evaluated", "not_evaluated", "provenance_invalid", "SCOPE_ESCALATION"
+    )
 
 
 def test_action_011_delegatee_mismatch_is_provenance_invalid() -> None:
@@ -610,7 +702,9 @@ def test_action_011_delegatee_mismatch_is_provenance_invalid() -> None:
         _action_evidence(records),
         LocalPolicy.of(["robot.move"]),
     )
-    assert result == _ActionEvidenceResult("provenance_invalid", "PROVENANCE_LINK_BROKEN")
+    assert result == _ActionEvidenceResult(
+        "invalid", "not_evaluated", "not_evaluated", "provenance_invalid", "PROVENANCE_LINK_BROKEN"
+    )
 
 
 # 2001-09-09 and 2100-01-01. The action-evidence helper replays through the
@@ -629,7 +723,9 @@ def test_action_012_expired_delegation_credential_is_provenance_invalid() -> Non
         _action_evidence(records),
         LocalPolicy.of(["robot.move", "robot.inspect"]),
     )
-    assert result == _ActionEvidenceResult("provenance_invalid", "CREDENTIAL_EXPIRED")
+    assert result == _ActionEvidenceResult(
+        "invalid", "not_evaluated", "not_evaluated", "provenance_invalid", "CREDENTIAL_EXPIRED"
+    )
 
 
 def test_action_013_not_yet_valid_delegation_credential_is_provenance_invalid() -> None:
@@ -641,7 +737,36 @@ def test_action_013_not_yet_valid_delegation_credential_is_provenance_invalid() 
         _action_evidence(records),
         LocalPolicy.of(["robot.move", "robot.inspect"]),
     )
-    assert result == _ActionEvidenceResult("provenance_invalid", "CREDENTIAL_NOT_YET_VALID")
+    assert result == _ActionEvidenceResult(
+        "invalid",
+        "not_evaluated",
+        "not_evaluated",
+        "provenance_invalid",
+        "CREDENTIAL_NOT_YET_VALID",
+    )
+
+
+def test_action_016_no_delegation_chain_is_outside_helper_scope() -> None:
+    """ACTION-016: a check deliberately outside this helper's scope.
+
+    No delegation chain is claimed, so there is nothing for a
+    delegation-provenance check to evaluate -- this is not the same as
+    evidence being invalid or incomplete (ACTION-002/003). All three axes
+    are reported as not_evaluated rather than guessed at.
+    """
+    result = _verify_action_evidence(
+        [],
+        [],
+        _ActionEvidence("x", "y", "robot.move"),
+        LocalPolicy.of(["robot.move"]),
+    )
+    assert result == _ActionEvidenceResult(
+        "not_evaluated",
+        "not_evaluated",
+        "not_evaluated",
+        "outside_helper_scope",
+        "NO_DELEGATION_CHAIN",
+    )
 
 
 # --- Group 8: Holder binding ---
