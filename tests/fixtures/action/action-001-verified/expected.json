@@ -1,0 +1,10 @@
+{
+  "trusted_root_issuer": "eca68016b05d3a93c7c7fdc6a684d5bf809652c1b90802be2e0218bce332aa07",
+  "at_time": null,
+  "verdict": {
+    "provenance_status": "verified",
+    "authorization_decision": "allowed",
+    "controller_outcome": "accepted"
+  },
+  "code": null
+}

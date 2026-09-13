@@ -1,0 +1,27 @@
+{
+  "records": [
+    {
+      "record_id": "rec-0",
+      "credential_id": "cred-0",
+      "subject": "42278f8c88f3af6e4e5b85319e077bf1979cefdd498d7dda1f4201d22ffd40d8",
+      "scope": [
+        "robot.inspect",
+        "robot.move",
+        "robot.stop"
+      ],
+      "parent_record_hash": null,
+      "caller_attestation": "not_offered"
+    },
+    {
+      "record_id": "rec-1",
+      "credential_id": "cred-1",
+      "subject": "3ebb3ddb2865c10726b847ef6b6381516bcce4ab46056c0fd323d5f52e1b52f6",
+      "scope": [
+        "robot.inspect",
+        "robot.move"
+      ],
+      "parent_record_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+      "caller_attestation": "not_offered"
+    }
+  ]
+}

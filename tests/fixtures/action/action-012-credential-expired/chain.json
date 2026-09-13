@@ -1,0 +1,33 @@
+{
+  "chain": [
+    {
+      "credential_id": "cred-0",
+      "issuer": "fc8a4a1752f57831aeaf8a96cd7b7007dd9b0cbf28db54bffce703713af6bd73",
+      "subject": "47c7f46429eeeceb9f121244392b8010c1c3ad3e9697b410b8132ebeb721f9ab",
+      "scope": [
+        "robot.inspect",
+        "robot.move",
+        "robot.stop"
+      ],
+      "depth": 0,
+      "parent_id": null,
+      "not_before": 1000,
+      "not_after": 2000,
+      "signature": "c12797a405282260a40914c82842dcd602b1cd08aa8a562430ec04014b38abe915b9f6249ce8c8f2e5874f7ae0fbac52d5091b5772be38b03be08eacfb68990d"
+    },
+    {
+      "credential_id": "cred-1",
+      "issuer": "47c7f46429eeeceb9f121244392b8010c1c3ad3e9697b410b8132ebeb721f9ab",
+      "subject": "472c24dda3b18c306f3b544535d2776f98657cf2a884c3565bd4b7b2702d7599",
+      "scope": [
+        "robot.inspect",
+        "robot.move"
+      ],
+      "depth": 1,
+      "parent_id": "cred-0",
+      "not_before": 1000,
+      "not_after": 2000,
+      "signature": "ca59249454357ff66d2e8a72d97370b7072db8f470a30a252f69c7d74edf89c5393a67abe279346e48e023d46fe05a8880a323a83eff8f7ebbe3b7ad11298e0d"
+    }
+  ]
+}

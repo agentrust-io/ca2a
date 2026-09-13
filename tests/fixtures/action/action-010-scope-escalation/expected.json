@@ -1,0 +1,10 @@
+{
+  "trusted_root_issuer": "e27e716965cbce4eef52281613aa99875510fc0f3b4fa4795182fe48f3b421de",
+  "at_time": null,
+  "verdict": {
+    "provenance_status": "invalid",
+    "authorization_decision": "not_evaluated",
+    "controller_outcome": "not_evaluated"
+  },
+  "code": "SCOPE_ESCALATION"
+}
