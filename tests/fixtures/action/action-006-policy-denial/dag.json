@@ -1,0 +1,55 @@
+{
+  "records": [
+    {
+      "record_id": "rec-0",
+      "credential_id": "cred-0",
+      "subject": "145d18ce3912673785911a5877aee902f1510cf92e45019594dfb19f0dc72221",
+      "scope": [
+        "task:read",
+        "task:write",
+        "tool:purchase",
+        "tool:search"
+      ],
+      "parent_record_hash": null,
+      "caller_attestation": "not_offered"
+    },
+    {
+      "record_id": "rec-1",
+      "credential_id": "cred-1",
+      "subject": "146e2b567ce93bf4a7107344192639924fc9e8e9d7fc4a35916842a708d3f439",
+      "scope": [
+        "task:read",
+        "tool:purchase",
+        "tool:search"
+      ],
+      "parent_record_hash": "684134dc3af3964e7495b28f01b58f159d8e9ea9226ca3a1bdbab2863c085d3e",
+      "caller_attestation": "not_offered"
+    },
+    {
+      "record_id": "rec-2",
+      "credential_id": "cred-2",
+      "subject": "46bdafab2912db188ebaf25c714232f63dcfd656103393ba6d8504341723ea59",
+      "scope": [
+        "tool:search"
+      ],
+      "parent_record_hash": "a629d8044d2525db9fdff1b2c76cef429eaed4a87414823f152e04d2d70e4264",
+      "caller_attestation": "not_offered"
+    },
+    {
+      "record_id": "rec-denied-purchase",
+      "credential_id": "cred-2",
+      "subject": "46bdafab2912db188ebaf25c714232f63dcfd656103393ba6d8504341723ea59",
+      "scope": [
+        "tool:search"
+      ],
+      "parent_record_hash": "3ab0b6a9f9dca0d2122e8384216edef283489a5e07d050c0e1a482eb660906a3",
+      "caller_attestation": "not_offered",
+      "decision": "deny",
+      "requested_capability": "tool:purchase",
+      "effective_scope": [
+        "tool:search"
+      ],
+      "denial_reason": "capability 'tool:purchase' is not in the effective scope"
+    }
+  ]
+}

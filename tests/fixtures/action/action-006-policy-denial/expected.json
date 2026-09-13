@@ -1,0 +1,10 @@
+{
+  "trusted_root_issuer": "dc2871d6a0b4abfdcaeafd45835f98c8749339d276756b5fcfa4f16edcb114b9",
+  "at_time": null,
+  "verdict": {
+    "provenance_status": "verified",
+    "authorization_decision": "denied",
+    "controller_outcome": "not_evaluated"
+  },
+  "code": "capability 'tool:purchase' is not in the effective scope"
+}

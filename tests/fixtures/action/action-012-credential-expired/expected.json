@@ -1,0 +1,10 @@
+{
+  "trusted_root_issuer": "fc8a4a1752f57831aeaf8a96cd7b7007dd9b0cbf28db54bffce703713af6bd73",
+  "at_time": 3000,
+  "verdict": {
+    "provenance_status": "invalid",
+    "authorization_decision": "not_evaluated",
+    "controller_outcome": "not_evaluated"
+  },
+  "code": "CREDENTIAL_EXPIRED"
+}

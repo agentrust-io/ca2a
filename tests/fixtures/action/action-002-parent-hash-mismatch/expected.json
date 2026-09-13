@@ -1,0 +1,10 @@
+{
+  "trusted_root_issuer": "502b5def5d7e08f161a8df11c88b012607d78eebf090d2ee97d2420523ba8c60",
+  "at_time": null,
+  "verdict": {
+    "provenance_status": "invalid",
+    "authorization_decision": "not_evaluated",
+    "controller_outcome": "not_evaluated"
+  },
+  "code": "PROVENANCE_LINK_BROKEN"
+}

@@ -14,34 +14,17 @@ forgets to regenerate the examples fails here.
 from __future__ import annotations
 
 import json
-import subprocess
 from pathlib import Path
 
 import pytest
 
 from ca2a_runtime.cli import main as cli_main
-
-REPO_ROOT = Path(__file__).resolve().parents[2]
+from tests.committed_blobs import committed as _committed
 
 EXAMPLES = [
     "examples/cross-operator-delegation",
     "examples/rejection-with-proof",
 ]
-
-
-def _committed(path: str) -> str | None:
-    """The blob at HEAD for ``path``, or None if git cannot tell us."""
-    try:
-        out = subprocess.run(  # noqa: S603
-            ["git", "show", f"HEAD:{path}"],  # noqa: S607
-            capture_output=True,
-            text=True,
-            cwd=REPO_ROOT,
-            check=False,
-        )
-    except OSError:
-        return None
-    return out.stdout if out.returncode == 0 else None
 
 
 @pytest.mark.parametrize("example", EXAMPLES)

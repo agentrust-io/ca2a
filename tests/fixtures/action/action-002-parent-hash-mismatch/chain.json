@@ -1,0 +1,29 @@
+{
+  "chain": [
+    {
+      "credential_id": "cred-0",
+      "issuer": "502b5def5d7e08f161a8df11c88b012607d78eebf090d2ee97d2420523ba8c60",
+      "subject": "42278f8c88f3af6e4e5b85319e077bf1979cefdd498d7dda1f4201d22ffd40d8",
+      "scope": [
+        "robot.inspect",
+        "robot.move",
+        "robot.stop"
+      ],
+      "depth": 0,
+      "parent_id": null,
+      "signature": "3a0878ec9bc2f78dcd7e5f14e95623907021594b94eab91abf0097b667912eb75a958f58fcffd395dcf653de5f33cc618b3a8ed5e425dcc0b7c9456a5259bb09"
+    },
+    {
+      "credential_id": "cred-1",
+      "issuer": "42278f8c88f3af6e4e5b85319e077bf1979cefdd498d7dda1f4201d22ffd40d8",
+      "subject": "3ebb3ddb2865c10726b847ef6b6381516bcce4ab46056c0fd323d5f52e1b52f6",
+      "scope": [
+        "robot.inspect",
+        "robot.move"
+      ],
+      "depth": 1,
+      "parent_id": "cred-0",
+      "signature": "a67c32a264e71131923d385080d9d41012768978f2b92c4f4db2b3d09d553d04f70f5c2f47ad6c5f2b49067b97da5b78069c0e19aeb569bfa3d1076306d2390f"
+    }
+  ]
+}
