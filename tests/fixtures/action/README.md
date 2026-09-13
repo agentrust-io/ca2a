@@ -23,7 +23,25 @@ One directory per case, each holding:
 |---|---|
 | `chain.json` | The signed delegation chain (`{"chain": [...]}`), as `ca2a verify-chain` consumes it. |
 | `dag.json` | The provenance records (`{"records": [...]}`), as `ca2a verify-dag --dag` consumes them. |
-| `expected.json` | The documented verdict: the ACTION three-axis outcome (`provenance_status` / `authorization_decision` / `controller_outcome`), the `trusted_root_issuer`, an optional `at_time`, and the reason `code` a failure or denial carries. |
+| `expected.json` | The scenario's ACTION three-axis **classification** (`verdict`), the `trusted_root_issuer`, an optional `at_time`, and the reason `code` a failure or denial carries. |
+
+### Scenario label vs. observed offline verdict
+
+`verdict` is the scenario's ACTION classification (the label from
+`tests/conformance/README.md`), **not** what the offline verifier reports.
+`ca2a verify-dag --chain` observes only two of the three axes:
+
+- `provenance_status` — `verified`, or a fail-closed reason `code`. Always asserted.
+- `authorization_decision` — only the `denied` case is offline-observable, as the
+  CLI's recorded-denial outcome (`code` holds the denial reason). Asserted for
+  denial bundles.
+
+The CLI never reports an *allowed* action or an *accepted*/*rejected*
+`controller_outcome`; those come from the live authorization and controller
+paths, so the loader test does not assert them and they must be read as scenario
+labels only. `controller_outcome` in particular remains a claimed test input,
+not cryptographically proven evidence — the same limitation stated for the ACTION
+helper in `tests/conformance/README.md`. These bundles do not widen that boundary.
 
 ## What these do and do not cover
 
@@ -50,9 +68,13 @@ restatement here.
 The bundles are generated with seeded keys, so their bytes are reproducible:
 
 ```bash
-python scripts/gen_action_fixtures.py
+python scripts/gen_action_fixtures.py           # (re)write the bundles
+python scripts/gen_action_fixtures.py --check    # compare only; exits nonzero if any bundle is stale or missing
 ```
 
 `tests/conformance/test_action_fixture_bundles.py` verifies the **committed**
 blobs (read out of git, not the working tree), so a change to the record body or
-the chain model that forgets to regenerate these fails there.
+the chain model that forgets to regenerate these fails there. It reads each
+bundle in `REQUIRED_BUNDLES` from `HEAD`: when git is available a missing blob
+fails (rather than skipping), and the on-disk bundle set is pinned so dropping a
+whole directory cannot silently reduce coverage.

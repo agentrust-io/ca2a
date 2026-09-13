@@ -9,7 +9,8 @@ blobs, which is what catches a bundle nobody regenerated.
 
 Idea credit: @Ahmedibrahim222 (agentrust-io/ca2a#36). Tracked in #164.
 
-    python scripts/gen_action_fixtures.py
+    python scripts/gen_action_fixtures.py           # (re)write the bundles
+    python scripts/gen_action_fixtures.py --check    # compare only; nonzero if stale/missing
 """
 
 # ruff: noqa: T201
@@ -182,10 +183,11 @@ def _bundles() -> list[Bundle]:
     return [verified, parent_mismatch, denial, escalation, expired]
 
 
-def main() -> int:
+def _bundle_files() -> dict[Path, str]:
+    """Every bundle file keyed by absolute path, as canonical text."""
+    files: dict[Path, str] = {}
     for b in _bundles():
         d = FIXTURE_DIR / b.name
-        d.mkdir(parents=True, exist_ok=True)
         chain_doc = {"chain": [{**c.body(), "signature": c.signature} for c in b.chain]}
         dag_doc = {"records": [r.body() for r in b.records]}
         expected = {
@@ -194,10 +196,36 @@ def main() -> int:
             "verdict": b.verdict,
             "code": b.code,
         }
-        (d / "chain.json").write_text(json.dumps(chain_doc, indent=2) + "\n", encoding="utf-8")
-        (d / "dag.json").write_text(json.dumps(dag_doc, indent=2) + "\n", encoding="utf-8")
-        (d / "expected.json").write_text(json.dumps(expected, indent=2) + "\n", encoding="utf-8")
-    print(f"wrote {len(_bundles())} bundles under {FIXTURE_DIR}")
+        files[d / "chain.json"] = json.dumps(chain_doc, indent=2) + "\n"
+        files[d / "dag.json"] = json.dumps(dag_doc, indent=2) + "\n"
+        files[d / "expected.json"] = json.dumps(expected, indent=2) + "\n"
+    return files
+
+
+def main(argv: list[str] | None = None) -> int:
+    argv = sys.argv[1:] if argv is None else argv
+    files = _bundle_files()
+
+    if "--check" in argv:
+        # Compare only; never write. Nonzero if any file is missing or drifted,
+        # so a stale committed bundle is reported instead of silently rewritten.
+        stale = [
+            path
+            for path, content in files.items()
+            if not path.is_file() or path.read_text(encoding="utf-8") != content
+        ]
+        if stale:
+            print("stale or missing ACTION fixture bundles; rerun scripts/gen_action_fixtures.py:")
+            for path in stale:
+                print(f"  {path.relative_to(REPO_ROOT)}")
+            return 1
+        print(f"ACTION fixture bundles are in sync ({len(files)} files).")
+        return 0
+
+    for path, content in files.items():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(content, encoding="utf-8")
+    print(f"wrote {len(files)} files under {FIXTURE_DIR}")
     return 0
 
 

@@ -9,10 +9,16 @@ that forgets to regenerate the bundles fails here rather than silently passing
 against a bundle the generator just rewrote. Regenerate with
 ``python scripts/gen_action_fixtures.py``.
 
-This exercises the offline provenance / authorization-denial / validity-window
-axes. It does not exercise holder-proof authorization replay, which needs live
-audience/secret/challenge material and is not offline-replayable evidence; see
-``tests/conformance/README.md`` on the ACTION helper and holder-proof binding.
+**What is asserted vs. what is a scenario label.** ``expected.json``'s
+``verdict`` is the scenario's ACTION three-axis *classification* from
+``tests/conformance/README.md``, not the offline verifier's output. The offline
+path only observes: ``provenance_status`` (verified vs. a fail-closed code) and,
+for a recorded denial, ``authorization_decision == "denied"`` (the CLI's denial
+outcome). ``authorization_decision == "allowed"`` and every ``controller_outcome``
+are NOT offline-observable — the CLI never reports an allowed action or an
+accepted/rejected controller outcome — so this test does not assert them. That
+holder-proof and controller boundary is the one documented in
+``tests/conformance/README.md``; these fixtures do not widen it.
 """
 
 from __future__ import annotations
@@ -24,11 +30,19 @@ from typing import Any
 import pytest
 
 from ca2a_runtime.cli import main as cli_main
-from tests.committed_blobs import REPO_ROOT, committed
+from tests.committed_blobs import REPO_ROOT, committed, git_source_available
 
 _BUNDLE_ROOT = REPO_ROOT / "tests" / "fixtures" / "action"
-BUNDLES = (
-    sorted(p.name for p in _BUNDLE_ROOT.iterdir() if p.is_dir()) if _BUNDLE_ROOT.is_dir() else []
+
+# The bundle set is pinned here, not discovered from disk, so deleting a whole
+# bundle directory fails a test (its committed blobs go missing below) instead
+# of silently shrinking a filesystem-discovered parametrization.
+REQUIRED_BUNDLES = (
+    "action-001-verified",
+    "action-002-parent-hash-mismatch",
+    "action-006-policy-denial",
+    "action-010-scope-escalation",
+    "action-012-credential-expired",
 )
 
 
@@ -61,16 +75,22 @@ def _run_verify_dag(
     return rc, out
 
 
-@pytest.mark.parametrize("bundle", BUNDLES)
+@pytest.mark.parametrize("bundle", REQUIRED_BUNDLES)
 def test_action_bundle_verifies_as_documented(
     bundle: str, tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
+    if not git_source_available():
+        pytest.skip("git or the committed source archive is unavailable; cannot read HEAD blobs")
+
     base = f"tests/fixtures/action/{bundle}"
     chain = committed(f"{base}/chain.json")
     dag = committed(f"{base}/dag.json")
     expected_blob = committed(f"{base}/expected.json")
-    if chain is None or dag is None or expected_blob is None:
-        pytest.skip(f"{bundle} is not committed yet or git is unavailable")
+    # git is available, so None here is an absent HEAD blob (missing evidence),
+    # not an unavailable source tree: fail rather than skip.
+    assert chain is not None, f"{base}/chain.json is missing from HEAD"
+    assert dag is not None, f"{base}/dag.json is missing from HEAD"
+    assert expected_blob is not None, f"{base}/expected.json is missing from HEAD"
     expected = json.loads(expected_blob)
 
     rc, out = _run_verify_dag(chain, dag, expected, tmp_path, capsys)
@@ -96,6 +116,14 @@ def test_action_bundle_verifies_as_documented(
         assert out.get("outcome") != "denied"
 
 
-def test_bundles_are_present() -> None:
-    """Guard against an empty parametrization silently passing zero cases."""
-    assert BUNDLES, "no ACTION fixture bundles found under tests/fixtures/action/"
+def test_committed_bundle_set_matches_required() -> None:
+    """Adding or removing a whole bundle directory must be a deliberate change.
+
+    Pins the on-disk set against ``REQUIRED_BUNDLES`` so neither a dropped
+    directory (which would also fail its verify test) nor an unwired new one
+    slips through unnoticed.
+    """
+    present = (
+        {p.name for p in _BUNDLE_ROOT.iterdir() if p.is_dir()} if _BUNDLE_ROOT.is_dir() else set()
+    )
+    assert present == set(REQUIRED_BUNDLES)

@@ -34,3 +34,23 @@ def committed(path: str) -> str | None:
     except OSError:
         return None
     return out.stdout if out.returncode == 0 else None
+
+
+def git_source_available() -> bool:
+    """True when this runs inside a git work tree with a resolvable ``HEAD``.
+
+    Lets a test tell two ``committed()`` -> ``None`` cases apart: git or the
+    source archive being unavailable (a legitimate skip) versus the blob simply
+    not being committed at ``HEAD`` (a failure the caller should raise on).
+    """
+    try:
+        out = subprocess.run(  # noqa: S603
+            ["git", "rev-parse", "--verify", "HEAD"],  # noqa: S607
+            capture_output=True,
+            text=True,
+            cwd=REPO_ROOT,
+            check=False,
+        )
+    except OSError:
+        return False
+    return out.returncode == 0
