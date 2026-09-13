@@ -263,8 +263,14 @@ def attach_to_sdk_message(message: Any, request: PeerRequest) -> Any:
     speak HTTP.
     """
     _require_protobuf()
-    merged = dict(metadata_from_sdk_message(message))
-    merged.update(a2a_adapter.attach_ca2a_metadata({}, request)["metadata"])
+    # Attach against the message's *current* metadata, not a throwaway ``{}``: the
+    # dict adapter clears an absent optional key (sealed_payload / caller_offer /
+    # holder_proof) with ``meta.pop(...)``, and those pops only bite when they run
+    # against the real metadata. Passing ``{}`` here would make them no-ops and let
+    # a reused Message ship a prior request's stale optional keys.
+    merged = a2a_adapter.attach_ca2a_metadata(
+        {"metadata": dict(metadata_from_sdk_message(message))}, request
+    )["metadata"]
     message.metadata.Clear()
     json_format.ParseDict(merged, message.metadata)
 
