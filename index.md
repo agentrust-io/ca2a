@@ -1,4 +1,7 @@
 ---
+hide:
+  - navigation
+  - toc
 title: "cA2A: verify who delegated what, hop by hop"
 description: cA2A adds delegation and peer trust checks to A2A. Start with an offline chain that accepts a narrowed grant and rejects scope escalation.
 ---
