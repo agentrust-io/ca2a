@@ -53,7 +53,6 @@ theme:
     - content.code.copy
     - content.tabs.link
     - toc.follow
-    - header.autohide
   icon:
     repo: fontawesome/brands/github
 
@@ -134,45 +133,49 @@ extra_css:
 
 nav:
   - Home: index.md
-  - Quick Start: docs/quickstart.md
-  - How It Works: docs/concepts.md
-  - Configuration: docs/configuration.md
-  - Tutorials:
+  - Get started:
+      - Quick start: docs/quickstart.md
+      - How it works: docs/concepts.md
+      - Configuration: docs/configuration.md
+  - Specification:
+      - Overview: docs/SPEC.md
+      - Profile and transport:
+          - A2A profile: docs/spec/profile.md
+          - Transport binding: docs/spec/transport.md
+          - Sealed peer channel: docs/spec/sealed-channel.md
+          - TRACE A2A profile: docs/spec/trace-a2a-profile.md
+      - Delegation and policy:
+          - Delegation chain: docs/spec/delegation-chain.md
+          - Scope-policy intersection: docs/spec/cedar-policy.md
+          - Inbound peer-call decision: docs/spec/call-graph.md
+          - Provenance DAG: docs/spec/provenance-dag.md
+      - Attestation:
+          - Component model: docs/spec/component-model.md
+          - Attestation: docs/spec/attestation.md
+          - Mutual attestation: docs/spec/mutual-attestation.md
+          - Verification library: docs/spec/verification-library.md
+      - Conformance and failure:
+          - Conformance: docs/spec/conformance.md
+          - Error codes: docs/spec/error-codes.md
+          - Failure modes: docs/spec/failure-modes.md
+          - Threat model: docs/spec/threat-model.md
+  - Guides:
       - Verify a delegation chain: docs/tutorials/verify-a-delegation-chain.md
       - Authoring a delegation credential: docs/tutorials/authoring-a-delegation-credential.md
       - Emit and verify provenance: docs/tutorials/emit-and-verify-provenance.md
       - Reproducing the claims: docs/tutorials/reproducing-the-claims.md
       - Integrating with A2A: docs/tutorials/integrating-with-a2a.md
-  - Specification:
-      - Overview: docs/SPEC.md
-      - A2A Profile: docs/spec/profile.md
-      - Transport Binding: docs/spec/transport.md
-      - Component Model: docs/spec/component-model.md
-      - Inbound Peer-Call Decision: docs/spec/call-graph.md
-      - Delegation Chain: docs/spec/delegation-chain.md
-      - Provenance DAG: docs/spec/provenance-dag.md
-      - Sealed Peer Channel: docs/spec/sealed-channel.md
-      - Attestation: docs/spec/attestation.md
-      - Mutual Attestation: docs/spec/mutual-attestation.md
-      - Scope-Policy Intersection: docs/spec/cedar-policy.md
-      - TRACE A2A Profile: docs/spec/trace-a2a-profile.md
-      - Verification Library: docs/spec/verification-library.md
-      - Conformance: docs/spec/conformance.md
-      - Error Codes: docs/spec/error-codes.md
-      - Failure Modes: docs/spec/failure-modes.md
-      - Threat Model: docs/spec/threat-model.md
-  - Testing:
-      - Hardware Validation: docs/hardware-validation.md
+      - Hardware validation: docs/hardware-validation.md
   - Project:
       - Limitations: LIMITATIONS.md
-      - Sponsors: SPONSORS.md
-      - Changelog: CHANGELOG.md
-      - Contributing: CONTRIBUTING.md
-      - Governance: GOVERNANCE.md
-      - Technical Charter: CHARTER.md
-      - Code of Conduct: CODE_OF_CONDUCT.md
-      - Security: SECURITY.md
       - Roadmap: ROADMAP.md
+      - Governance: GOVERNANCE.md
+      - Technical charter: CHARTER.md
+      - Sponsors: SPONSORS.md
+      - Contributing: CONTRIBUTING.md
+      - Changelog: CHANGELOG.md
+      - Security: SECURITY.md
+      - Code of conduct: CODE_OF_CONDUCT.md
       - Privacy: PRIVACY.md
 
 extra_javascript:
