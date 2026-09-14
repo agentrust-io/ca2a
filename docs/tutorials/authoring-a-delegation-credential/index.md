@@ -1,0 +1,163 @@
+# Authoring a Delegation Credential
+
+The [verify-a-delegation-chain](https://ca2a.agentrust-io.com/docs/tutorials/verify-a-delegation-chain/index.md) tutorial takes an existing chain apart. This one builds one from scratch: generate keys, construct a `DelegationCredential`, sign it, extend it into a narrowing multi-hop chain, and verify the result. Then we make a child over-scope and watch `verify_chain` reject it with `SCOPE_ESCALATION`. No hardware needed.
+
+Everything here uses `ca2a_runtime.delegation`. For the field semantics and the full invariant table, see [the delegation chain spec](https://ca2a.agentrust-io.com/docs/spec/delegation-chain/index.md).
+
+## Setup
+
+Use Python 3.11+. Clone `https://github.com/agentrust-io/ca2a.git`, enter the checkout, create and activate a virtual environment, then run `python -m pip install -e .`. Run the Python blocks below in order in one script or interactive session. The negative examples catch their expected errors so execution can continue.
+
+The example credentials omit validity bounds to keep the field walkthrough short. Use bounded grants for deployed systems; the [quick start](https://ca2a.agentrust-io.com/docs/quickstart/index.md) shows those fields.
+
+## 1. Generate keypairs
+
+Each hop is signed by its issuer and names a subject. Both are Ed25519 public keys, encoded as raw hex. `new_keypair()` returns the private key object and its public key hex.
+
+```
+from ca2a_runtime.delegation import new_keypair
+
+a_priv, a_pub = new_keypair()  # root agent A
+trusted_roots = {a_pub}       # retain our local authority independently of the chain
+b_priv, b_pub = new_keypair()  # agent B
+c_priv, c_pub = new_keypair()  # agent C
+```
+
+`a_pub` is the string you will place in a credential's `issuer` or `subject` field. Keep the private keys; you sign with them.
+
+## 2. Build and sign the root credential
+
+A `DelegationCredential` is a frozen dataclass. Construct it unsigned, then call `.sign()` with the issuer's private key. `sign()` returns a new signed copy; it does not mutate the original.
+
+```
+from ca2a_runtime.delegation import DelegationCredential
+
+root = DelegationCredential(
+    credential_id="cred-0",
+    issuer=a_pub,
+    subject=b_pub,
+    scope=frozenset({"cap:read", "cap:write", "cap:admin"}),
+    depth=0,
+    parent_id=None,
+).sign(a_priv)
+```
+
+The root credential must have `depth=0` and `parent_id=None`; `verify_chain` rejects a root that names a parent or carries a non-zero depth. `scope` is a `frozenset[str]` of capability strings. The signature is computed over the canonical body (sorted keys, compact separators, UTF-8, `scope` as a sorted array), so the exact set of scope strings is bound into the signature.
+
+`sign()` checks that the signing key matches the `issuer` field. Signing with the wrong key raises `INVALID_CREDENTIAL`:
+
+```
+from ca2a_runtime.errors import InvalidCredential
+
+try:
+    DelegationCredential(
+        credential_id="cred-0", issuer=a_pub, subject=b_pub,
+        scope=frozenset({"cap:read"}), depth=0,
+    ).sign(b_priv)
+except InvalidCredential:
+    print("wrong signing key rejected")
+else:
+    raise AssertionError("wrong signing key accepted")
+```
+
+## 3. Extend the chain with narrowing scope
+
+Each subsequent hop is issued by the previous hop's subject. Continuity is the rule that a hop's `issuer` equals the previous hop's `subject`, its `parent_id` equals the previous hop's `credential_id`, and its `depth` is the previous depth plus one. B, holding `read+write+admin`, delegates a narrower `read+write` slice to C:
+
+```
+mid = DelegationCredential(
+    credential_id="cred-1",
+    issuer=b_pub,               # == root.subject
+    subject=c_pub,
+    scope=frozenset({"cap:read", "cap:write"}),  # subset of root.scope
+    depth=1,                    # root.depth + 1
+    parent_id="cred-0",         # == root.credential_id
+).sign(b_priv)                  # signed by B, the issuer
+
+d_priv, d_pub = new_keypair()   # agent D
+
+leaf = DelegationCredential(
+    credential_id="cred-2",
+    issuer=c_pub,               # == mid.subject
+    subject=d_pub,
+    scope=frozenset({"cap:read"}),  # subset of mid.scope
+    depth=2,
+    parent_id="cred-1",
+).sign(c_priv)                  # signed by C
+```
+
+Scope narrows at every hop: `{read, write, admin}` to `{read, write}` to `{read}`. Attenuation requires each hop's `scope` to be a subset of its parent's; it may stay the same or shrink, never grow.
+
+## 4. Verify the chain
+
+Order the credentials root to leaf and call `verify_chain`. It returns `None` on success and raises the specific `CA2AError` subtype on the first invariant that fails.
+
+```
+from ca2a_runtime.delegation import verify_chain
+
+chain = [root, mid, leaf]
+verify_chain(chain, trusted_root_issuers=trusted_roots)
+print("verified", len(chain), "hops; leaf scope", sorted(leaf.scope))
+```
+
+`verify_chain` takes an optional `max_depth` keyword (default `8`). A hop whose `depth` exceeds it raises `DELEGATION_DEPTH_EXCEEDED`.
+
+```
+from ca2a_runtime.errors import DelegationDepthExceeded
+
+try:
+    verify_chain(chain, max_depth=1, trusted_root_issuers=trusted_roots)
+except DelegationDepthExceeded:
+    print("depth limit enforced")
+else:
+    raise AssertionError("depth limit bypassed")
+```
+
+## 5. Watch a child over-scope
+
+Now make C claim authority B never granted it. B delegated `{read, write}`; the leaf tries to grant `cap:admin`:
+
+```
+over = DelegationCredential(
+    credential_id="cred-2",
+    issuer=c_pub,
+    subject=d_pub,
+    scope=frozenset({"cap:read", "cap:admin"}),  # admin was never in mid.scope
+    depth=2,
+    parent_id="cred-1",
+).sign(c_priv)
+
+from ca2a_runtime.errors import ScopeEscalation
+
+try:
+    verify_chain([root, mid, over], trusted_root_issuers=trusted_roots)
+except ScopeEscalation as exc:
+    print(exc.code, "-", exc, "|", exc.detail)
+    # SCOPE_ESCALATION - hop 2 scope exceeds parent grant | added: ['cap:admin']
+else:
+    raise AssertionError("scope escalation accepted")
+```
+
+The signature on `over` is valid; C really did sign it. That is the point. A well-formed signature proves only that C authored the grant, not that C was entitled to make it. The subset check on `scope` is what forecloses the confused-deputy move where a delegate quietly widens its own authority. See [the delegation chain spec](https://ca2a.agentrust-io.com/docs/spec/delegation-chain/#attenuation-is-the-whole-point).
+
+## 6. Serialize for the wire
+
+`.body()` returns the signed portion as a plain dict; add the `signature` to get the full JSON object. `DelegationCredential.from_dict()` reverses it. This is the shape the [`ca2a verify-chain` CLI](https://ca2a.agentrust-io.com/docs/tutorials/verify-a-delegation-chain/index.md) and `ca2a_verify.verify_chain_file` consume.
+
+```
+import json
+
+record = root.body() | {"signature": root.signature}
+wire = json.dumps({"chain": [record]})
+
+restored = DelegationCredential.from_dict(json.loads(wire)["chain"][0])
+restored.verify_signature()  # raises InvalidCredential if the body was tampered with
+```
+
+A malformed dict (missing field, wrong type) raises `INVALID_CREDENTIAL` from `from_dict`; a body that was altered after signing raises `INVALID_CREDENTIAL` from `verify_signature`, because the canonical bytes no longer match the detached signature.
+
+## What you built
+
+You produced and verified a narrowing three-hop chain against a separately retained root authority. A correctly signed child that exceeded its parent's scope was rejected. A production verifier must obtain trusted roots through its own approval process; an incoming chain cannot choose them.
+
+The runtime uses the same verifier before holder proof and local-policy enforcement. See [Cedar policy](https://ca2a.agentrust-io.com/docs/spec/cedar-policy/index.md) for the implemented policy path. Continue to [verify a saved chain](https://ca2a.agentrust-io.com/docs/tutorials/verify-a-delegation-chain/index.md) or [emit and verify provenance](https://ca2a.agentrust-io.com/docs/tutorials/emit-and-verify-provenance/index.md).

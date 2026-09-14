@@ -1,33 +1,47 @@
-<!doctype html><html lang=en class=no-js> <head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=description content="Verify signed delegation chains and peer trust evidence for A2A. Start with a local grant and scope-escalation check."><link href=https://ca2a.agentrust-io.com/docs/spec/transport/ rel=canonical><link href=../profile/ rel=prev><link href=../sealed-channel/ rel=next><link rel=icon href=../../assets/icon.svg><meta name=generator content="mkdocs-1.6.1, mkdocs-material-9.7.7"><title>Transport binding - cA2A</title><link rel=stylesheet href=../../../assets/stylesheets/main.ec1eaa64.min.css><link rel=stylesheet href=../../../assets/stylesheets/palette.ab4e12ef.min.css><link rel=stylesheet href=../../../assets/_mkdocstrings.css><link rel=stylesheet href="https://agentrust-io.com/design-system.css?v=22"><script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script><meta property=og:type content=website><meta property=og:site_name content=cA2A><meta property=og:title content="Transport binding - cA2A"><meta property=og:description content="Verify signed delegation chains and peer trust evidence for A2A. Start with a local grant and scope-escalation check."><meta content=https://ca2a.agentrust-io.com/docs/spec/transport/ property=og:url><meta property=og:image content=https://ca2a.agentrust-io.com/docs/assets/og.png><meta property=og:image:width content=1200><meta property=og:image:height content=630><meta property=og:image:alt content="cA2A: part of the AgenTrust verifiable AI supply chain"><meta property=og:locale content=en_US><meta name=twitter:card content=summary_large_image><meta name=twitter:title content="Transport binding - cA2A"><meta name=twitter:description content="Verify signed delegation chains and peer trust evidence for A2A. Start with a local grant and scope-escalation check."><meta name=twitter:image content=https://ca2a.agentrust-io.com/docs/assets/og.png><script type=application/ld+json>
+<!doctype html><html lang=en class=no-js> <head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><meta name=description content="cA2A is a profile on A2A, not a competing transport."><link href=https://ca2a.agentrust-io.com/docs/spec/transport/ rel=canonical><link href=../profile/ rel=prev><link href=../sealed-channel/ rel=next><link rel=icon href=../../assets/icon.svg><meta name=generator content="mkdocs-1.6.1, mkdocs-material-9.7.7"><title>Transport binding - cA2A</title><link rel=stylesheet href=../../../assets/stylesheets/main.ec1eaa64.min.css><link rel=stylesheet href=../../../assets/stylesheets/palette.ab4e12ef.min.css><link rel=stylesheet href=../../../assets/_mkdocstrings.css><link rel=stylesheet href="https://agentrust-io.com/design-system.css?v=22"><script>__md_scope=new URL("../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script><meta property=og:type content=website><meta property=og:site_name content=AgenTrust><meta property=og:title content="Transport binding - cA2A"><meta property=og:description content="cA2A is a profile on A2A, not a competing transport."><meta content=https://ca2a.agentrust-io.com/docs/spec/transport/ property=og:url><meta property=og:image content=https://ca2a.agentrust-io.com/docs/assets/og.png><meta property=og:image:width content=1200><meta property=og:image:height content=630><meta property=og:image:alt content="cA2A: part of the AgenTrust verifiable AI supply chain"><meta property=og:locale content=en_US><meta name=twitter:card content=summary_large_image><meta name=twitter:title content="Transport binding - cA2A"><meta name=twitter:description content="cA2A is a profile on A2A, not a competing transport."><meta name=twitter:image content=https://ca2a.agentrust-io.com/docs/assets/og.png><script type=application/ld+json>
   {
     "@context": "https://schema.org",
     "@graph": [
       {
-        "@type": "TechArticle",
-        "name": "cA2A (Confidential Agent2Agent)",
-        "description": "A trust profile on the Agent2Agent (A2A) protocol. Where A2A's Signed Agent Card verifies only the domain owner, cA2A adds attested attenuated delegation, a sealed peer channel, and an offline-verifiable provenance record per hop. Binding the seal to a verified attested measurement on a live call is on the roadmap.",
-        "url": "https://ca2a.agentrust-io.com/",
-        "license": "https://opensource.org/licenses/MIT",
-        "author": { "@type": "Organization", "name": "AgenTrust", "url": "https://agentrust-io.com" },
-        "isPartOf": { "@type": "WebSite", "name": "cA2A", "url": "https://ca2a.agentrust-io.com/" }
-      },
-      {
         "@type": "Organization",
+        "@id": "https://agentrust-io.com/#organization",
         "name": "AgenTrust",
-        "url": "https://agentrust-io.com",
+        "url": "https://agentrust-io.com/",
         "sameAs": [
           "https://github.com/agentrust-io",
-          "https://agentrust-io.com/demos/",
-          "https://cmcp.agentrust-io.com",
-          "https://manifest.agentrust-io.com",
           "https://trace.agentrust-io.com",
-          "https://ca2a.agentrust-io.com"
+          "https://manifest.agentrust-io.com",
+          "https://cmcp.agentrust-io.com",
+          "https://ca2a.agentrust-io.com",
+          "https://wcm.agentrust-io.com",
+          "https://tests.agentrust-io.com",
+          "https://governance.agentrust-io.com"
         ]
       },
       {
         "@type": "WebSite",
+        "@id": "https://ca2a.agentrust-io.com/#website",
         "name": "cA2A",
-        "url": "https://ca2a.agentrust-io.com/"
+        "url": "https://ca2a.agentrust-io.com/",
+        "publisher": { "@id": "https://agentrust-io.com/#organization" }
+      },
+      {
+        "@type": "TechArticle",
+        "@id": "https://ca2a.agentrust-io.com/docs/spec/transport/#page",
+        "url": "https://ca2a.agentrust-io.com/docs/spec/transport/",
+        "name": "Transport binding - cA2A",
+        "headline": "Transport binding - cA2A",
+        "description": "cA2A is a profile on A2A, not a competing transport.",
+        "isPartOf": { "@id": "https://ca2a.agentrust-io.com/#website" },
+        "publisher": { "@id": "https://agentrust-io.com/#organization" },
+        "inLanguage": "en"
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "cA2A", "item": "https://ca2a.agentrust-io.com/" },
+          { "@type": "ListItem", "position": 2, "name": "Transport binding - cA2A", "item": "https://ca2a.agentrust-io.com/docs/spec/transport/" }
+        ]
       }
     ]
   }

@@ -1,0 +1,49 @@
+# cA2A Roadmap
+
+cA2A is an extension of the agentrust-io stack, not a rewrite. The build tiers below track how much each piece leans on primitives that already exist in [agent-manifest](https://github.com/agentrust-io/agent-manifest), [cmcp](https://github.com/agentrust-io/cmcp), and [trace-spec](https://github.com/agentrust-io/trace-spec).
+
+## Reused as-is (Tier 0)
+
+Already implemented and tested elsewhere; cA2A depends on it rather than reimplementing it.
+
+- Capability attenuation with scope narrowing: signed delegation chain, child scope cannot exceed parent, depth limits, cross-manifest replay protection, HITL approval signing (agent-manifest)
+- Pluggable TEE provider abstraction with measurement-bound keys (cmcp)
+- Attestation-gated SPIFFE mTLS (cmcp)
+- Audit chain with external signed evidence references (cmcp)
+- Cedar policy engine (cmcp)
+- Ed25519 + RFC 8785 canonicalization (all three repos; cA2A now ships a JCS canonicalizer in `ca2a_runtime.canonical`)
+
+## Delivered in v0.1: Profile and offline verifier
+
+- cA2A profile specification published as an A2A binding (`docs/SPEC.md`)
+- TRACE A2A profile: optional delegation-link block (parent record hash + delegation credential id) and its validation (Tier 1, coordinated in trace-spec)
+- `ca2a-verify`: offline verification of a delegation chain and the delegation DAG, reusing the agent-manifest verifier
+- Wire the agent-manifest delegation verifier as a check the runtime can call on an inbound peer request (Tier 1)
+
+## Delivered in v0.2: Runtime enforcement and sealed channel
+
+- Runtime peer-delegation enforcement: **decision core landed** (`ca2a_runtime.peer.enforce_peer_call`: verify chain, intersect delegated scope with local policy, enforce, emit provenance record; claim C3 validated), now with a **real Cedar policy engine** option (`ca2a_runtime.cedar.CedarPolicy`) alongside the allow-set `LocalPolicy`. Live transport **landed** (`ca2a_runtime.transport`: A2A wire binding in `transport.a2a_adapter`, a reference standard-library HTTP server and client, and `ca2a_runtime.node.PeerNode`), exercised end to end in software mode by `tests/unit/test_live_call.py` and runnable from a config file with `ca2a start`
+- Sealed peer channel: **landed** (`ca2a_runtime.channel`: HPKE-style X25519 -> HKDF-SHA256 -> ChaCha20-Poly1305 sealing to the peer's attested key; claim C4 validated). The seal is now **gated on a verified channel key** by the attestation handshake (`ca2a_runtime.attestation`: offer, verify, seal), so a payload is sealed only to an attested peer key; software mode records `assurance="none"` and hardware plugs in via a `verifier` callable. Remaining hardware property: the enclave holding the private key, established on a confidential VM
+- Linked runtime evidence: **landed** (`ca2a_runtime.trace_binding` emits a signed TRACE record per hop with the A2A `delegation` block; `ca2a_verify.verify_trace_dag` verifies the DAG offline, each link committing to the parent's full signed record). Built on `agentrust-trace` (Ed25519 + RFC 8785), reused not reimplemented. Software-mode records are Level 0; a hardware TEE run lifts them to Level 1. See `examples/trace-dag/`.
+
+## Current adoption path (post-v0.2)
+
+Real hardware attestation verification (SEV-SNP VCEK chain, Intel TDX quote via QVL/PCS, TPM AK cert + checkquote) is shared with cMCP. Appraisal against genuine SEV-SNP and TDX evidence has landed; the work below tracks what remains before broadly claiming mutual, cross-operator hardware assurance.
+
+- **SEV-SNP verifier: landed and validated on real evidence.** Report parsing, VCEK chain verification, ECDSA-P384 report-signature verification, and measurement/report-data binding, all fail-closed, run against a genuine Azure CVM report (see [docs/hardware-validation.md](https://ca2a.agentrust-io.com/docs/hardware-validation/index.md)). Report generation is implemented via configfs-TSM but is not yet hardware-validated, and Azure's paravisor shape is out of scope for it. See `ca2a_verify.sev_snp` and [docs/spec/attestation.md](https://ca2a.agentrust-io.com/docs/spec/attestation/index.md).
+- **TDX verifier: landed and validated on real evidence.** DCAP Quote v4 parsing (including the nested type-6 QE certification data), PCK chain to the genuine Intel SGX Root CA, QE report signature, attestation-key binding, quote signature, and MRTD binding, all fail-closed, run against a genuine GCP C3 quote. Quote generation is implemented via configfs-TSM but is not yet hardware-validated. See `ca2a_verify.tdx`.
+- **TPM 2.0 verifier: landed.** TPMS_ATTEST parsing, AK chain to a caller-supplied vendor root, AK signature (ECDSA or RSA), magic/type checks, and qualifying-data/PCR-digest binding, all fail-closed. Quote generation requires a real TPM. See `ca2a_verify.tpm`.
+- **Cross-operator attestation (C6): validated in software.** A two-operator harness (SEV-SNP verifier + measurement pinning + sealed channel) shows independent keys, mutual attestation, confidential cross-operator delegation, and binary-swap detection. All six claims (C1-C6) are now validated experiments.
+- **Live attested peer: landed.** The `verifier` seam has been driven off a real SEV-SNP quote on an Azure confidential VM, so `verify_offer` returned `assurance="hardware"` and a payload was sealed to a hardware-vouched channel key; measurement mismatch and stale nonce both rejected. See [docs/hardware-validation.md](https://ca2a.agentrust-io.com/docs/hardware-validation/index.md).
+- **Cross-operator, cross-TEE run: landed.** An Azure SEV-SNP peer appraised a GCP Intel TDX peer's real quote, sealed a delegated task to the attested key, and the TDX enclave opened it, enforced the attenuated scope, allowed `tool:search` and refused `tool:purchase` with a denial record returned across the boundary. See [docs/hardware-validation.md](https://ca2a.agentrust-io.com/docs/hardware-validation/index.md).
+- **Pending:** a hardware run of the SEV-SNP and TDX collectors (both implemented against configfs-TSM, neither yet exercised on silicon), mutual attestation on real silicon in both directions (the protocol now supports it in software mode and is off by default; that hardware run was one-directional), simultaneous attestation (which needs a commitment step neither peer can back out of, a larger protocol than what landed), and the TPM certificate-chain path. TPM parsing, bindings and the AK signature are validated against a real Azure vTPM quote; SEV-SNP and TDX appraisal of real evidence is done. The transport that parses A2A messages into a `PeerRequest` has **landed** (`ca2a_runtime.transport.a2a_adapter`), running in software mode; the hardware seam is the `verifier` callable in `ca2a_runtime.attestation`.
+
+## v1.0 exit criteria: Stable profile
+
+- Stable delegation credential and TRACE link schema with documented versioning guarantees
+- Full RATS/EAT conformance for peer attestation evidence
+- Conformance suite for "cA2A-compatible" claims: **landed** (`tests/conformance/`, normative README + runnable MUST-level checks, in CI). A production run on confidential-computing hardware is the remaining step for a hardware-attested claim.
+- **Upstream A2A interoperability: not started.** Our own conformance suite says a peer implements cA2A. It says nothing about whether attaching the profile keeps us compatible with the wider A2A ecosystem, and that is a separate question worth answering with numbers. Plan: run the official [`a2aproject/a2a-tck`](https://github.com/a2aproject/a2a-tck) conformance suite first, then the A2A Interoperability Test Kit's multi-language launcher, which covers cross-SDK compatibility across Python, Go, TypeScript, Java and Rust. Publish the result as `docs/interop-report.md`, failures reported at the same volume as passes.
+- The system under test is an official `a2a-sdk` server with the extension attached through `ca2a_runtime.transport.a2a_sdk`, **not** `ca2a start`. A normative A2A transport is explicitly out of scope for this profile (see [LIMITATIONS.md](https://ca2a.agentrust-io.com/LIMITATIONS/index.md)), so pointing a conformance suite at the reference standard-library transport would fail baseline MUSTs for reasons that say nothing about cA2A.
+- Check the protobuf `Struct` numeric round trip documented in `ca2a_runtime.transport.a2a_sdk` on each SDK. `Struct` represents integer fields as floating-point values. The Python bridge restores only finite integral `depth`, `not_before`, and `not_after` values before the strict credential parser; non-integral values are rejected rather than truncated. The Python boundary is tested. Equivalent behavior in Go and Rust still needs validation.
+- OWASP liaison on the multi-agent threat mapping; ITI conversation on conformance
