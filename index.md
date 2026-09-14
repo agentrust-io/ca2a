@@ -1,16 +1,55 @@
 ---
-title: Verify who delegated what to each agent
+title: "cA2A: verify who delegated what, hop by hop"
 description: cA2A adds delegation and peer trust checks to A2A. Start with an offline chain that accepts a narrowed grant and rejects scope escalation.
 ---
 
+[03 · Actions: was each delegation checked inside attested hardware?](https://agentrust-io.com/#chain)
+
 # Verify who delegated what to each agent
 
-cA2A adds signed delegation credentials, peer appraisal, sealed channels, and linked provenance to agent-to-agent communication. A verifier checks who issued a grant and whether each child stays within its parent's authority.
+cA2A is a profile on A2A that adds signed attenuated delegation, peer appraisal, a sealed peer channel and a TRACE provenance record per hop, checkable offline against a root you trust.
 
 [Verify your first delegation chain](docs/quickstart.md){ .md-button .md-button--primary }
-[See the runtime boundaries](docs/concepts.md){ .md-button }
+[What this proves, and what it does not](LIMITATIONS.md){ .md-button }
 
-The first example runs locally with Python 3.11+. It verifies a narrowed grant and rejects both an untrusted issuer and signed scope escalation. No hardware or running peer is needed.
+!!! tip "TL;DR"
+    [ca2a-runtime](https://pypi.org/project/ca2a-runtime/) 0.2.0 (MIT developer preview; the PyPI name `ca2a` belongs to an unrelated project) rejects scope escalation offline with no hardware or running peer. SEV-SNP and TDX appraisal ran on real Azure and GCP evidence, including an Azure SEV-SNP peer calling a GCP TDX peer on 2026-07-27, but peer appraisal is one-directional so far and binding the seal to a verified measurement on a live call is on the roadmap.
+
+<div class="grid cards" markdown>
+
+-   __Run it__
+
+    ---
+
+    Verify a narrowed grant and reject both an untrusted issuer and signed scope escalation, then stand up the live peer runtime.
+
+    [Quick Start](docs/quickstart.md)
+
+-   __What it proves, and what it does not__
+
+    ---
+
+    What has run against real silicon, what is one-directional, and what is not appraised at all.
+
+    [Limitations](LIMITATIONS.md)
+
+-   __Hardware evidence__
+
+    ---
+
+    SEV-SNP on Azure and Intel TDX on GCP C3, validated 2026-07-27, with the collectors run on real silicon on 2026-08-24.
+
+    [Hardware validation](docs/hardware-validation.md)
+
+-   __The chain__
+
+    ---
+
+    Before it: [Agent Manifest](https://manifest.agentrust-io.com) issues the attenuated delegation credential. Alongside: [cMCP](https://cmcp.agentrust-io.com) covers tool calls. Each hop's record is written in [TRACE](https://trace.agentrust-io.com). Check a real TDX quote at [agentrust-io.com/verify](https://agentrust-io.com/verify/).
+
+    [See the chain](https://agentrust-io.com/#chain)
+
+</div>
 
 ## The gap it closes
 
@@ -27,44 +66,6 @@ An agent identity does not by itself establish delegation authority. When A dele
 
 Software and hardware modes provide different assurance. Peer appraisal has been demonstrated one-directionally; mutual simultaneous hardware attestation remains outstanding. Read [Limitations](LIMITATIONS.md) before relying on a hardware claim.
 
-## Where to start
+For the architecture and trust boundaries, read [How It Works](docs/concepts.md). The normative profile, with the delegation chain, sealed channel, and conformance rules, is in [Profile](docs/spec/profile.md).
 
-<div class="grid cards" markdown>
-
--   __Run it__
-
-    ---
-
-    Verify a delegation chain offline, then stand up the live peer runtime.
-
-    [Quick Start](docs/quickstart.md)
-
--   __Understand it__
-
-    ---
-
-    The architecture, the trust boundaries, and how a hop becomes a provenance record.
-
-    [How It Works](docs/concepts.md)
-
--   __Read the profile__
-
-    ---
-
-    The normative cA2A profile on A2A, with the delegation chain, sealed channel, and conformance rules.
-
-    [Profile](docs/spec/profile.md)
-
--   __Check the bounds__
-
-    ---
-
-    What has run against real silicon, what is one-directional, and what is not appraised at all.
-
-    [Limitations](LIMITATIONS.md)
-
-</div>
-
-## How it fits the rest of the stack
-
-cA2A is the delegation layer of the AgenTrust chain. [Agent Manifest](https://manifest.agentrust-io.com) declares what an agent is and what it may do, and supplies the attenuated delegation credential. [cMCP](https://cmcp.agentrust-io.com) enforces policy at the agent-to-tool boundary and shares the TEE provider abstraction. [TRACE](https://trace.agentrust-io.com) is the evidence format each hop's provenance record is written in.
+**Status:** ca2a-runtime 0.2.0 developer preview · MIT · hosting at the Agentic AI Foundation proposed, not accepted · Sponsored by OPAQUE, which funds the engineering, infrastructure and confidential-computing work behind these projects.
