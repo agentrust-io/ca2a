@@ -3,35 +3,54 @@
 {#
   SEO and AEO head additions for cA2A.
 
-  Two things happen here:
+  1. <title>: Material appends " - site_name" to every page title, so the home
+     page read "cA2A: ... - cA2A". The home page uses its front-matter title
+     alone (index.md is the site home here, separate from README.md), and
+     other pages drop the suffix when the title already contains the site name.
 
-  1. The homepage <title> is overridden. Material falls back to site_name when a
-     page has no front-matter title, which left the homepage titled "cA2A".
-     Front matter is not an option here: docs_dir is the repository root, so
-     README.md is also the GitHub landing page and YAML front matter would
-     render as noise there.
+  2. Open Graph and Twitter card meta, with og:title equal to <title>.
 
-  2. Open Graph and Twitter card meta, so links to this site produce a card
-     rather than a bare URL, plus JSON-LD so answer engines can model what
-     cA2A is.
+  3. JSON-LD: one Organization node under the hub's @id, so every AgenTrust
+     site names the same organization; a WebSite; a WebPage (home) or
+     TechArticle (inner page) carrying this page's own title, description and
+     canonical URL; a BreadcrumbList on inner pages; and the project node on
+     the home page.
 
-  Asset paths are derived from config.site_url. Do not hardcode them: assets
-  live under /docs/assets/ here because docs_dir is the repository root, and
-  that differs from sibling repositories.
+  Per-page meta descriptions come from hooks/seo.py. Asset paths are derived
+  from config.site_url: assets live under /docs/assets/ here because docs_dir
+  is the repository root, which differs from sibling repositories.
 #}
+
+{% block htmltitle %}
+  {%- set t = page.meta.title if page and page.meta and page.meta.title else (page.title | striptags if page and page.title and not page.is_homepage else "") -%}
+  {%- if not t -%}
+    <title>{{ config.site_name }}</title>
+  {%- elif (page and page.is_homepage) or config.site_name in t -%}
+    <title>{{ t }}</title>
+  {%- else -%}
+    <title>{{ t }} - {{ config.site_name }}</title>
+  {%- endif -%}
+{% endblock %}
 
 {% block extrahead %}
   {{ super() }}
-  {# page.title is the nav label ("Home"); page.meta.title is the front matter. #}
-  {% set page_name = (page.meta.title if page and page.meta and page.meta.title else (page.title if page else None)) %}
-  {% set page_desc = page.meta.description if page and page.meta and page.meta.description else config.site_description %}
-  {% set page_url = page.canonical_url if page and page.canonical_url else config.site_url %}
-  {% set og_image = config.site_url ~ 'docs/assets/og.png' %}
-  {% set social_title = 'Secure, confidential agent-to-agent delegation' %}
+  {%- set t = page.meta.title if page and page.meta and page.meta.title else (page.title | striptags if page and page.title and not page.is_homepage else "") -%}
+  {%- if not t -%}
+    {%- set page_title = config.site_name -%}
+  {%- elif (page and page.is_homepage) or config.site_name in t -%}
+    {%- set page_title = t -%}
+  {%- else -%}
+    {%- set page_title = t ~ " - " ~ config.site_name -%}
+  {%- endif -%}
+  {%- set page_desc = page.meta.description if page and page.meta and page.meta.description else config.site_description -%}
+  {%- set page_url = page.canonical_url if page and page.canonical_url else config.site_url -%}
+  {%- set is_home = page and page.is_homepage -%}
+  {%- set org = "https://agentrust-io.com/#organization" -%}
+  {%- set og_image = config.site_url ~ 'docs/assets/og.png' -%}
 
   <meta property="og:type" content="website">
-  <meta property="og:site_name" content="{{ config.site_name }}">
-  <meta property="og:title" content="{% if page_name %}{{ page_name }} - {{ config.site_name }}{% else %}{{ config.site_name }}: {{ social_title }}{% endif %}">
+  <meta property="og:site_name" content="AgenTrust">
+  <meta property="og:title" content="{{ page_title }}">
   <meta property="og:description" content="{{ page_desc }}">
   <meta property="og:url" content="{{ page_url }}">
   <meta property="og:image" content="{{ og_image }}">
@@ -41,7 +60,7 @@
   <meta property="og:locale" content="en_US">
 
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="{% if page_name %}{{ page_name }} - {{ config.site_name }}{% else %}{{ config.site_name }}: {{ social_title }}{% endif %}">
+  <meta name="twitter:title" content="{{ page_title }}">
   <meta name="twitter:description" content="{{ page_desc }}">
   <meta name="twitter:image" content="{{ og_image }}">
 
@@ -50,32 +69,61 @@
     "@context": "https://schema.org",
     "@graph": [
       {
-        "@type": "TechArticle",
-        "name": "cA2A (Confidential Agent2Agent)",
-        "description": "A trust profile on the Agent2Agent (A2A) protocol. Where A2A's Signed Agent Card verifies only the domain owner, cA2A adds attested attenuated delegation, a sealed peer channel, and an offline-verifiable provenance record per hop. Binding the seal to a verified attested measurement on a live call is on the roadmap.",
-        "url": "{{ config.site_url }}",
-        "license": "https://opensource.org/licenses/MIT",
-        "author": { "@type": "Organization", "name": "AgenTrust", "url": "https://agentrust-io.com" },
-        "isPartOf": { "@type": "WebSite", "name": "{{ config.site_name }}", "url": "{{ config.site_url }}" }
-      },
-      {
         "@type": "Organization",
+        "@id": {{ org | tojson }},
         "name": "AgenTrust",
-        "url": "https://agentrust-io.com",
+        "url": "https://agentrust-io.com/",
         "sameAs": [
           "https://github.com/agentrust-io",
-          "https://agentrust-io.com/demos/",
-          "https://cmcp.agentrust-io.com",
-          "https://manifest.agentrust-io.com",
           "https://trace.agentrust-io.com",
-          "https://ca2a.agentrust-io.com"
+          "https://manifest.agentrust-io.com",
+          "https://cmcp.agentrust-io.com",
+          "https://ca2a.agentrust-io.com",
+          "https://wcm.agentrust-io.com",
+          "https://tests.agentrust-io.com",
+          "https://governance.agentrust-io.com"
         ]
       },
       {
         "@type": "WebSite",
-        "name": "{{ config.site_name }}",
-        "url": "{{ config.site_url }}"
+        "@id": {{ (config.site_url ~ "#website") | tojson }},
+        "name": {{ config.site_name | tojson }},
+        "url": {{ config.site_url | tojson }},
+        "publisher": { "@id": {{ org | tojson }} }
+      },
+      {
+        "@type": {{ ("WebPage" if is_home else "TechArticle") | tojson }},
+        "@id": {{ (page_url ~ "#page") | tojson }},
+        "url": {{ page_url | tojson }},
+        "name": {{ page_title | tojson }},
+        "headline": {{ page_title | tojson }},
+        "description": {{ page_desc | tojson }},
+        "isPartOf": { "@id": {{ (config.site_url ~ "#website") | tojson }} },
+        "publisher": { "@id": {{ org | tojson }} },
+        "inLanguage": "en"
       }
+      {%- if is_home %},
+      {
+        "@type": "SoftwareSourceCode",
+        "@id": {{ (config.site_url ~ "#software") | tojson }},
+        "name": "cA2A (Confidential Agent2Agent)",
+        "description": "A trust profile on the Agent2Agent (A2A) protocol. Where A2A's Signed Agent Card verifies only the domain owner, cA2A adds attested attenuated delegation, a sealed peer channel, and an offline-verifiable provenance record per hop. Binding the seal to a verified attested measurement on a live call is on the roadmap.",
+        "url": {{ config.site_url | tojson }},
+        "codeRepository": {{ config.repo_url | tojson }},
+        "programmingLanguage": "Python",
+        "license": "https://opensource.org/licenses/MIT",
+        "author": { "@id": {{ org | tojson }} },
+        "publisher": { "@id": {{ org | tojson }} }
+      }
+      {%- else %},
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": {{ config.site_name | tojson }}, "item": {{ config.site_url | tojson }} },
+          { "@type": "ListItem", "position": 2, "name": {{ page_title | tojson }}, "item": {{ page_url | tojson }} }
+        ]
+      }
+      {%- endif %}
     ]
   }
   </script>

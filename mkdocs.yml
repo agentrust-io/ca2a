@@ -7,6 +7,7 @@ edit_uri: edit/main/
 docs_dir: .
 exclude_docs: |
   .github/
+  hooks/
   node_modules/
   benchmarks/
   src/
@@ -56,6 +57,10 @@ theme:
   icon:
     repo: fontawesome/brands/github
 
+hooks:
+  # Per-page meta descriptions; see the module docstring.
+  - hooks/seo.py
+
 plugins:
   - search
   - llmstxt:
@@ -65,8 +70,9 @@ plugins:
         provenance to A2A communication. Begin with offline grant verification
         against a separately trusted root. Live runtime checks and hardware
         assurance require additional evidence and explicit relying-party policy.
+        Part of AgenTrust, open specifications for verifiable AI: https://agentrust-io.com.
       sections:
-        Getting started:
+        Get started:
           - index.md
           - docs/quickstart.md
           - docs/concepts.md
@@ -75,8 +81,24 @@ plugins:
           - docs/SPEC.md
           - docs/spec/profile.md
           - docs/spec/delegation-chain.md
+          - docs/spec/sealed-channel.md
           - docs/spec/attestation.md
+          - docs/spec/mutual-attestation.md
+          - docs/spec/conformance.md
+          - docs/spec/error-codes.md
           - docs/spec/threat-model.md
+        Guides:
+          - docs/tutorials/verify-a-delegation-chain.md
+          - docs/tutorials/authoring-a-delegation-credential.md
+          - docs/tutorials/emit-and-verify-provenance.md
+          - docs/tutorials/reproducing-the-claims.md
+          - docs/tutorials/integrating-with-a2a.md
+          - docs/hardware-validation.md
+        Project:
+          - LIMITATIONS.md
+          - ROADMAP.md
+          - GOVERNANCE.md
+          - SECURITY.md
   - minify:
       minify_html: true
   - mkdocstrings:
