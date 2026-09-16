@@ -27,7 +27,8 @@ measurement) is what lifts these records to Level 1.
   each record valid and signed, and each `delegation.parent_record_hash` equal to
   the hash of the parent's **full signed record**.
 - `ca2a_verify.cross_check_trace_dag` — tie the DAG to the delegation chain
-  (each non-root hop acted under the credential the chain names).
+  (path length, non-root credential IDs, and each record's `cnf.jwk` against
+  that hop's credential `subject`).
 
 Validate a single record with the TRACE tooling directly:
 
