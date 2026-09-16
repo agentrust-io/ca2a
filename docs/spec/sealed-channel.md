@@ -1,3 +1,5 @@
+<a id="ca2a-sealed-channel"></a>
+
 # Sealed Peer Channel
 
 The sealed channel encrypts a task to a peer's X25519 public key. Only the matching private key can open it. The reference runtime connects this encryption to channel-offer appraisal; software mode exercises the same encryption without proving hardware isolation.
@@ -29,6 +31,8 @@ else:
 ```
 
 Malformed blobs, changed ciphertext, wrong keys, or mismatched additional authenticated data raise `SEALED_CHANNEL_ERROR`; no unauthenticated plaintext is returned. Both sides must supply the same `aad` when using that low-level option.
+
+<a id="ca2a-channel-key-custody"></a>
 
 ## Attestation and key custody
 

@@ -1,6 +1,10 @@
+<a id="ca2a-delegation-chain"></a>
+
 # Delegation Chain
 
 A delegation chain is a root-to-leaf list of signed credentials. It is the primitive that lets Agent A hand a bounded slice of its authority to B, and B a still-smaller slice to C, with each grant provably within the one above it.
+
+<a id="ca2a-delegation-credential"></a>
 
 ## Credential
 
@@ -34,6 +38,8 @@ fields existed. A bound that is present is part of the signed body (and must be
 a non-negative JSON integer, never null), so it cannot be stripped or altered
 without invalidating the signature.
 
+<a id="ca2a-delegation-verification"></a>
+
 ## Verification invariants
 
 `verify_chain` raises the specific error for the first invariant that fails:
@@ -57,6 +63,8 @@ root is absent. Offline tooling may omit that set when it only needs to check a
 chain's internal structure, but structural verification alone does not authorize
 work.
 
+<a id="ca2a-delegation-validity"></a>
+
 ## Validity window
 
 `not_before` / `not_after` bound when a credential may be used, as Unix epoch
@@ -74,6 +82,8 @@ time.
 Windows are not required to nest across hops. A chain is usable only at times
 inside every hop's window, so the effective window is already the intersection
 of the hops'; requiring structural nesting would add no authority bound.
+
+<a id="ca2a-capability-attenuation"></a>
 
 ## Attenuation is the whole point
 
