@@ -54,10 +54,13 @@ def _make_report(
     report_data: bytes,
     algo: int = 1,
     platform_info: int = 0,
+    policy: int = 0,
+    guest_svn: int = 1,
+    vmpl: int = 0,
 ) -> bytes:
     body = bytearray(SIG_OFFSET)
-    struct.pack_into("<IIQ", body, 0, 2, 1, 0)  # version, guest_svn, policy
-    struct.pack_into("<I", body, 0x30, 0)  # vmpl
+    struct.pack_into("<IIQ", body, 0, 2, guest_svn, policy)
+    struct.pack_into("<I", body, 0x30, vmpl)
     struct.pack_into("<I", body, 0x34, algo)  # signature_algo
     struct.pack_into("<Q", body, 0x40, platform_info)  # PLATFORM_INFO
     body[0x50 : 0x50 + len(report_data)] = report_data
@@ -97,6 +100,61 @@ def test_synthetic_report_verifies(synthetic_chain: dict) -> None:
     assert parsed.report_data == rd
 
 
+@pytest.mark.parametrize(
+    ("platform_info", "bound_key", "measurement", "accepted"),
+    [
+        (32, "channel", b"\x11" * 48, True),
+        (0, "channel", b"\x11" * 48, False),
+        (33, "channel", b"\x11" * 48, False),
+        (32, "substituted", b"\x11" * 48, False),
+        (32, "channel", b"\x22" * 48, False),
+    ],
+)
+def test_channel_verifier_enforces_signed_policy_and_binding(
+    synthetic_chain: dict,
+    platform_info: int,
+    bound_key: str,
+    measurement: bytes,
+    accepted: bool,
+) -> None:
+    from ca2a_runtime.attestation import ChannelOffer, verify_offer
+    from ca2a_runtime.tee.base import AttestationReport
+    from ca2a_runtime.tee.sev_snp import snp_report_data
+    from ca2a_verify.sev_snp import sev_snp_verifier
+
+    verifier = sev_snp_verifier(
+        trusted_roots=[synthetic_chain["root"]],
+        vcek_chain=synthetic_chain["chain"],
+        expected_measurement=b"\x11" * 48,
+        min_guest_svn=1,
+        require_platform={"alias_check_complete"},
+        forbid_platform={"smt_enabled"},
+    )
+    signed = _make_report(
+        synthetic_chain["vcek_key"],
+        measurement=measurement,
+        report_data=snp_report_data(bound_key, "fresh"),
+        platform_info=platform_info,
+    )
+    offer = ChannelOffer(
+        "channel",
+        AttestationReport(
+            platform="sev-snp",
+            public_key="channel",
+            nonce="fresh",
+            measurement="untrusted-envelope-value",
+            raw_evidence=signed,
+        ),
+    )
+    if accepted:
+        peer = verify_offer(offer, expected_nonce="fresh", verifier=verifier, require_hardware=True)
+        assert peer.assurance == "hardware"
+        assert peer.measurement == "sha384:" + (b"\x11" * 48).hex()
+    else:
+        with pytest.raises(AttestationFailed):
+            verify_offer(offer, expected_nonce="fresh", verifier=verifier, require_hardware=True)
+
+
 def test_tampered_report_fails(synthetic_chain: dict) -> None:
     report = bytearray(
         _make_report(
@@ -107,6 +165,74 @@ def test_tampered_report_fails(synthetic_chain: dict) -> None:
     with pytest.raises(AttestationFailed):
         verify_sev_snp_report(
             bytes(report), synthetic_chain["chain"], trusted_roots=[synthetic_chain["root"]]
+        )
+
+
+@pytest.mark.parametrize(
+    ("policy", "guest_svn", "vmpl", "error"),
+    [(0, 2, 0, None), (1 << 19, 2, 0, "debug-enabled"), (0, 1, 0, "SVN"), (0, 2, 1, "VMPL0")],
+)
+def test_signed_guest_security_policy(
+    synthetic_chain: dict,
+    policy: int,
+    guest_svn: int,
+    vmpl: int,
+    error: str | None,
+) -> None:
+    from ca2a_runtime.tee.base import AttestationReport
+    from ca2a_runtime.tee.sev_snp import snp_report_data
+    from ca2a_verify.sev_snp import sev_snp_verifier
+
+    measurement = bytearray(b"\x11" * 48)
+    verifier = sev_snp_verifier(
+        trusted_roots=[synthetic_chain["root"]],
+        vcek_chain=synthetic_chain["chain"],
+        expected_measurement=measurement,
+        min_guest_svn=2,
+        require_platform=set(),
+        forbid_platform=set(),
+    )
+    raw = _make_report(
+        synthetic_chain["vcek_key"],
+        measurement=bytes(measurement),
+        report_data=snp_report_data("channel", "fresh"),
+        policy=policy,
+        guest_svn=guest_svn,
+        vmpl=vmpl,
+    )
+    # Independent positive control: every negative report has a valid signature
+    # and the same matching measurement/binding; malformed input cannot mask it.
+    verified = verify_sev_snp_report(
+        raw,
+        synthetic_chain["chain"],
+        trusted_roots=[synthetic_chain["root"]],
+        expected_measurement=bytes(measurement),
+        expected_report_data=snp_report_data("channel", "fresh"),
+    )
+    assert verified.policy == policy
+    assert verified.guest_svn == guest_svn
+    assert verified.vmpl == vmpl
+    measurement[:] = b"\x22" * 48  # caller mutation must not change the pinned value
+    report = AttestationReport("sev-snp", "untrusted", "channel", "fresh", raw_evidence=raw)
+    if error is None:
+        assert verifier(report, "fresh") == "sha384:" + (b"\x11" * 48).hex()
+    else:
+        with pytest.raises(AttestationFailed, match=error):
+            verifier(report, "fresh")
+
+
+@pytest.mark.parametrize("minimum", [-1, True, "1", 1.5, 1 << 32])
+def test_channel_verifier_refuses_invalid_svn_floor(minimum) -> None:
+    from ca2a_verify.sev_snp import sev_snp_verifier
+
+    with pytest.raises(ValueError, match="min_guest_svn"):
+        sev_snp_verifier(
+            trusted_roots=[],
+            vcek_chain=[],
+            expected_measurement=b"\x11" * 48,
+            min_guest_svn=minimum,
+            require_platform=set(),
+            forbid_platform=set(),
         )
 
 

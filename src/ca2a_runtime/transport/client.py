@@ -104,7 +104,9 @@ class Handshake:
     challenge: str | None
 
 
-def handshake(base_url: str, *, verifier: Verifier | None = None) -> Handshake:
+def handshake(
+    base_url: str, *, verifier: Verifier | None = None, require_hardware: bool = False
+) -> Handshake:
     """Fetch the peer's attested channel key, verify it, and keep its challenge.
 
     One round trip serves both directions: the nonce is the caller's own and is
@@ -115,14 +117,18 @@ def handshake(base_url: str, *, verifier: Verifier | None = None) -> Handshake:
     body = _get_json(f"{base_url}{CHANNEL_PATH}?nonce={nonce}")
     offer = wire.parse_channel_offer(body)
     return Handshake(
-        peer=verify_offer(offer, expected_nonce=nonce, verifier=verifier),
+        peer=verify_offer(
+            offer, expected_nonce=nonce, verifier=verifier, require_hardware=require_hardware
+        ),
         challenge=wire.parse_challenge(body),
     )
 
 
-def fetch_verified_peer(base_url: str, *, verifier: Verifier | None = None) -> VerifiedPeer:
+def fetch_verified_peer(
+    base_url: str, *, verifier: Verifier | None = None, require_hardware: bool = False
+) -> VerifiedPeer:
     """Fetch the peer's attested channel key and verify it under a fresh nonce."""
-    return handshake(base_url, verifier=verifier).peer
+    return handshake(base_url, verifier=verifier, require_hardware=require_hardware).peer
 
 
 def send_task(
@@ -134,6 +140,7 @@ def send_task(
     holder_key: Ed25519PrivateKey,
     payload: bytes | None = None,
     verifier: Verifier | None = None,
+    require_hardware: bool = False,
     parent_record_hash: str | None = None,
     caller_provider: BaseProvider | None = None,
 ) -> dict[str, Any]:
@@ -152,12 +159,16 @@ def send_task(
 
     Returns the parsed response body on acceptance. Raises a :class:`CA2AError`
     carrying the peer's error code and message on any peer-side failure.
+
+    ``require_hardware=True`` rejects software-only offers before sealing or
+    sending a task. Configure the verifier's measurement and platform policy
+    separately; hardware assurance alone does not specify either requirement.
     """
     sealed: bytes | None = None
     caller_offer: ChannelOffer | None = None
     # Always: the holder proof needs the callee's identity as its audience and a
     # challenge the callee issued, and both arrive in this one round trip.
-    hello = handshake(base_url, verifier=verifier)
+    hello = handshake(base_url, verifier=verifier, require_hardware=require_hardware)
     if hello.challenge is None:
         raise AttestationFailed(
             "the peer issued no challenge, so the caller cannot prove it holds the leaf key",
