@@ -8,6 +8,10 @@ DAG from the signed records alone, cross-checks it against the chain, confirms
 each record passes the TRACE conformance suite at Level 0, and writes the DAG to
 ``dag.json``. This is the software-attestation path: records are honestly Level 0
 (platform ``software-only``); a hardware TEE run is what lifts them to Level 1.
+
+Each TRACE record is signed by the private key of that hop's credential
+``subject``, which is what ``cross_check_trace_dag`` requires: a record signed by
+any other trusted key is refused even when ``credential_id`` matches.
 """
 
 from __future__ import annotations
@@ -16,7 +20,7 @@ import json
 import time
 from pathlib import Path
 
-from agentrust_trace import generate_key
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from trace_tests.runner import run as run_conformance
 
 from ca2a_runtime.delegation import DelegationCredential, new_keypair
@@ -35,9 +39,12 @@ SCOPES = [
 ]
 
 
-def build_chain(scopes: list[frozenset[str]]) -> list[DelegationCredential]:
-    """A correctly signed, narrowing root-to-leaf chain (one hop per scope)."""
+def build_chain(
+    scopes: list[frozenset[str]],
+) -> tuple[list[DelegationCredential], list[Ed25519PrivateKey]]:
+    """A correctly signed, narrowing root-to-leaf chain plus each subject key."""
     chain: list[DelegationCredential] = []
+    subject_keys: list[Ed25519PrivateKey] = []
     priv, pub = new_keypair()
     parent_id: str | None = None
     for depth, scope in enumerate(scopes):
@@ -51,15 +58,15 @@ def build_chain(scopes: list[frozenset[str]]) -> list[DelegationCredential]:
             parent_id=parent_id,
         ).sign(priv)
         chain.append(cred)
+        subject_keys.append(next_priv)
         parent_id = cred.credential_id
         priv, pub = next_priv, next_pub
-    return chain
+    return chain, subject_keys
 
 
 def main() -> None:
     now = int(time.time())
-    chain = build_chain(SCOPES)
-    keys = [generate_key() for _ in chain]
+    chain, keys = build_chain(SCOPES)
 
     hops = [
         HopSpec(
@@ -83,7 +90,9 @@ def main() -> None:
     trusted = [k.public_key() for k in keys]
     result = verify_trace_dag(records, trusted_keys=trusted)
     cross_check_trace_dag(records, chain)
-    print(f"DAG verified offline: {result.hops} hops, {result.root_subject} -> {result.leaf_subject}")
+    print(
+        f"DAG verified offline: {result.hops} hops, {result.root_subject} -> {result.leaf_subject}"
+    )
 
     for i, record in enumerate(records):
         findings = run_conformance(record, "trace", level=0)

@@ -32,6 +32,12 @@ Chain verification contacts no server. For reproducible historical checks, prese
 
 `verify_trace_dag(records, trusted_keys=..., max_age_seconds=None)` verifies signatures from trusted keys, record structure, and parent hashes along one ordered root-to-leaf path. It returns a `TraceDagResult`. The default omits a record-age limit for historical audits; supply `max_age_seconds` when freshness is required.
 
-`cross_check_trace_dag(records, chain)` then checks path length and non-root credential IDs. Run credential and signed-record verification first. This cross-check does not independently bind TRACE subjects to credential subjects or prove task completion.
+`cross_check_trace_dag(records, chain)` then checks path length, non-root
+credential IDs, and that each record's signing key (`cnf.jwk`) equals
+`chain[i].subject`, the Ed25519 delegate named by that credential. Run credential
+and signed-record verification first. This cross-check does not bind the TRACE
+record's free-text `subject` field (a SPIFFE/DID URI) to the credential subject,
+and does not prove task completion. Those are different namespaces; `cnf.jwk` is
+already a raw key and is what the hop "acted under."
 
 The API name uses DAG terminology, but the input is one ordered path, not an arbitrary branching tree. The unsigned `DelegationRecord` helper has a separate `verify_dag` consistency check; it is not a substitute for signature verification. See [provenance DAG](provenance-dag.md) and [TRACE A2A profile](trace-a2a-profile.md).

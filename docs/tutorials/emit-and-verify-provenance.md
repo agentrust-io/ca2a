@@ -67,6 +67,6 @@ This does not change the signed delegation or grant additional runtime authority
 
 ## Use signed evidence for authenticity
 
-The implemented TRACE binding signs records carrying delegation links. `verify_trace_dag` requires the recipient's trusted signing keys and checks signatures, structure, and parent links. `cross_check_trace_dag` then aligns non-root credential IDs with a separately verified chain. See the [verification library](../spec/verification-library.md).
+The implemented TRACE binding signs records carrying delegation links. `verify_trace_dag` requires the recipient's trusted signing keys and checks signatures, structure, and parent links. `cross_check_trace_dag` then aligns the DAG with a separately verified chain: path length, non-root credential IDs, and each record's `cnf.jwk` against that hop's credential `subject`. See the [verification library](../spec/verification-library.md).
 
 Both path verifiers accept one ordered root-to-leaf sequence, not an arbitrary branching graph. Even signed authorization evidence does not establish task completion or completeness of the submitted history. For runtime checks, see [inbound peer-call decision](../spec/call-graph.md).

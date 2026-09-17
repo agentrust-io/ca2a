@@ -18,7 +18,8 @@ owns the block's validation and stays robust to that cross-repo version skew.
 Scope non-escalation across hops is a property of the delegation *credentials*,
 verified by :func:`ca2a_runtime.delegation.verify_chain`; this verifier covers
 the record linkage and authenticity. :func:`cross_check_trace_dag` ties the two
-together by matching each hop's recorded credential id to the chain.
+together by matching each hop's recorded credential id to the chain and each
+record's signing key (``cnf.jwk``) to that credential's ``subject``.
 
 Everything fails closed: the first violation raises, and no partial result is
 returned.
@@ -219,17 +220,29 @@ def verify_trace_dag(
 def cross_check_trace_dag(records: list[dict[str, Any]], chain: list[DelegationCredential]) -> None:
     """Tie a verified TRACE DAG to the delegation chain it should reflect.
 
-    Confirms the DAG has one record per credential and that every non-root hop
+    Confirms the DAG has one record per credential, that every non-root hop
     acted under the credential the chain names at that position (the root hop
-    records no credential id, per the profile). Raises ProvenanceLinkBroken on
-    any mismatch. Run ``verify_trace_dag`` and ``verify_chain`` first; this only
-    checks that they line up.
+    records no credential id, per the profile), and that every record was signed
+    by that credential's ``subject`` (the Ed25519 key the profile names as the
+    delegate for the hop). ``cnf.jwk`` is already a raw Ed25519 key, so the
+    comparison needs no namespace conversion. This is distinct from the TRACE
+    record's free-text ``subject`` field (a SPIFFE/DID URI), which is a different
+    namespace and is not compared here.
+
+    Raises ProvenanceLinkBroken on any mismatch. Run ``verify_trace_dag`` and
+    ``verify_chain`` first; this only checks that they line up.
     """
     if len(records) != len(chain):
         raise ProvenanceLinkBroken(
             f"DAG length {len(records)} does not match chain length {len(chain)}"
         )
-    for i in range(1, len(records)):
-        delegation = records[i].get("delegation") or {}
-        if delegation.get("credential_id") != chain[i].credential_id:
-            raise ProvenanceLinkBroken(f"record {i} credential_id does not match the chain")
+    for i, record in enumerate(records):
+        if i > 0:
+            delegation = record.get("delegation") or {}
+            if delegation.get("credential_id") != chain[i].credential_id:
+                raise ProvenanceLinkBroken(f"record {i} credential_id does not match the chain")
+        jwk = record.get("cnf", {}).get("jwk", {})
+        if _jwk_raw(jwk).hex() != chain[i].subject:
+            raise ProvenanceLinkBroken(
+                f"record {i} was signed by a key that is not chain[{i}].subject"
+            )

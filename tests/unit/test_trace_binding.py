@@ -34,7 +34,7 @@ from ca2a_runtime.trace_binding import (
     trace_record_hash,
 )
 from ca2a_verify import cross_check_trace_dag, verify_trace_dag
-from tests.unit.conftest import build_chain
+from tests.unit.conftest import build_chain, build_chain_with_keys
 
 _NOW = int(time.time())
 
@@ -49,7 +49,7 @@ def _software_context(label: str = "ca2a-peer") -> HopContext:
 
 
 def _hops(chain: list[DelegationCredential], keys: list) -> list[HopSpec]:
-    """One HopSpec per credential, each with its own signing key and subject."""
+    """One HopSpec per credential, signed by ``keys[i]`` (the delegate's key)."""
     return [
         HopSpec(
             subject=f"spiffe://ca2a.example/peer/{i}",
@@ -64,6 +64,14 @@ def _hops(chain: list[DelegationCredential], keys: list) -> list[HopSpec]:
 
 def _trusted(keys: list) -> list:
     return [k.public_key() for k in keys]
+
+
+_TWO_HOP = [frozenset({"cap:a"}), frozenset({"cap:a"})]
+_THREE_HOP = [
+    frozenset({"cap:a", "cap:b"}),
+    frozenset({"cap:a", "cap:b"}),
+    frozenset({"cap:a"}),
+]
 
 
 # --- record construction ---------------------------------------------------
@@ -146,17 +154,13 @@ def test_emit_dag_verifies_offline() -> None:
 
 
 def test_cross_check_ties_dag_to_chain() -> None:
-    keys = [generate_key() for _ in range(3)]
-    chain = build_chain(
-        [frozenset({"cap:a", "cap:b"}), frozenset({"cap:a", "cap:b"}), frozenset({"cap:a"})]
-    )
+    chain, keys = build_chain_with_keys(_THREE_HOP)
     records = emit_dag(_hops(chain, keys))
     cross_check_trace_dag(records, chain)  # does not raise
 
 
 def test_cross_check_rejects_credential_mismatch() -> None:
-    keys = [generate_key() for _ in range(2)]
-    chain = build_chain([frozenset({"cap:a"}), frozenset({"cap:a"})])
+    chain, keys = build_chain_with_keys(_TWO_HOP)
     hops = _hops(chain, keys)
     hops[1] = HopSpec(
         subject=hops[1].subject,
@@ -167,6 +171,35 @@ def test_cross_check_rejects_credential_mismatch() -> None:
     )
     records = emit_dag(hops)
     with pytest.raises(ProvenanceLinkBroken, match="credential_id does not match"):
+        cross_check_trace_dag(records, chain)
+
+
+def test_cross_check_rejects_signing_key_that_is_not_the_delegate() -> None:
+    """A trusted key from a different chain must not be attributed to this one.
+
+    ``verify_trace_dag`` only asks whether the signer is trusted. When an auditor's
+    trust set spans more than one chain, that is not enough: the record must also
+    have been signed by the delegate the chain names at that hop. Signing hop 1
+    with an unrelated chain's leaf key, while copying ``credential_id`` verbatim,
+    is the reproduction from #184.
+    """
+    chain, keys = build_chain_with_keys(_TWO_HOP)
+    _other_chain, other_keys = build_chain_with_keys(_TWO_HOP)
+    hops = _hops(chain, [keys[0], other_keys[1]])
+    records = emit_dag(hops)
+
+    # Both keys are trusted, so signature verification alone accepts the DAG.
+    verify_trace_dag(records, trusted_keys=_trusted([keys[0], other_keys[1]]))
+
+    with pytest.raises(ProvenanceLinkBroken, match=r"not chain\[1\]\.subject"):
+        cross_check_trace_dag(records, chain)
+
+
+def test_cross_check_rejects_root_signed_by_the_wrong_delegate() -> None:
+    chain, keys = build_chain_with_keys(_TWO_HOP)
+    _other_chain, other_keys = build_chain_with_keys(_TWO_HOP)
+    records = emit_dag(_hops(chain, [other_keys[0], keys[1]]))
+    with pytest.raises(ProvenanceLinkBroken, match=r"not chain\[0\]\.subject"):
         cross_check_trace_dag(records, chain)
 
 

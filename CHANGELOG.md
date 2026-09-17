@@ -49,6 +49,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- **`cross_check_trace_dag` binds each record's signing key to the chain's named
+  delegate (#184).** It already matched non-root `credential_id` values and path
+  length, but never compared `cnf.jwk` to `chain[i].subject`. When an auditor's
+  `trusted_keys` spanned more than one chain, a record signed by a key trusted
+  for something else could be attributed to the wrong delegate while still
+  verifying. The free-text TRACE `subject` field remains a different namespace
+  and is still not compared; this is the raw Ed25519 key the hop acted under.
+  The trace-dag demo now signs each hop with that credential's subject key.
+
 - TPM report verification now preserves the parsed `TPMT_SIGNATURE` algorithm
   metadata alongside the signature when it delegates to Agent Manifest. Previously
   cA2A parsed `sig_alg` and `hash_alg`, then passed only the bare signature to
