@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Record acceptance-harness operation timing and unfinished work so transport
+  timeouts remain distinguishable from security rejections. The historical SNP
+  burst timeout remains unexplained; this change adds diagnostics without retries.
+
 - Add an explicit hardware floor for outbound peer appraisal, a pinned SNP
   verifier with platform/DEBUG/VMPL/guest-SVN checks, and a two-host acceptance
   harness. A same-operator hardware diagnostic completed both directions;

@@ -125,3 +125,26 @@ secure version. These fields are checked after signature, chain and binding
 verification. They do not establish firmware TCB currency, revocation status or
 safe migration policy. Other VMPL deployments require a separately justified
 profile and are deliberately refused here.
+
+## Diagnosing interrupted calls
+
+The harness writes `operation_started`, `operation_completed` and
+`operation_failed` observations with an operation ID and monotonic elapsed time.
+Stages distinguish receiver offer generation, local quote collection, peer quote
+verification, receiver task processing and the overall sender call. Nonces are
+hashed for correlation; payloads, certificates and raw reports are not logged.
+
+A start without a matching completion identifies unfinished observed work; it
+does not identify why it stalled. A sender transport failure records the receiver
+outcome as unknown and preserves the original exception. There are no automatic
+retries: the receiver may have processed a task before its response was lost.
+Collect both hosts' receipts and service/kernel logs before diagnosing a cause.
+Operation IDs correlate events within a receipt, not an authenticated distributed
+trace. These observations remain unsigned and cannot prove receiver inactivity.
+
+The September 17 burst timeout has not been reproduced locally: 100 consecutive
+software-provider calls over the reference HTTP server completed without pacing.
+A controlled local test blocks software quote generation to verify that a real
+HTTP timeout leaves useful unfinished-stage evidence. That test does not establish
+that quote generation caused the historical SNP timeout. Hardware results have
+not been rerun or changed by this diagnostic addition.

@@ -9,7 +9,11 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import secrets
 import threading
+import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
@@ -18,13 +22,13 @@ from cryptography import x509
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.hashes import SHA256
 
-from ca2a_runtime.attestation import Verifier
+from ca2a_runtime.attestation import ChannelOffer, Verifier
 from ca2a_runtime.delegation.credential import DelegationCredential
 from ca2a_runtime.errors import AttestationFailed, AttestationUnsupported, CA2AError
 from ca2a_runtime.node import PeerNode
 from ca2a_runtime.peer import PeerResult
 from ca2a_runtime.policy import LocalPolicy
-from ca2a_runtime.tee.base import AttestationReport
+from ca2a_runtime.tee.base import AttestationReport, BaseProvider
 from ca2a_runtime.tee.sev_snp import SevSnpProvider
 from ca2a_runtime.transport import client, server
 from ca2a_verify.sev_snp import sev_snp_verifier
@@ -49,6 +53,47 @@ class ReceiptLog:
         }
         with self.lock, self.path.open("a", encoding="utf-8") as stream:
             stream.write(json.dumps(entry, sort_keys=True) + "\n")
+
+    @contextmanager
+    def span(self, stage: str, **values: Any) -> Iterator[None]:
+        """Retain a start even when work stalls; use a monotonic duration."""
+        started = time.monotonic()
+        values = {**values, "operation_id": secrets.token_hex(8)}
+        self.write("operation_started", stage=stage, **values)
+        try:
+            yield
+        except Exception as exc:
+            self.write(
+                "operation_failed",
+                stage=stage,
+                elapsed_seconds=time.monotonic() - started,
+                error_type=type(exc).__name__,
+                **values,
+            )
+            raise
+        else:
+            self.write(
+                "operation_completed",
+                stage=stage,
+                elapsed_seconds=time.monotonic() - started,
+                **values,
+            )
+
+
+class ObservedSnpProvider(SevSnpProvider):
+    """Time collection on the already selected SNP provider; do not retry it."""
+
+    def __init__(self, inner: BaseProvider, log: ReceiptLog) -> None:
+        self.inner = inner
+        self.log = log
+
+    def attest(self, public_key: str, nonce: str) -> AttestationReport:
+        with self.log.span("local_quote_collection", nonce_sha256=_nonce_hash(nonce)):
+            return self.inner.attest(public_key, nonce)
+
+
+def _nonce_hash(nonce: str) -> str:
+    return hashlib.sha256(nonce.encode()).hexdigest()
 
 
 def real_provider() -> SevSnpProvider:
@@ -94,7 +139,8 @@ def build_verifier(config: dict[str, Any], base: Path, log: ReceiptLog) -> Verif
 
     def recorded(report: AttestationReport, nonce: str) -> str:
         try:
-            measurement = verify(report, nonce)
+            with log.span("peer_quote_verification", nonce_sha256=_nonce_hash(nonce)):
+                measurement = verify(report, nonce)
         except AttestationFailed:
             log.write("peer_appraisal", accepted=False)
             raise
@@ -116,9 +162,14 @@ class ObservedNode(PeerNode):
         super().__init__(*args, **kwargs)
         self.log = log
 
+    def offer(self, nonce: str) -> ChannelOffer:
+        with self.log.span("receiver_offer", nonce_sha256=_nonce_hash(nonce)):
+            return super().offer(nonce)
+
     def handle(self, message: dict[str, Any]) -> PeerResult:
         try:
-            result = super().handle(message)
+            with self.log.span("receiver_task_processing"):
+                result = super().handle(message)
         except CA2AError as exc:
             self.log.write("receiver_task", accepted=False, error_code=exc.code)
             raise
@@ -133,7 +184,7 @@ class ObservedNode(PeerNode):
 
 
 def run(config: dict[str, Any], base: Path, mode: str, log: ReceiptLog) -> None:
-    provider = real_provider()
+    provider = ObservedSnpProvider(real_provider(), log)
     verifier = build_verifier(config["peer"], base, log)
     if mode == "serve":
         issuers = config["trusted_root_issuers"]
@@ -159,17 +210,24 @@ def run(config: dict[str, Any], base: Path, mode: str, log: ReceiptLog) -> None:
         bytes.fromhex((base / config["holder_key"]).read_text(encoding="utf-8").strip())
     )
     payload = (base / config["payload"]).read_bytes()
-    result = client.send_task(
-        config["peer_url"],
-        chain,
-        config["capability"],
-        config["record_id"],
-        holder_key=key,
-        payload=payload,
-        verifier=verifier,
-        require_hardware=True,
-        caller_provider=provider,
-    )
+    try:
+        with log.span("sender_call"):
+            result = client.send_task(
+                config["peer_url"],
+                chain,
+                config["capability"],
+                config["record_id"],
+                holder_key=key,
+                payload=payload,
+                verifier=verifier,
+                require_hardware=True,
+                caller_provider=provider,
+            )
+    except OSError:
+        # A timeout is neither an attestation rejection nor evidence that the
+        # receiver did no work. Preserve the original exception and never retry.
+        log.write("sender_transport_failure", receiver_outcome="unknown", retried=False)
+        raise
     if result.get("accepted") is not True or result.get("caller_attestation") != "hardware":
         raise AttestationFailed(
             "peer response does not report successful mutual hardware appraisal"
