@@ -81,7 +81,11 @@ def offer_channel(provider: BaseProvider, *, nonce: str) -> tuple[X25519PrivateK
 
 
 def verify_offer(
-    offer: ChannelOffer, *, expected_nonce: str, verifier: Verifier | None = None
+    offer: ChannelOffer,
+    *,
+    expected_nonce: str,
+    verifier: Verifier | None = None,
+    require_hardware: bool = False,
 ) -> VerifiedPeer:
     """Appraise a channel offer and return the peer key with its assurance level.
 
@@ -91,6 +95,9 @@ def verify_offer(
     required and establishes ``assurance="hardware"``; a hardware report with no
     verifier fails closed rather than being trusted. Fails closed on any
     mismatch (raises :class:`AttestationFailed`).
+
+    Set ``require_hardware=True`` when the payload requires a hardware boundary.
+    Merely supplying a verifier does not reject software offers for compatibility.
     """
     report = offer.report
     if report.public_key != offer.channel_public_key:
@@ -101,6 +108,10 @@ def verify_offer(
             detail="stale or replayed channel offer",
         )
     if report.platform == SOFTWARE_ONLY:
+        if require_hardware:
+            raise AttestationFailed(
+                "peer hardware attestation is required; software-only offer refused"
+            )
         return VerifiedPeer(
             public_key=offer.channel_public_key,
             assurance="none",

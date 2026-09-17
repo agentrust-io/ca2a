@@ -1,0 +1,168 @@
+{
+  "scope": "same-project live SNP diagnostic; local instrumentation; unsigned",
+  "all_passed": true,
+  "results": [
+    {
+      "case": "positive",
+      "passed": true,
+      "accepted": true,
+      "error": null,
+      "transport_error": null,
+      "counts": {
+        "seal": 1,
+        "task_post": 1
+      },
+      "rejection_before_seal_and_task_post": false
+    },
+    {
+      "case": "wrong_measurement",
+      "passed": true,
+      "accepted": false,
+      "error": {
+        "code": "ATTESTATION_FAILED",
+        "message": "measurement does not match the expected value"
+      },
+      "transport_error": null,
+      "counts": {
+        "seal": 0,
+        "task_post": 0
+      },
+      "rejection_before_seal_and_task_post": true
+    },
+    {
+      "case": "stale_nonce",
+      "passed": true,
+      "accepted": false,
+      "error": {
+        "code": "ATTESTATION_FAILED",
+        "message": "report data does not match the expected binding"
+      },
+      "transport_error": null,
+      "counts": {
+        "seal": 0,
+        "task_post": 0
+      },
+      "rejection_before_seal_and_task_post": true
+    },
+    {
+      "case": "substituted_channel_key",
+      "passed": true,
+      "accepted": false,
+      "error": {
+        "code": "ATTESTATION_FAILED",
+        "message": "report data does not match the expected binding"
+      },
+      "transport_error": null,
+      "counts": {
+        "seal": 0,
+        "task_post": 0
+      },
+      "rejection_before_seal_and_task_post": true
+    },
+    {
+      "case": "software_callee",
+      "passed": true,
+      "accepted": false,
+      "error": {
+        "code": "ATTESTATION_FAILED",
+        "message": "peer hardware attestation is required; software-only offer refused"
+      },
+      "transport_error": null,
+      "counts": {
+        "seal": 0,
+        "task_post": 0
+      },
+      "rejection_before_seal_and_task_post": true
+    },
+    {
+      "case": "strict_no_smt",
+      "passed": true,
+      "accepted": false,
+      "error": {
+        "code": "ATTESTATION_FAILED",
+        "message": "platform state does not satisfy the configured policy"
+      },
+      "transport_error": null,
+      "counts": {
+        "seal": 0,
+        "task_post": 0
+      },
+      "rejection_before_seal_and_task_post": true
+    },
+    {
+      "case": "require_ciphertext_hiding",
+      "passed": true,
+      "accepted": false,
+      "error": {
+        "code": "ATTESTATION_FAILED",
+        "message": "platform state does not satisfy the configured policy"
+      },
+      "transport_error": null,
+      "counts": {
+        "seal": 0,
+        "task_post": 0
+      },
+      "rejection_before_seal_and_task_post": true
+    },
+    {
+      "case": "minimum_guest_svn_1",
+      "passed": true,
+      "accepted": false,
+      "error": {
+        "code": "ATTESTATION_FAILED",
+        "message": "SNP guest SVN is below the configured minimum"
+      },
+      "transport_error": null,
+      "counts": {
+        "seal": 0,
+        "task_post": 0
+      },
+      "rejection_before_seal_and_task_post": true
+    },
+    {
+      "case": "software_caller",
+      "passed": true,
+      "accepted": false,
+      "error": {
+        "code": "ATTESTATION_FAILED",
+        "message": "the callee requires a hardware-attested caller"
+      },
+      "transport_error": null,
+      "counts": {
+        "seal": 1,
+        "task_post": 1
+      },
+      "rejection_before_seal_and_task_post": false
+    },
+    {
+      "case": "caller_binding_mismatch",
+      "passed": true,
+      "accepted": false,
+      "error": {
+        "code": "ATTESTATION_FAILED",
+        "message": "the caller's attestation did not appraise: report data does not match the expected binding"
+      },
+      "transport_error": null,
+      "counts": {
+        "seal": 1,
+        "task_post": 1
+      },
+      "rejection_before_seal_and_task_post": false
+    },
+    {
+      "case": "scope_escalation",
+      "passed": true,
+      "accepted": false,
+      "error": {
+        "code": "SCOPE_NOT_PERMITTED",
+        "message": "capability 'write' is not in the effective scope"
+      },
+      "transport_error": null,
+      "counts": {
+        "seal": 1,
+        "task_post": 1
+      },
+      "rejection_before_seal_and_task_post": false
+    }
+  ]
+}

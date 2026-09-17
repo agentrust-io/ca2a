@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add an explicit hardware floor for outbound peer appraisal, a pinned SNP
+  verifier with platform/DEBUG/VMPL/guest-SVN checks, and a two-host acceptance
+  harness. A same-operator hardware diagnostic completed both directions;
+  strict platform acceptance and end-to-end confidentiality remain open.
+
 - **`ca2a start` can demand caller attestation (#160).** The `attestation` block
   gains `require_caller_attestation` (`none` | `any` | `hardware`),
   `caller_verifier` (`platform` plus a `trusted_roots_path` PEM bundle), and

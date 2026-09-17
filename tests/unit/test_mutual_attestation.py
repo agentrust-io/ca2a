@@ -541,3 +541,44 @@ def test_sealed_payload_still_reaches_a_callee_that_appraises_the_caller() -> No
     )
     assert result.payload == b"confidential task input"
     assert result.caller_attestation == CALLER_SOFTWARE_ONLY
+
+
+@pytest.mark.parametrize("with_verifier", [False, True])
+def test_caller_hardware_floor_rejects_software_before_sealing_or_sending(
+    monkeypatch: pytest.MonkeyPatch, with_verifier: bool
+) -> None:
+    node = PeerNode(POLICY)
+
+    def get_offer(url):
+        nonce = url.split("nonce=")[1]
+        return wire.serialize_channel_offer(node.offer(nonce), challenge=node.issue_challenge())
+
+    def forbidden(*args, **kwargs):
+        pytest.fail("rejected peer must never receive a sealed payload or task")
+
+    monkeypatch.setattr(client, "_get_json", get_offer)
+    monkeypatch.setattr(client, "seal_to_peer", forbidden)
+    monkeypatch.setattr(client, "_post_json", forbidden)
+    with pytest.raises(AttestationFailed, match="hardware attestation is required"):
+        client.send_task(
+            "http://peer",
+            _chain(),
+            "read",
+            "r0",
+            holder_key=LEAF_KEY,
+            payload=b"secret",
+            require_hardware=True,
+            verifier=forbidden if with_verifier else None,
+        )
+
+
+def test_hardware_floor_accepts_appraised_hardware_offer() -> None:
+    # Injected verifier tests the assurance gate, not hardware cryptography.
+    offer = _caller_offer("fresh", platform="sev-snp")
+    peer = verify_offer(
+        offer,
+        expected_nonce="fresh",
+        verifier=lambda report, nonce: "verified",
+        require_hardware=True,
+    )
+    assert peer.assurance == "hardware"

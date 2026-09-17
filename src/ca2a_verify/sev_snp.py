@@ -22,10 +22,17 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.utils import encode_dss_signature
 from cryptography.hazmat.primitives.hashes import SHA384
 
+from ca2a_runtime.attestation import Verifier
 from ca2a_runtime.errors import AttestationFailed
-from ca2a_runtime.tee.sev_snp import SEV_GUEST_DEVICE, SIG_ALGO_ECDSA_P384_SHA384, SevSnpReport
+from ca2a_runtime.tee.base import AttestationReport
+from ca2a_runtime.tee.sev_snp import (
+    SEV_GUEST_DEVICE,
+    SIG_ALGO_ECDSA_P384_SHA384,
+    SevSnpReport,
+    snp_report_data,
+)
 
-__all__ = ["SEV_GUEST_DEVICE", "verify_cert_chain", "verify_sev_snp_report"]
+__all__ = ["SEV_GUEST_DEVICE", "verify_cert_chain", "verify_sev_snp_report", "sev_snp_verifier"]
 
 
 def verify_cert_chain(chain: list[x509.Certificate], trusted_roots: list[x509.Certificate]) -> None:
@@ -123,3 +130,57 @@ def verify_sev_snp_report(
             ) from exc
 
     return report
+
+
+def sev_snp_verifier(
+    *,
+    trusted_roots: list[x509.Certificate],
+    vcek_chain: list[x509.Certificate],
+    expected_measurement: bytes,
+    min_guest_svn: int,
+    require_platform: set[str],
+    forbid_platform: set[str],
+    reject_unrecognized_platform_bits: bool = True,
+) -> Verifier:
+    """Build a channel verifier with explicit workload and platform requirements.
+
+    The VCEK chain is provisioned by the relying party for the target host. This
+    wrapper does not fetch endorsement collateral or establish its revocation
+    status. Empty platform sets explicitly opt out of those checks. This
+    non-paravisor confidentiality profile always rejects POLICY.DEBUG and
+    nonzero VMPL. GUEST_SVN is a guest-owner version floor, not firmware TCB.
+    """
+    expected_measurement = bytes(expected_measurement)
+    if len(expected_measurement) != 48:
+        raise ValueError("expected_measurement must be a 48-byte SNP measurement")
+    if type(min_guest_svn) is not int or not 0 <= min_guest_svn <= 0xFFFFFFFF:
+        raise ValueError("min_guest_svn must be an unsigned 32-bit integer")
+    roots, chain = list(trusted_roots), list(vcek_chain)
+    required, forbidden = set(require_platform), set(forbid_platform)
+
+    def verify(report: AttestationReport, nonce: str) -> str:
+        if report.platform != "sev-snp" or report.raw_evidence is None:
+            raise AttestationFailed("SEV-SNP channel verification requires signed SNP evidence")
+        if report.nonce != nonce:
+            raise AttestationFailed("report nonce does not match the expected nonce")
+        verified = verify_sev_snp_report(
+            report.raw_evidence,
+            chain,
+            trusted_roots=roots,
+            expected_measurement=expected_measurement,
+            expected_report_data=snp_report_data(report.public_key, nonce),
+            require_platform=required,
+            forbid_platform=forbidden,
+            reject_unrecognized_platform_bits=reject_unrecognized_platform_bits,
+        )
+        # AMD 56860, Guest Policy: DEBUG is bit 19. These fields are appraised
+        # only after the report signature, chain, workload and binding verify.
+        if verified.policy & (1 << 19):
+            raise AttestationFailed("debug-enabled SNP guests are forbidden")
+        if verified.vmpl != 0:
+            raise AttestationFailed("SNP channel verification requires VMPL0")
+        if verified.guest_svn < min_guest_svn:
+            raise AttestationFailed("SNP guest SVN is below the configured minimum")
+        return f"sha384:{verified.measurement.hex()}"
+
+    return verify
