@@ -12,7 +12,7 @@ Policies forbidding SMT or requiring ciphertext hiding correctly rejected the
 hosts. Measurement pins came from owner-SSH bootstrap reports, not a precomputed
 application image. Initial burst runs timed out; paced runs exited 0. The
 sanitized results are in
-[the diagnostic record](../experiments/hardware-validation/mutual-snp-2026-09-17/README.md).
+[the diagnostic record](https://github.com/agentrust-io/ca2a/blob/main/experiments/hardware-validation/mutual-snp-2026-09-17/README.md).
 Raw reports and device-identifying certificates remain private. Both VMs and their
 boot disks were deleted after collection. This is not end-to-end inference
 confidentiality validation.

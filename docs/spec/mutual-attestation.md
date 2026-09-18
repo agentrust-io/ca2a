@@ -118,6 +118,11 @@ that was wrong in this protocol.
    If a genuinely confidential response is ever added, sealing *that* to the
    caller's key is the right move. Encrypting the provenance record is not.
 
+   Authentication of the returned provenance is a separate extension. See the
+   [proposed response-binding requirements](response-binding-requirements.md)
+   for its current boundary and acceptance matrix; no response verifier is
+   implemented by that proposal.
+
 ## The state problem
 
 A challenge is worth nothing unless it is single-use and expiring, and the
