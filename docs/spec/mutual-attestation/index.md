@@ -64,6 +64,8 @@ And the key was never ceremonial. It is the *vehicle*: binding it into a report 
 
 If a genuinely confidential response is ever added, sealing *that* to the caller's key is the right move. Encrypting the provenance record is not.
 
+Authentication of the returned provenance is a separate extension. See the [proposed response-binding requirements](https://ca2a.agentrust-io.com/docs/spec/response-binding-requirements/index.md) for its acceptance matrix and the opt-in [live response authentication profile](https://ca2a.agentrust-io.com/docs/spec/response-authentication/index.md) for the implemented session-MAC path. This does not encrypt provenance or sign lineage.
+
 ## The state problem
 
 A challenge is worth nothing unless it is single-use and expiring, and the reference server currently keeps no state at all.

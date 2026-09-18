@@ -60,6 +60,8 @@ Verification fails closed. `verify_chain`, `verify_dag`, and `cross_check_chain`
 
 ## See also
 
+The opt-in [response authentication profile](https://ca2a.agentrust-io.com/docs/spec/response-authentication/index.md) adds `ResponseAuthenticationFailed` (`RESPONSE_AUTHENTICATION_FAILED`, HTTP 400). At the caller it means no authenticated response was established and execution may already have occurred. `response.AuthenticatedPeerError` instead carries a MAC-authenticated denial's status/code and locally verified response metadata; it does not by itself prove absence of side effects.
+
 - [Delegation Chain](https://ca2a.agentrust-io.com/docs/spec/delegation-chain/index.md) for the checks behind `ScopeEscalation`, `BrokenDelegationLink`, `DelegationDepthExceeded`, `CredentialReplay`, `CredentialNotYetValid`, `CredentialExpired`, `CredentialRevoked`, `RevocationStatusUnknown`, and `InvalidRevocation`.
 - [Provenance DAG](https://ca2a.agentrust-io.com/docs/spec/provenance-dag/index.md) for the checks behind `ProvenanceLinkBroken`.
 - [Verification Library](https://ca2a.agentrust-io.com/docs/spec/verification-library/index.md) for `verify_chain`, `verify_chain_file`, `verify_dag`, and `cross_check_chain`.

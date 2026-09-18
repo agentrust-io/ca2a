@@ -807,6 +807,8 @@ And the key was never ceremonial. It is the *vehicle*: binding it into a report 
 
 If a genuinely confidential response is ever added, sealing *that* to the caller's key is the right move. Encrypting the provenance record is not.
 
+Authentication of the returned provenance is a separate extension. See the [proposed response-binding requirements](https://ca2a.agentrust-io.com/docs/spec/response-binding-requirements/index.md) for its acceptance matrix and the opt-in [live response authentication profile](https://ca2a.agentrust-io.com/docs/spec/response-authentication/index.md) for the implemented session-MAC path. This does not encrypt provenance or sign lineage.
+
 ## The state problem
 
 A challenge is worth nothing unless it is single-use and expiring, and the reference server currently keeps no state at all.
@@ -964,6 +966,8 @@ except CA2AError as exc:
 Verification fails closed. `verify_chain`, `verify_dag`, and `cross_check_chain` raise the first error they find rather than returning a partial result, so a caught `CA2AError` means the chain or DAG was rejected.
 
 ## See also
+
+The opt-in [response authentication profile](https://ca2a.agentrust-io.com/docs/spec/response-authentication/index.md) adds `ResponseAuthenticationFailed` (`RESPONSE_AUTHENTICATION_FAILED`, HTTP 400). At the caller it means no authenticated response was established and execution may already have occurred. `response.AuthenticatedPeerError` instead carries a MAC-authenticated denial's status/code and locally verified response metadata; it does not by itself prove absence of side effects.
 
 - [Delegation Chain](https://ca2a.agentrust-io.com/docs/spec/delegation-chain/index.md) for the checks behind `ScopeEscalation`, `BrokenDelegationLink`, `DelegationDepthExceeded`, `CredentialReplay`, `CredentialNotYetValid`, `CredentialExpired`, `CredentialRevoked`, `RevocationStatusUnknown`, and `InvalidRevocation`.
 - [Provenance DAG](https://ca2a.agentrust-io.com/docs/spec/provenance-dag/index.md) for the checks behind `ProvenanceLinkBroken`.
@@ -1607,6 +1611,10 @@ Two entries previously listed here, the live attested peer binding and the cross
 # Project
 
 # Limitations
+
+## Opt-in response authentication
+
+`send_task(require_authenticated_response=True)` authenticates readable provenance or denial to the live caller using a request-bound session MAC. The default legacy path remains unauthenticated. The profile supplies one-use, expiring client verification, not request-execution deduplication, portable signed receipts or confidential output encryption. Both session parties know the MAC key. Hardware assurance still requires explicit hardware appraisal; the new profile has software/HTTP tests and no new live-hardware validation. See the [profile and deployment limits](https://ca2a.agentrust-io.com/docs/spec/response-authentication/index.md).
 
 cA2A 0.2 is a Developer Preview with a runnable, tested profile and runtime. This document states plainly what is built, what remains before 1.0, and what is out of scope, so no claim in the documentation runs ahead of the code. This is a deliberate discipline: proof, not promises.
 
