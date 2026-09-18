@@ -35,4 +35,5 @@ def test_first_chain(tmp_path, capsys):
         "verified": True,
         "hops": 2,
         "leaf_scope": ["cap:read"],
+        "revocation": "not_checked",
     }

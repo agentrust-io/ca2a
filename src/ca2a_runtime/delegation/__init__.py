@@ -16,13 +16,25 @@ from ca2a_runtime.delegation.holder import (
     build_holder_proof,
     verify_holder_proof,
 )
+from ca2a_runtime.delegation.revocation import (
+    RevocationSnapshot,
+    RevocationStatement,
+    RevocationStatus,
+    credential_digest,
+    revoke,
+)
 
 __all__ = [
     "DelegationCredential",
     "HolderProof",
+    "RevocationSnapshot",
+    "RevocationStatement",
+    "RevocationStatus",
     "build_holder_proof",
     "canonical_bytes",
+    "credential_digest",
     "new_keypair",
+    "revoke",
     "verify_chain",
     "verify_holder_proof",
 ]

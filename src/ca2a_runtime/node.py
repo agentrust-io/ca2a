@@ -12,13 +12,14 @@ transport-agnostic; :mod:`ca2a_runtime.transport.server` wraps it over HTTP.
 
 from __future__ import annotations
 
-from collections.abc import Collection
+from collections.abc import Callable, Collection
 from typing import Any
 
 from ca2a_runtime.agent_manifest import AgentManifestBinding
 from ca2a_runtime.attestation import ChannelOffer, Verifier, attest_channel
 from ca2a_runtime.challenge import DEFAULT_TTL_SECONDS, generate_secret, issue_challenge
 from ca2a_runtime.channel import generate_channel_keypair
+from ca2a_runtime.delegation.revocation import RevocationSnapshot
 from ca2a_runtime.errors import ConfigError, TransportError
 from ca2a_runtime.peer import (
     REQUIRE_HARDWARE,
@@ -56,6 +57,8 @@ class PeerNode:
         require_holder_proof: bool = True,
         trusted_root_issuers: Collection[str] = (),
         agent_manifest: AgentManifestBinding | None = None,
+        revocation_source: Callable[[], RevocationSnapshot | None] | None = None,
+        max_revocation_staleness: int | None = None,
     ) -> None:
         if require_caller_attestation not in REQUIREMENT_VALUES:
             raise ConfigError(
@@ -80,6 +83,11 @@ class PeerNode:
         self.require_holder_proof = require_holder_proof
         self.trusted_root_issuers = frozenset(trusted_root_issuers)
         self.agent_manifest = agent_manifest
+        # A callable rather than a snapshot, because a snapshot goes stale: the
+        # node asks for the current one on every call. Fetching and refreshing
+        # it is the deployment's job.
+        self.revocation_source = revocation_source
+        self.max_revocation_staleness = max_revocation_staleness
         self._private_key, self.channel_public_key = generate_channel_keypair()
         self._challenge_secret = generate_secret()
 
@@ -109,4 +117,6 @@ class PeerNode:
             audience=self.channel_public_key,
             require_holder_proof=self.require_holder_proof,
             trusted_root_issuers=self.trusted_root_issuers,
+            revocations=None if self.revocation_source is None else self.revocation_source(),
+            max_revocation_staleness=self.max_revocation_staleness,
         )
