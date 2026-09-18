@@ -163,7 +163,7 @@ ca2a verify-chain --chain demo-chain.json --trusted-root-issuer "$(cat trusted-r
 Expected exit code: `0`.
 
 ```
-{"verified": true, "hops": 2, "leaf_scope": ["cap:read"]}
+{"verified": true, "hops": 2, "leaf_scope": ["cap:read"], "revocation": "not_checked"}
 ```
 
 In production, the relying party obtains trusted roots through its own approval process. Copying the issuer from an arbitrary incoming chain into the trust list would let that chain choose its own authority.
@@ -415,6 +415,8 @@ A peer that does not implement this profile MUST ignore the cA2A extension field
 
 A callee MUST verify the presented delegation chain before acting: every credential's signature, the continuity of each parent link, and the attenuation rule that a child's scope is a subset of its parent's. A callee MUST reject a chain whose depth exceeds its configured maximum, and MUST reject a credential replayed from a different chain. Verification MUST be possible offline, without contacting the issuer.
 
+> **Revocation is an optional input, not a network dependency.** A verifier can also be given a snapshot of signed revocation statements and will then refuse a chain containing a hop revoked by its issuer or an issuer above it. Consulting a snapshot contacts nobody, so this does not conflict with offline verification. Without one, the reference verifier reports revocation as `not_checked` rather than implying the chain is unrevoked. See [delegation chain](https://ca2a.agentrust-io.com/docs/spec/delegation-chain/#ca2a-delegation-revocation).
+
 ### P-4a Holder binding
 
 A callee MUST NOT act on a delegation chain until the presenter has proved it controls the private key of the leaf credential's `subject`. The callee MUST issue the challenge the proof answers, and MUST reject a proof that does not commit to the callee's own identity, that challenge, the leaf `credential_id` and `subject`, the requested capability, the `record_id`, the `parent_record_hash`, the sealed payload if one is present, and the caller's own offered channel key if one is present. A chain presented without such a proof MUST be refused with `HOLDER_PROOF_INVALID`.
@@ -499,17 +501,19 @@ An absent validity bound is omitted from the body, not encoded as null: emitting
 
 `verify_chain` raises the specific error for the first invariant that fails:
 
-| Invariant                                                              | Error on violation                                     |
-| ---------------------------------------------------------------------- | ------------------------------------------------------ |
-| Every hop's signature verifies against its issuer                      | `INVALID_CREDENTIAL`                                   |
-| Root has no parent and depth 0                                         | `BROKEN_DELEGATION_LINK`                               |
-| Each hop's `parent_id` equals the previous `credential_id`             | `BROKEN_DELEGATION_LINK`                               |
-| Each hop's issuer equals the previous hop's subject                    | `BROKEN_DELEGATION_LINK`                               |
-| Each hop's depth is previous + 1, and at most `max_depth`              | `BROKEN_DELEGATION_LINK` / `DELEGATION_DEPTH_EXCEEDED` |
-| Each hop's scope is a subset of its parent's scope                     | `SCOPE_ESCALATION`                                     |
-| No `credential_id` repeats                                             | `CREDENTIAL_REPLAY`                                    |
-| Each hop's validity window, when present, contains the evaluation time | `CREDENTIAL_NOT_YET_VALID` / `CREDENTIAL_EXPIRED`      |
-| The root issuer is pinned by the callee for runtime authorization      | `UNTRUSTED_DELEGATION_ROOT`                            |
+| Invariant                                                                                                      | Error on violation                                     |
+| -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| Every hop's signature verifies against its issuer                                                              | `INVALID_CREDENTIAL`                                   |
+| Root has no parent and depth 0                                                                                 | `BROKEN_DELEGATION_LINK`                               |
+| Each hop's `parent_id` equals the previous `credential_id`                                                     | `BROKEN_DELEGATION_LINK`                               |
+| Each hop's issuer equals the previous hop's subject                                                            | `BROKEN_DELEGATION_LINK`                               |
+| Each hop's depth is previous + 1, and at most `max_depth`                                                      | `BROKEN_DELEGATION_LINK` / `DELEGATION_DEPTH_EXCEEDED` |
+| Each hop's scope is a subset of its parent's scope                                                             | `SCOPE_ESCALATION`                                     |
+| No `credential_id` repeats                                                                                     | `CREDENTIAL_REPLAY`                                    |
+| Each hop's validity window, when present, contains the evaluation time                                         | `CREDENTIAL_NOT_YET_VALID` / `CREDENTIAL_EXPIRED`      |
+| The root issuer is pinned by the callee for runtime authorization                                              | `UNTRUSTED_DELEGATION_ROOT`                            |
+| No hop is revoked by its issuer or by an issuer above it (checked only when a revocation snapshot is supplied) | `CREDENTIAL_REVOKED`                                   |
+| A snapshot no older than `max_revocation_staleness` was supplied (only when that bound is set)                 | `REVOCATION_STATUS_UNKNOWN`                            |
 
 Signature validity establishes who issued a chain; it does not establish that the issuer is trusted. A live callee therefore supplies its local `trusted_root_issuers` set when verifying a request and fails closed when the root is absent. Offline tooling may omit that set when it only needs to check a chain's internal structure, but structural verification alone does not authorize work.
 
@@ -520,6 +524,46 @@ Signature validity establishes who issued a chain; it does not establish that th
 `verify_chain` checks every hop's window against a single evaluation time: `at_time` when the caller supplies one, the current time otherwise. Live authorization always evaluates now. Offline audit of recorded evidence should pass the time the action was decided (`ca2a verify-chain --at-time`), because a window that has lapsed by audit time says nothing about validity at decision time.
 
 Windows are not required to nest across hops. A chain is usable only at times inside every hop's window, so the effective window is already the intersection of the hops'; requiring structural nesting would add no authority bound.
+
+## Revocation
+
+A validity window bounds how long a grant lasts. Revocation lets a party with authority over a grant withdraw it before `not_after`. See `ca2a_runtime.delegation.revocation`.
+
+### Revocation statement
+
+A `RevocationStatement` is a signed body plus a detached Ed25519 signature, canonicalized with the same RFC 8785 helper as credentials:
+
+| Field            | Type   | Meaning                                                                                                                                            |
+| ---------------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `type`           | string | Always `ca2a.delegation-revocation.v1`. Signed, so a revocation signature cannot be taken for a signature over any other object the same key signs |
+| `revoked_digest` | string | `sha256:` followed by the lowercase hex SHA-256 of the revoked credential's canonical body (the bytes its issuer signed)                           |
+| `revoker`        | hex    | Ed25519 public key of the party withdrawing the grant                                                                                              |
+| `issued_at`      | int    | Unix epoch seconds, as claimed by the revoker                                                                                                      |
+| `signature`      | hex    | Ed25519 over the canonical body, by `revoker`                                                                                                      |
+
+The wire object is strict in the same way a credential is: unknown or missing fields are rejected, so there is no field that could express an un-revoke.
+
+### Who may revoke
+
+A statement is effective against hop `i` of a chain only when `revoker` is the issuer of hop `i` or of an earlier hop. The delegator can withdraw what it granted, and any issuer above it can withdraw a grant made below it. The subject of hop `i` is not in that set, so a delegate cannot revoke the grant it received or anything above it. A validly signed statement from any other key has no effect on the chain. Authority is judged against the presented chain at verification time, after its structure has verified, because a statement names a credential rather than a chain.
+
+Revoking hop `i` refuses every chain that contains it, which is every chain through which a grant beneath it could be exercised. The error names the first revoked hop.
+
+Revocation is monotonic. A hop is revoked when any effective statement for it is present, so no statement, earlier or later, can reverse it.
+
+### Snapshots and what verification reports
+
+`verify_chain` takes an optional `RevocationSnapshot`: a set of statements plus `as_of`, the time its supplier last brought it up to date. Every statement's signature is checked when the snapshot is built, and a snapshot containing an unsigned or forged statement is refused as a whole with `INVALID_REVOCATION` rather than having the bad entry dropped, since dropping it would let tampering with the feed act as an un-revocation. `as_of` is asserted by the supplier and is not signed by any revoker.
+
+`verify_chain` returns a `RevocationStatus`. With no snapshot, verification is exactly as before, still offline under P-4, and the status has `checked=False` (`not_checked`): the chain may have been revoked and the verifier would not know. With a snapshot and no revoked hop, the status has `checked=True` and carries the snapshot's `as_of` (`not_revoked`). `ChainResult`, `PeerResult` and the `ca2a verify-chain` output carry the same status, and the CLI prints it on every successful verification.
+
+`max_revocation_staleness` (seconds, default unset) makes revocation checking mandatory. With it set, a missing snapshot, or one whose `as_of` is more than that many seconds before the evaluation time, raises `REVOCATION_STATUS_UNKNOWN`. It is unset by default so that offline verification with no revocation data keeps working. A stale snapshot can still prove a hop revoked, since revocation is monotonic, so a revoked hop is reported as `CREDENTIAL_REVOKED` before staleness is judged.
+
+When `at_time` is supplied, only statements with `issued_at` at or before it count, so an audit of a past decision is not rewritten by a revocation issued afterwards. Without `at_time` (a live decision), every statement the verifier holds applies, whatever the revoker's clock said.
+
+### Out of scope
+
+cA2A defines no protocol for publishing or fetching revocation statements. Getting current snapshots to verifiers is the deployment's job. A verifier with no snapshot cannot learn of a revocation; it is told that it did not check. A snapshot supplier can withhold statements. `PeerNode` accepts a `revocation_source` callable that it consults on every call, but the config-driven `ca2a start` does not load one.
 
 ## Attenuation is the whole point
 
@@ -879,6 +923,9 @@ An error also carries a human-readable message and an optional `detail`. The mes
 | `CredentialReplay`        | `CREDENTIAL_REPLAY`         | 409  | A `credential_id` appears more than once in a single chain. Raised by `verify_chain`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | `CredentialNotYetValid`   | `CREDENTIAL_NOT_YET_VALID`  | 403  | A hop's `not_before` bound is after the evaluation time. The chain is well formed and validly signed, but the grant is not yet in force. Raised by `verify_chain`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `CredentialExpired`       | `CREDENTIAL_EXPIRED`        | 403  | A hop's `not_after` bound is before the evaluation time. Raised by `verify_chain`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `CredentialRevoked`       | `CREDENTIAL_REVOKED`        | 403  | A hop's credential was revoked by its issuer or by an issuer above it in the chain, according to the revocation snapshot the verifier supplied. Every chain containing that hop is refused. Raised by `verify_chain` only when a snapshot is supplied. See [delegation chain](https://ca2a.agentrust-io.com/docs/spec/delegation-chain/#ca2a-delegation-revocation).                                                                                                                                                                                                                                                                                                                                                                                             |
+| `RevocationStatusUnknown` | `REVOCATION_STATUS_UNKNOWN` | 503  | The verifier set `max_revocation_staleness` and has no revocation snapshot, or its snapshot's `as_of` is older than that bound at the evaluation time. Nothing is wrong with the chain; the verifier cannot currently establish that it has not been revoked, and fails closed. Raised by `verify_chain`.                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `InvalidRevocation`       | `INVALID_REVOCATION`        | 400  | A revocation statement or snapshot is malformed, unsigned, or carries a signature that does not verify, or a snapshot file is missing or not valid JSON. A snapshot with any such statement is refused as a whole. Raised by `RevocationStatement`, `RevocationSnapshot` and `load_revocation_snapshot`.                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | `HolderProofInvalid`      | `HOLDER_PROOF_INVALID`      | 401  | The presenter of a delegation chain did not prove it controls the leaf `subject`: no proof was presented, the proof was malformed, it answered a challenge this callee did not issue or which has expired, or its signature did not verify over the exact request being made. 401 rather than 403 because the chain may well carry the authority requested while the caller has not shown it is the party that authority was delegated to. Distinct from `ATTESTATION_FAILED`, which is about what the caller is *running*: a caller can appraise perfectly and still fail this. Raised by `verify_holder_proof`, `handle_peer_request`, and the A2A adapter on a malformed proof. See [profile](https://ca2a.agentrust-io.com/docs/spec/profile/index.md) P-4a. |
 | `AttestationUnsupported`  | `ATTESTATION_UNSUPPORTED`   | 500  | An attestation provider was requested that the host cannot supply. Raised by any provider's `attest` when the host lacks what its collector needs, and by `OpaqueProvider`, which has no collector. The `detail` names the missing piece. See [Peer Attestation](https://ca2a.agentrust-io.com/docs/spec/attestation/index.md).                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | `AttestationFailed`       | `ATTESTATION_FAILED`        | 412  | Attestation evidence was present but did not verify. Raised by the SEV-SNP verifier on a malformed report, an untrusted or broken certificate chain, a bad report signature, or a measurement / report-data mismatch. See [Peer Attestation](https://ca2a.agentrust-io.com/docs/spec/attestation/index.md).                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
@@ -890,7 +937,7 @@ An error also carries a human-readable message and an optional `detail`. The mes
 
 ## Which errors are live today
 
-`ConfigError`, `InvalidCredential`, `ScopeEscalation`, `BrokenDelegationLink`, `DelegationDepthExceeded`, `CredentialReplay`, `CredentialNotYetValid`, `CredentialExpired`, , `ProvenanceLinkBroken`, and `TraceDigestUnsupported` are raised by shipping code paths: attenuated delegation, offline chain verification, and the provenance DAG. `ScopeNotPermitted` is raised by the peer-call enforcement decision core (`enforce_peer_call`), and `SealedChannelError` by the sealed channel (`SealedChannel.seal`, `open_sealed`), both of which are implemented. `TransportError` is raised by the A2A metadata adapter when cA2A keys are present but cannot be parsed into a `PeerRequest`.
+`ConfigError`, `InvalidCredential`, `ScopeEscalation`, `BrokenDelegationLink`, `DelegationDepthExceeded`, `CredentialReplay`, `CredentialNotYetValid`, `CredentialExpired`, `CredentialRevoked`, `RevocationStatusUnknown`, `InvalidRevocation`, `ProvenanceLinkBroken`, and `TraceDigestUnsupported` are raised by shipping code paths: attenuated delegation, offline chain verification, and the provenance DAG. `ScopeNotPermitted` is raised by the peer-call enforcement decision core (`enforce_peer_call`), and `SealedChannelError` by the sealed channel (`SealedChannel.seal`, `open_sealed`), both of which are implemented. `TransportError` is raised by the A2A metadata adapter when cA2A keys are present but cannot be parsed into a `PeerRequest`.
 
 `AttestationFailed` is raised by the SEV-SNP verifier (chain, report signature, and measurement binding), and by a collector whose hardware returned evidence that does not commit the key and nonce it asked for. `AttestationUnsupported` is raised where a host cannot collect at all: no TPM or tpm2-pytss for `tpm`, no configfs-TSM or guest device for `sev-snp` and `tdx`, and on Azure confidential VMs, where SEV-SNP runs behind a paravisor that owns `REPORT_DATA`. See [Peer Attestation](https://ca2a.agentrust-io.com/docs/spec/attestation/index.md) and [ROADMAP.md](https://ca2a.agentrust-io.com/ROADMAP/index.md).
 
@@ -918,7 +965,7 @@ Verification fails closed. `verify_chain`, `verify_dag`, and `cross_check_chain`
 
 ## See also
 
-- [Delegation Chain](https://ca2a.agentrust-io.com/docs/spec/delegation-chain/index.md) for the checks behind `ScopeEscalation`, `BrokenDelegationLink`, `DelegationDepthExceeded`, `CredentialReplay`, `CredentialNotYetValid`, and `CredentialExpired`.
+- [Delegation Chain](https://ca2a.agentrust-io.com/docs/spec/delegation-chain/index.md) for the checks behind `ScopeEscalation`, `BrokenDelegationLink`, `DelegationDepthExceeded`, `CredentialReplay`, `CredentialNotYetValid`, `CredentialExpired`, `CredentialRevoked`, `RevocationStatusUnknown`, and `InvalidRevocation`.
 - [Provenance DAG](https://ca2a.agentrust-io.com/docs/spec/provenance-dag/index.md) for the checks behind `ProvenanceLinkBroken`.
 - [Verification Library](https://ca2a.agentrust-io.com/docs/spec/verification-library/index.md) for `verify_chain`, `verify_chain_file`, `verify_dag`, and `cross_check_chain`.
 - [Failure Modes](https://ca2a.agentrust-io.com/docs/spec/failure-modes/index.md) for how these errors map to observable runtime behavior.
@@ -950,15 +997,16 @@ Out of adversary scope: breaking the underlying cryptographic primitives (Ed2551
 
 ## Attacks and defenses
 
-| Attack                                                   | Defense                                                                                                                                                                                                                                         |
-| -------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Confused deputy: B acts with authority A never granted   | Attenuation: B's scope must be a subset of A's grant, checked per hop                                                                                                                                                                           |
-| Tampered peer wearing a valid Agent Card                 | Attestation: measurement must match an expected value before a task is accepted                                                                                                                                                                 |
-| Operator or network reads the task payload               | Sealing to the peer's measurement; the path sees ciphertext                                                                                                                                                                                     |
-| Credential replayed into another workflow                | Unique `credential_id` and parent-link checks in chain verification                                                                                                                                                                             |
-| A copied chain presented by a party it was not issued to | Holder binding: the presenter must answer a callee-issued challenge with a signature under the leaf `subject` key (profile P-4a). Appraising the caller does not cover this: an attested runtime is not a claim to anyone's delegated authority |
-| Attacker mints a self-consistent chain from its own root | Callee pins locally trusted root issuer keys before policy evaluation                                                                                                                                                                           |
-| Reparented or forged provenance                          | Linked TRACE records; the DAG is verified offline against the chain. A hop cannot be reparented in flight either: the holder proof commits to `parent_record_hash`, so altering it invalidates the proof before a record is emitted             |
+| Attack                                                                | Defense                                                                                                                                                                                                                                         |
+| --------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Confused deputy: B acts with authority A never granted                | Attenuation: B's scope must be a subset of A's grant, checked per hop                                                                                                                                                                           |
+| Tampered peer wearing a valid Agent Card                              | Attestation: measurement must match an expected value before a task is accepted                                                                                                                                                                 |
+| Operator or network reads the task payload                            | Sealing to the peer's measurement; the path sees ciphertext                                                                                                                                                                                     |
+| Credential replayed into another workflow                             | Unique `credential_id` and parent-link checks in chain verification                                                                                                                                                                             |
+| A compromised delegate keeps using a grant inside its validity window | Revocation by the grant's issuer or an issuer above it, checked against a revocation snapshot the verifier supplies. Only as current as that snapshot; see residual risks                                                                       |
+| A copied chain presented by a party it was not issued to              | Holder binding: the presenter must answer a callee-issued challenge with a signature under the leaf `subject` key (profile P-4a). Appraising the caller does not cover this: an attested runtime is not a claim to anyone's delegated authority |
+| Attacker mints a self-consistent chain from its own root              | Callee pins locally trusted root issuer keys before policy evaluation                                                                                                                                                                           |
+| Reparented or forged provenance                                       | Linked TRACE records; the DAG is verified offline against the chain. A hop cannot be reparented in flight either: the holder proof commits to `parent_record_hash`, so altering it invalidates the proof before a record is emitted             |
 
 ## Residual risks in this release
 
@@ -968,7 +1016,9 @@ Because attestation and sealing are not yet implemented (Tier 2/3), this release
 
 Closing the window entirely needs state, and the place for it is the challenge rather than the proof, so that the profile carries one such decision instead of two. A deployment that requires exactly-once should supply a stateful challenge and accept the shared-store or sticky-routing cost that comes with it.
 
-**Delegated authority cannot be actively withdrawn.** A credential can carry a validity window (`not_before` / `not_after`, see [delegation chain](https://ca2a.agentrust-io.com/docs/spec/delegation-chain/index.md)), which bounds how long a compromised delegate keeps what it was granted — but there is no revocation path, so inside a still-valid window the grant cannot be withdrawn early. This interacts with P-4's requirement that verification work offline, since an offline verifier cannot learn that a credential was revoked.
+**Revocation is only as current as the verifier's data.** The issuer of a credential, or any issuer above it in the chain, can withdraw it before `not_after` by signing a revocation statement that names the credential by digest (see [delegation chain](https://ca2a.agentrust-io.com/docs/spec/delegation-chain/#ca2a-delegation-revocation)). A verifier given a revocation snapshot refuses a chain containing a revoked hop with `CREDENTIAL_REVOKED`, and every grant beneath that hop falls with it. A delegate cannot revoke its delegator, and a statement from any key outside that line of issuers has no effect.
+
+P-4 still requires verification to work offline, so a verifier that has no snapshot still verifies, and it still cannot learn that a credential was revoked. What changed is that it is told so: the verification result reports revocation as `not_checked` rather than leaving the caller to assume. A verifier that has a snapshot knows what the snapshot held at its `as_of` time and nothing later. Whoever supplies snapshots can withhold a statement, though not forge one, since each statement is signed by its revoker. A verifier can set `max_revocation_staleness` to refuse to decide without a snapshot of bounded age; that bounds the window between a revocation being issued and a verifier acting on it, but does not close it. Getting statements to verifiers is the deployment's job, and cA2A defines no distribution protocol. The validity window remains the backstop for a verifier that never receives the statement.
 # Guides
 
 # Verify a Saved Delegation Chain
@@ -1028,7 +1078,7 @@ In PowerShell:
 ca2a verify-chain --chain chain.json --trusted-root-issuer (Get-Content trusted-root.txt -Raw)
 ```
 
-Expect exit 0 and `{"verified": true, "hops": 3, "leaf_scope": ["cap:read"]}`. Substituting `tampered-chain.json` should exit nonzero with `INVALID_CREDENTIAL`.
+Expect exit 0 and `{"verified": true, "hops": 3, "leaf_scope": ["cap:read"], "revocation": "not_checked"}`. Substituting `tampered-chain.json` should exit nonzero with `INVALID_CREDENTIAL`.
 
 ## What this establishes
 
@@ -1563,6 +1613,7 @@ cA2A 0.2 is a Developer Preview with a runnable, tested profile and runtime. Thi
 ## What is built
 
 - The delegation credential model and offline chain verifier: trusted-root checks, signatures, scope attenuation, depth and validity bounds, duplicate credential IDs within a chain, and cross-chain splice rejection. These checks do not maintain a global history of used credentials.
+- Revocation of a delegation before its validity window closes. The issuer of a credential, or an issuer above it in the chain, signs a revocation statement naming the credential by digest; a verifier given a snapshot of such statements refuses a chain containing a revoked hop (`CREDENTIAL_REVOKED`). A delegate cannot revoke its delegator, statements cannot be un-revoked, and a snapshot carrying a forged or unsigned statement is refused as a whole. **What it does not do:** cA2A does not publish or fetch revocation data, so a verifier knows only what its supplied snapshot held at its `as_of` time, and a supplier can withhold a statement. A verifier with no snapshot still verifies offline and cannot learn of a revocation; the result says revocation was `not_checked`. `max_revocation_staleness` lets a verifier fail closed without a recent snapshot, but it is off by default, and `ca2a start` does not load a snapshot.
 - Configuration, error registry, and the CLI surface, including `ca2a start`, which builds a `PeerNode` from a config file and serves it over the reference transport.
 - A reference HTTP transport and the attestation handshake, in software mode. `ca2a_runtime.transport.server` and `ca2a_runtime.transport.client` (standard library only) run a live inbound A2A-profile call end to end: the caller fetches the callee's attested channel key, seals a payload to it, and sends a delegated task; the callee parses the A2A metadata with the adapter, runs verify + policy + enforce + open-sealed + provenance, and replies. `ca2a_runtime.attestation` gates the seal on a verified channel key. This is a **reference** transport, not part of the profile: the profile mandates no wire protocol (see Out of scope), and in software mode the peer key is accepted at `assurance="none"`.
 

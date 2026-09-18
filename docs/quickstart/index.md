@@ -92,7 +92,7 @@ ca2a verify-chain --chain demo-chain.json --trusted-root-issuer "$(cat trusted-r
 Expected exit code: `0`.
 
 ```
-{"verified": true, "hops": 2, "leaf_scope": ["cap:read"]}
+{"verified": true, "hops": 2, "leaf_scope": ["cap:read"], "revocation": "not_checked"}
 ```
 
 In production, the relying party obtains trusted roots through its own approval process. Copying the issuer from an arbitrary incoming chain into the trust list would let that chain choose its own authority.
