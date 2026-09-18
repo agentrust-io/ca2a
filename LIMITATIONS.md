@@ -1,5 +1,16 @@
 # Limitations
 
+## Opt-in response authentication
+
+`send_task(require_authenticated_response=True)` authenticates readable
+provenance or denial to the live caller using a request-bound session MAC. The
+default legacy path remains unauthenticated. The profile supplies one-use,
+expiring client verification, not request-execution deduplication, portable
+signed receipts or confidential output encryption. Both session parties know the
+MAC key. Hardware assurance still requires explicit hardware appraisal; the new
+profile has software/HTTP tests and no new live-hardware validation. See the
+[profile and deployment limits](docs/spec/response-authentication.md).
+
 cA2A 0.2 is a Developer Preview with a runnable, tested profile and runtime. This document states plainly what is built, what remains before 1.0, and what is out of scope, so no claim in the documentation runs ahead of the code. This is a deliberate discipline: proof, not promises.
 
 ## What is built

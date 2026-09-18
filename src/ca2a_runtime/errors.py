@@ -194,3 +194,9 @@ class TraceRecordInvalid(CA2AError):
 
     code = "TRACE_RECORD_INVALID"
     http_status = 422
+
+
+class ResponseAuthenticationFailed(TransportError):
+    """No authenticated verdict; a submitted request may already have executed."""
+
+    code = "RESPONSE_AUTHENTICATION_FAILED"

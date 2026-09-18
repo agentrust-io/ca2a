@@ -1,0 +1,82 @@
+{
+  "description": "Public synthetic test keys. No hardware evidence. ASCII JCS fixture.",
+  "callee_private_key": "0101010101010101010101010101010101010101010101010101010101010101",
+  "caller_private_key": "0202020202020202020202020202020202020202020202020202020202020202",
+  "request": {
+    "profile": "ca2a-response-mac-v1",
+    "peer": "a4e09292b651c278b9772c569f5fa9bb13d906b46ab68c9df9dc2b4409f8a209",
+    "recipient": "ce8d3ad1ccb633ec7b70c17814a5c76ecd029685050d344745ba05870e587d59",
+    "session": "0303030303030303030303030303030303030303030303030303030303030303",
+    "request": {
+      "record_id": "vector-1"
+    }
+  },
+  "request_canonical_hex": "7b2270656572223a2261346530393239326236353163323738623937373263353639663566613962623133643930366234366162363863396466396463326234343039663861323039222c2270726f66696c65223a22636132612d726573706f6e73652d6d61632d7631222c22726563697069656e74223a2263653864336164316363623633336563376237306331373831346135633736656364303239363835303530643334343734356261303538373065353837643539222c2272657175657374223a7b227265636f72645f6964223a22766563746f722d31227d2c2273657373696f6e223a2230333033303330333033303330333033303330333033303330333033303330333033303330333033303330333033303330333033303330333033303330333033227d",
+  "shared_secret_hex": "2ed76ab549b1e73c031eb49c9448f0798aea81b698279a0c3dc3e49fbfc4b953",
+  "hkdf_key_hex": "7674b703aae99f7c0f56d7f1c3c419b20d563c2cb25a1b559d4b89667c0f0467",
+  "response": {
+    "profile": "ca2a-response-mac-v1",
+    "request_sha256": "c3cae3cbd25953b92b45a2cf1b1b794c34756823d0de7f495934bad5cb380ea7",
+    "kind": "provenance",
+    "status": 200,
+    "body": {
+      "accepted": true,
+      "record": {
+        "record_id": "vector-1"
+      }
+    },
+    "mac": "a6a319d55db2b2b925bb2ee471b65bfcf5f6e2f07169df6f4c00eae3ca017e68"
+  },
+  "negative_cases": [
+    {
+      "id": "body-substitution",
+      "path": [
+        "body",
+        "record",
+        "record_id"
+      ],
+      "value": "other",
+      "expected": "reject"
+    },
+    {
+      "id": "request-substitution",
+      "path": [
+        "request_sha256"
+      ],
+      "value": "0000000000000000000000000000000000000000000000000000000000000000",
+      "expected": "reject"
+    },
+    {
+      "id": "downgrade",
+      "path": [
+        "profile"
+      ],
+      "value": "legacy",
+      "expected": "reject"
+    },
+    {
+      "id": "status-substitution",
+      "path": [
+        "status"
+      ],
+      "value": 403,
+      "expected": "reject"
+    },
+    {
+      "id": "confidential-output-kind",
+      "path": [
+        "kind"
+      ],
+      "value": "confidential-output",
+      "expected": "reject"
+    },
+    {
+      "id": "invalid-mac",
+      "path": [
+        "mac"
+      ],
+      "value": "0000000000000000000000000000000000000000000000000000000000000000",
+      "expected": "reject"
+    }
+  ]
+}

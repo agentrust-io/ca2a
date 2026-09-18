@@ -120,8 +120,9 @@ that was wrong in this protocol.
 
    Authentication of the returned provenance is a separate extension. See the
    [proposed response-binding requirements](response-binding-requirements.md)
-   for its current boundary and acceptance matrix; no response verifier is
-   implemented by that proposal.
+   for its acceptance matrix and the opt-in
+   [live response authentication profile](response-authentication.md) for the
+   implemented session-MAC path. This does not encrypt provenance or sign lineage.
 
 ## The state problem
 

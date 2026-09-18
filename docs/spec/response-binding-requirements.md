@@ -1,7 +1,10 @@
 # Authenticated response requirements
 
 Status: proposed requirements and acceptance matrix for [#188](https://github.com/agentrust-io/ca2a/issues/188).
-This document does not define a wire format or claim an implemented response verifier.
+The [live response authentication profile](response-authentication.md) now
+implements a session-MAC verifier and reference adapter against this contract.
+It selects live-caller authentication, not portable signatures. The requirements
+below remain the acceptance basis; hardware validation is separate.
 
 ## Current boundary
 
@@ -70,8 +73,10 @@ separate controls.
 
 ## Acceptance matrix
 
-These are required future outcomes, not reports of passing tests. Each negative
-case needs a valid control under the same policy. Refusal means no authenticated
+These are contract requirements. The implemented live-session profile exercises
+them in `tests/unit/test_response_authentication.py`, using software evidence;
+it does not establish hardware behavior. Each negative case needs a valid
+control under the same policy. Refusal means no authenticated
 result is exposed to the application; it does not assert that the receiver did
 not execute the submitted request.
 
@@ -98,14 +103,11 @@ request, peer or replay verification must fail the corresponding regression.
 Synthetic cryptography, captured hardware evidence and live hardware execution
 must be labeled separately.
 
-## Implementation sequence
+## Implementation state
 
-1. Review this contract and choose the key-establishment, canonicalization,
-   portable-evidence and replay-state decisions explicitly.
-2. Add independently consumable vectors and a strict verifier before exposing
-   authenticated responses through the reference client/server.
-3. Add compatibility behavior, real-HTTP tests and causal checks, then document
-   the actual supported assurance and deployment requirements.
-
-The requirements slice can be reviewed in the existing handoff follow-up PR.
-Issue #188 remains open until its implementation and validation criteria are met.
+The [profile](response-authentication.md) selects X25519/HKDF/HMAC with the
+existing JCS subset, live-caller verification and process-local one-use state.
+Public synthetic vectors, a strict verifier, the HTTP adapter, compatibility
+behavior and causal checks are included in the same handoff follow-up PR.
+Portable signing, confidential outputs and hardware deployment validation remain
+outside this profile. Issue #188 stays open during implementation review.
