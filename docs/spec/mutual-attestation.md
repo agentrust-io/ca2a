@@ -118,6 +118,12 @@ that was wrong in this protocol.
    If a genuinely confidential response is ever added, sealing *that* to the
    caller's key is the right move. Encrypting the provenance record is not.
 
+   Authentication of the returned provenance is a separate extension. See the
+   [proposed response-binding requirements](response-binding-requirements.md)
+   for its acceptance matrix and the opt-in
+   [live response authentication profile](response-authentication.md) for the
+   implemented session-MAC path. This does not encrypt provenance or sign lineage.
+
 ## The state problem
 
 A challenge is worth nothing unless it is single-use and expiring, and the

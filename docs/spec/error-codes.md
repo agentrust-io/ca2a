@@ -60,6 +60,13 @@ Verification fails closed. `verify_chain`, `verify_dag`, and `cross_check_chain`
 
 ## See also
 
+The opt-in [response authentication profile](response-authentication.md) adds
+`ResponseAuthenticationFailed` (`RESPONSE_AUTHENTICATION_FAILED`, HTTP 400).
+At the caller it means no authenticated response was established and execution
+may already have occurred. `response.AuthenticatedPeerError` instead carries a
+MAC-authenticated denial's status/code and locally verified response metadata;
+it does not by itself prove absence of side effects.
+
 - [Delegation Chain](delegation-chain.md) for the checks behind `ScopeEscalation`, `BrokenDelegationLink`, `DelegationDepthExceeded`, `CredentialReplay`, `CredentialNotYetValid`, `CredentialExpired`, `CredentialRevoked`, `RevocationStatusUnknown`, and `InvalidRevocation`.
 - [Provenance DAG](provenance-dag.md) for the checks behind `ProvenanceLinkBroken`.
 - [Verification Library](verification-library.md) for `verify_chain`, `verify_chain_file`, `verify_dag`, and `cross_check_chain`.

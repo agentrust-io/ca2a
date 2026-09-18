@@ -8,6 +8,7 @@ without one, the peer key is accepted at ``assurance="none"`` (software mode).
 
 from __future__ import annotations
 
+import http.client
 import json
 import secrets
 import urllib.error
@@ -30,9 +31,14 @@ from ca2a_runtime.delegation.credential import DelegationCredential
 from ca2a_runtime.delegation.holder import build_holder_proof
 from ca2a_runtime.errors import AttestationFailed, CA2AError, TransportError
 from ca2a_runtime.peer import PeerRequest
+from ca2a_runtime.response import (
+    AuthenticatedPeerError,
+    PendingResponse,
+    ResponseAuthenticationFailed,
+)
 from ca2a_runtime.tee.base import BaseProvider
 from ca2a_runtime.transport import a2a_adapter, wire
-from ca2a_runtime.transport.server import CHANNEL_PATH, TASK_PATH
+from ca2a_runtime.transport.server import AUTHENTICATED_TASK_PATH, CHANNEL_PATH, TASK_PATH
 
 _TIMEOUT = 10.0
 _ALLOWED_SCHEMES = ("http", "https")
@@ -91,6 +97,28 @@ def _post_json(url: str, body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
         return exc.code, json.loads(_read_bounded(exc))
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(
+        self, req: Any, fp: Any, code: int, msg: str, headers: Any, newurl: str
+    ) -> None:
+        return None
+
+
+def _post_authenticated(url: str, raw: bytes) -> tuple[int, bytes]:
+    _require_http_url(url)
+    # No proxy inheritance, redirect, or automatic replay of a submitted task.
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect())
+    request = urllib.request.Request(
+        url, data=raw, headers={"Content-Type": "application/json"}, method="POST"
+    )
+    try:
+        with opener.open(request, timeout=_TIMEOUT) as response:
+            return response.status, _read_bounded(response)
+    except urllib.error.HTTPError as exc:
+        with exc:
+            return exc.code, _read_bounded(exc)
+
+
 @dataclass(frozen=True)
 class Handshake:
     """What one round trip to the handshake endpoint yields.
@@ -143,6 +171,7 @@ def send_task(
     require_hardware: bool = False,
     parent_record_hash: str | None = None,
     caller_provider: BaseProvider | None = None,
+    require_authenticated_response: bool = False,
 ) -> dict[str, Any]:
     """Run the caller side end to end: verify the peer, prove holdership, seal, send.
 
@@ -163,6 +192,10 @@ def send_task(
     ``require_hardware=True`` rejects software-only offers before sealing or
     sending a task. Configure the verifier's measurement and platform policy
     separately; hardware assurance alone does not specify either requirement.
+
+    ``require_authenticated_response=True`` uses the one-use session-MAC profile
+    and rejects legacy/unsigned responses. Success carries locally established
+    ``response_authentication`` metadata. This is not a portable signature.
     """
     sealed: bytes | None = None
     caller_offer: ChannelOffer | None = None
@@ -206,10 +239,27 @@ def send_task(
         holder_proof=holder_proof,
     )
     message = a2a_adapter.attach_ca2a_metadata({}, request)
+    if require_authenticated_response:
+        pending = PendingResponse(hello.peer, message)
+        try:
+            status, raw = _post_authenticated(
+                f"{base_url}{AUTHENTICATED_TASK_PATH}", pending.request_bytes
+            )
+            response = pending.verify(status, raw)
+        except (OSError, http.client.HTTPException, TransportError) as exc:
+            raise ResponseAuthenticationFailed(
+                "no authenticated response; execution outcome is unknown"
+            ) from exc
+        if response.status != 200:
+            raise AuthenticatedPeerError(response)
+        return {**response.body, "response_authentication": response.authentication()}
     status, body = _post_json(f"{base_url}{TASK_PATH}", message)
     if status != 200:
         err = body.get("error", {})
         raise _rehydrate_error(err)
+    # Only local verification may attach this metadata. A legacy peer cannot
+    # manufacture assurance by returning the reserved field itself.
+    body.pop("response_authentication", None)
     return body
 
 

@@ -20,7 +20,7 @@ from ca2a_runtime.attestation import ChannelOffer, Verifier, attest_channel
 from ca2a_runtime.challenge import DEFAULT_TTL_SECONDS, generate_secret, issue_challenge
 from ca2a_runtime.channel import generate_channel_keypair
 from ca2a_runtime.delegation.revocation import RevocationSnapshot
-from ca2a_runtime.errors import ConfigError, TransportError
+from ca2a_runtime.errors import CA2AError, ConfigError, TransportError
 from ca2a_runtime.peer import (
     REQUIRE_HARDWARE,
     REQUIRE_NONE,
@@ -120,3 +120,20 @@ class PeerNode:
             revocations=None if self.revocation_source is None else self.revocation_source(),
             max_revocation_staleness=self.max_revocation_staleness,
         )
+
+    def handle_authenticated(self, envelope: dict[str, Any]) -> tuple[int, dict[str, Any]]:
+        """Authenticate a provenance response using the appraised channel key.
+
+        Invalid response contexts fail before admission. Runtime failures after
+        admission remain unknown outcomes unless an authenticated denial is made.
+        """
+        from ca2a_runtime.response import ResponseProducer
+        from ca2a_runtime.transport.wire import serialize_error, serialize_peer_result
+
+        producer = ResponseProducer(self._private_key, envelope)
+        try:
+            body = serialize_peer_result(self.handle(producer.envelope["request"]))
+            status = 200
+        except CA2AError as exc:
+            body, status = serialize_error(exc), exc.http_status
+        return status, producer.finish(status, body)

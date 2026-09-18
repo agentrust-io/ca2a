@@ -165,6 +165,8 @@ nav:
       - Profile and transport:
           - A2A profile: docs/spec/profile.md
           - Transport binding: docs/spec/transport.md
+          - Response binding (proposal): docs/spec/response-binding-requirements.md
+          - Live response authentication: docs/spec/response-authentication.md
           - Sealed peer channel: docs/spec/sealed-channel.md
           - TRACE A2A profile: docs/spec/trace-a2a-profile.md
       - Delegation and policy:

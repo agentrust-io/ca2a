@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- Add opt-in live response authentication through `require_authenticated_response`.
+  The session-MAC profile binds readable provenance or denial to the appraised
+  peer key, complete request and fresh recipient/session. Verification is expiring
+  and single-use; failed responses retain unknown execution outcomes without retry.
+  This is not portable signed evidence, response encryption or a new hardware result.
+
+- Record acceptance-harness operation timing and unfinished work so transport
+  timeouts remain distinguishable from security rejections. The historical SNP
+  burst timeout remains unexplained; this change adds diagnostics without retries.
+
 - **Delegation revocation.** Until now a delegated grant could not be withdrawn
   inside its validity window (`docs/spec/threat-model.md`). The issuer of a
   credential, or any issuer above it in the chain, can now sign a

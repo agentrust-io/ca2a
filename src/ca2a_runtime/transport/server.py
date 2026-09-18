@@ -23,10 +23,12 @@ from urllib.parse import parse_qs, urlparse
 
 from ca2a_runtime.errors import CA2AError
 from ca2a_runtime.node import PeerNode
+from ca2a_runtime.response import decode
 from ca2a_runtime.transport import wire
 
 CHANNEL_PATH = "/.well-known/ca2a/channel"
 TASK_PATH = "/ca2a/task"
+AUTHENTICATED_TASK_PATH = "/ca2a/task/authenticated"
 _MAX_BODY = 1 << 20  # 1 MiB; fail closed on larger bodies
 _MAX_NONCE = 256
 _READ_TIMEOUT_SECONDS = 10.0
@@ -102,7 +104,8 @@ class _PeerHandler(BaseHTTPRequestHandler):
         )
 
     def do_POST(self) -> None:
-        if urlparse(self.path).path != TASK_PATH:
+        path = urlparse(self.path).path
+        if path not in (TASK_PATH, AUTHENTICATED_TASK_PATH):
             self._send_json(404, {"error": {"code": "NOT_FOUND", "message": "unknown path"}})
             return
         raw_length = self.headers.get("Content-Length", "")
@@ -118,14 +121,19 @@ class _PeerHandler(BaseHTTPRequestHandler):
             )
             return
         try:
-            message = json.loads(self.rfile.read(length))
-        except (json.JSONDecodeError, UnicodeDecodeError, TimeoutError):
+            raw = self.rfile.read(length)
+            message = decode(raw) if path == AUTHENTICATED_TASK_PATH else json.loads(raw)
+        except (json.JSONDecodeError, UnicodeDecodeError, TimeoutError, CA2AError):
             self._send_json(400, {"error": {"code": "BAD_REQUEST", "message": "invalid JSON"}})
             return
         if not isinstance(message, dict):
             self._send_json(400, {"error": {"code": "BAD_REQUEST", "message": "object required"}})
             return
         try:
+            if path == AUTHENTICATED_TASK_PATH:
+                status, body = self._node().handle_authenticated(message)
+                self._send_json(status, body)
+                return
             result = self._node().handle(message)
         except CA2AError as exc:
             self._send_json(exc.http_status, wire.serialize_error(exc))
