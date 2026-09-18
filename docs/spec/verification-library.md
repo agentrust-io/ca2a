@@ -10,15 +10,27 @@ from ca2a_verify import verify_delegation_chain, verify_chain_file, ChainResult
 result: ChainResult = verify_chain_file(
     "chain.json", trusted_root_issuers={"<trusted-root-issuer-hex>"}
 )
-# result.hops, result.root_issuer, result.leaf_subject, result.leaf_scope
+# result.hops, result.root_issuer, result.leaf_subject, result.leaf_scope,
+# result.revocation ("not_checked" here, since no snapshot was supplied)
 ```
 
 - `verify_delegation_chain(chain, trusted_root_issuers=..., max_depth=8, at_time=None)` verifies a list of `DelegationCredential` against an explicit local root trust set and returns a `ChainResult` summary, or raises a `CA2AError` subtype.
 - `verify_chain_file(path, trusted_root_issuers=..., max_depth=8, at_time=None)` loads a chain from JSON (a bare list, or `{"chain": [...]}`) and verifies it against that trust set.
+- Both also take `revocations=None` and `max_revocation_staleness=None`. `load_revocation_snapshot(path)` loads a snapshot (`{"as_of": ..., "revocations": [...]}`) and checks every statement's signature.
 
 Root trust is mandatory. A self-consistent chain from an unknown root is cryptographically well formed but is not authorized and therefore does not produce a successful verification result.
 
 `at_time` is the Unix time validity windows are evaluated at; `None` means the current time. An auditor replaying recorded evidence passes the time the action was decided, not its own. See [delegation chain](delegation-chain.md).
+
+## Revocation status
+
+`ChainResult.revocation_checked` is False, and `ChainResult.revocation` is `"not_checked"`, whenever no revocation snapshot was supplied. The chain verified, but whether any hop was revoked is not known. With a snapshot and no revoked hop they are True and `"not_revoked"`, and `revocation_as_of` is the snapshot's `as_of`. The CLI prints the same field:
+
+```bash
+ca2a verify-chain --chain chain.json --trusted-root-issuer <hex>   --revocations revocations.json --max-revocation-staleness 300
+```
+
+Consulting a snapshot contacts nobody, so verification stays offline. Fetching current snapshots is the deployment's job. See [delegation chain](delegation-chain.md#ca2a-delegation-revocation).
 
 ## Errors
 

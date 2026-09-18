@@ -9,6 +9,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Delegation revocation.** Until now a delegated grant could not be withdrawn
+  inside its validity window (`docs/spec/threat-model.md`). The issuer of a
+  credential, or any issuer above it in the chain, can now sign a
+  `RevocationStatement` naming the credential by the SHA-256 of its canonical
+  body. `verify_chain`, `verify_delegation_chain`, `verify_chain_file`,
+  `handle_peer_request` and `ca2a verify-chain` / `verify-dag` take an optional
+  `RevocationSnapshot` and refuse a chain containing a revoked hop with
+  `CREDENTIAL_REVOKED`, which also refuses every grant beneath it. A delegate
+  cannot revoke upward, a statement from an unrelated key has no effect, nothing
+  can un-revoke, and a snapshot with a forged or unsigned statement is refused as
+  a whole with `INVALID_REVOCATION`. Without a snapshot, verification stays
+  offline and unchanged, and now reports revocation as `not_checked`
+  (`verify_chain` returns a `RevocationStatus`; `ChainResult`, `PeerResult` and
+  the CLI output carry it). An optional `max_revocation_staleness` fails closed
+  with `REVOCATION_STATUS_UNKNOWN` when the snapshot is missing or too old.
+  `PeerNode` takes a `revocation_source` callable consulted on every call.
+  Distributing revocation data remains the deployment's job.
+
 - Add an explicit hardware floor for outbound peer appraisal, a pinned SNP
   verifier with platform/DEBUG/VMPL/guest-SVN checks, and a two-host acceptance
   harness. A same-operator hardware diagnostic completed both directions;
