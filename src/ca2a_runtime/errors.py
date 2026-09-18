@@ -77,6 +77,43 @@ class CredentialExpired(CA2AError):
     http_status = 403
 
 
+class CredentialRevoked(CA2AError):
+    """A hop in the chain was revoked by its issuer or by an issuer above it.
+
+    403 like the validity failures: the chain is well formed and validly signed,
+    but a party with authority over the grant has withdrawn it. Descendants of a
+    revoked hop are refused with it, since they cannot be presented without it.
+    """
+
+    code = "CREDENTIAL_REVOKED"
+    http_status = 403
+
+
+class RevocationStatusUnknown(CA2AError):
+    """The verifier's policy requires current revocation data and it has none.
+
+    Raised when ``max_revocation_staleness`` is set and no snapshot was supplied,
+    or the supplied snapshot is older than the bound. 503 because nothing is
+    wrong with the chain: the verifier cannot currently establish that it has not
+    been revoked, and fails closed until it can.
+    """
+
+    code = "REVOCATION_STATUS_UNKNOWN"
+    http_status = 503
+
+
+class InvalidRevocation(CA2AError):
+    """A revocation statement or snapshot is malformed, unsigned, or forged.
+
+    A snapshot containing any such statement is refused as a whole rather than
+    having the bad entry dropped, since dropping it would turn tampering with the
+    revocation feed into an un-revocation.
+    """
+
+    code = "INVALID_REVOCATION"
+    http_status = 400
+
+
 class HolderProofInvalid(CA2AError):
     """The presenter of a delegation chain did not prove it holds the leaf key.
 

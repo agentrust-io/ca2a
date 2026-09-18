@@ -13,8 +13,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from ca2a_runtime.delegation import DelegationCredential, verify_chain
-from ca2a_runtime.errors import CA2AError, InvalidCredential
+from ca2a_runtime.delegation import DelegationCredential, RevocationSnapshot, verify_chain
+from ca2a_runtime.errors import CA2AError, InvalidCredential, InvalidRevocation
 
 # Re-exported so callers can catch a single verify-layer error type.
 VerificationError = CA2AError
@@ -28,6 +28,16 @@ class ChainResult:
     root_issuer: str
     leaf_subject: str
     leaf_scope: list[str]
+    revocation_checked: bool = False
+    """False when no revocation snapshot was supplied. The chain verified, but
+    whether any hop has been revoked was not checked and is not known."""
+    revocation_as_of: int | None = None
+    """When checked, the ``as_of`` time of the snapshot that found no revoked hop."""
+
+    @property
+    def revocation(self) -> str:
+        """``"not_revoked"`` when checked against a snapshot, else ``"not_checked"``."""
+        return "not_revoked" if self.revocation_checked else "not_checked"
 
 
 def verify_delegation_chain(
@@ -36,18 +46,26 @@ def verify_delegation_chain(
     trusted_root_issuers: Collection[str],
     max_depth: int = 8,
     at_time: int | None = None,
+    revocations: RevocationSnapshot | None = None,
+    max_revocation_staleness: int | None = None,
 ) -> ChainResult:
     """Verify a root-to-leaf chain and summarize it. Raises on any violation.
 
     ``at_time`` is the Unix time validity windows are evaluated at; ``None``
     means the current time. An auditor replaying recorded evidence passes the
     time the action was decided, not its own.
+
+    ``revocations`` and ``max_revocation_staleness`` are passed to
+    :func:`~ca2a_runtime.delegation.verify_chain`. Without a snapshot the result
+    has ``revocation_checked=False``.
     """
-    verify_chain(
+    status = verify_chain(
         chain,
         max_depth=max_depth,
         trusted_root_issuers=trusted_root_issuers,
         at_time=at_time,
+        revocations=revocations,
+        max_revocation_staleness=max_revocation_staleness,
     )
     root = chain[0]
     leaf = chain[-1]
@@ -56,6 +74,8 @@ def verify_delegation_chain(
         root_issuer=root.issuer,
         leaf_subject=leaf.subject,
         leaf_scope=sorted(leaf.scope),
+        revocation_checked=status.checked,
+        revocation_as_of=status.as_of,
     )
 
 
@@ -73,6 +93,8 @@ def verify_chain_file(
     trusted_root_issuers: Collection[str],
     max_depth: int = 8,
     at_time: int | None = None,
+    revocations: RevocationSnapshot | None = None,
+    max_revocation_staleness: int | None = None,
 ) -> ChainResult:
     """Load a delegation chain from a JSON file and verify it."""
     p = Path(path)
@@ -87,4 +109,22 @@ def verify_chain_file(
         trusted_root_issuers=trusted_root_issuers,
         max_depth=max_depth,
         at_time=at_time,
+        revocations=revocations,
+        max_revocation_staleness=max_revocation_staleness,
     )
+
+
+def load_revocation_snapshot(path: str | Path) -> RevocationSnapshot:
+    """Load a revocation snapshot (``{"as_of": ..., "revocations": [...]}``).
+
+    Every statement's signature is checked on load; a snapshot containing any
+    statement that does not verify raises ``InvalidRevocation``.
+    """
+    p = Path(path)
+    if not p.is_file():
+        raise InvalidRevocation(f"revocation file not found: {p}")
+    try:
+        data = json.loads(p.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise InvalidRevocation(f"invalid JSON in {p}", detail=str(exc)) from exc
+    return RevocationSnapshot.from_dict(data)

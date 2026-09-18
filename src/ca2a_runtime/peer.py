@@ -45,6 +45,11 @@ from ca2a_runtime.attestation import ChannelOffer, Verifier, appraise_caller
 from ca2a_runtime.channel import open_sealed
 from ca2a_runtime.delegation.credential import DelegationCredential, verify_chain
 from ca2a_runtime.delegation.holder import HolderProof, verify_holder_proof
+from ca2a_runtime.delegation.revocation import (
+    REVOCATION_NOT_CHECKED,
+    RevocationSnapshot,
+    RevocationStatus,
+)
 from ca2a_runtime.errors import (
     AttestationFailed,
     ConfigError,
@@ -91,12 +96,20 @@ def effective_scope(
     *,
     max_depth: int = 8,
     trusted_root_issuers: Collection[str] = (),
+    revocations: RevocationSnapshot | None = None,
+    max_revocation_staleness: int | None = None,
 ) -> frozenset[str]:
     """Verify the chain and return the effective scope (delegated ∩ local policy).
 
     Raises the relevant CA2AError if the chain does not verify.
     """
-    verify_chain(chain, max_depth=max_depth, trusted_root_issuers=trusted_root_issuers)
+    verify_chain(
+        chain,
+        max_depth=max_depth,
+        trusted_root_issuers=trusted_root_issuers,
+        revocations=revocations,
+        max_revocation_staleness=max_revocation_staleness,
+    )
     return policy.intersect(chain[-1].scope)
 
 
@@ -119,6 +132,8 @@ def enforce_peer_call(
     max_depth: int = 8,
     caller_attestation: str = CALLER_NOT_OFFERED,
     trusted_root_issuers: Collection[str] = (),
+    revocations: RevocationSnapshot | None = None,
+    max_revocation_staleness: int | None = None,
 ) -> PeerDecision:
     """Verify, intersect with local policy, enforce, and emit a provenance record.
 
@@ -136,6 +151,8 @@ def enforce_peer_call(
         policy,
         max_depth=max_depth,
         trusted_root_issuers=trusted_root_issuers,
+        revocations=revocations,
+        max_revocation_staleness=max_revocation_staleness,
     )
     return decide_capability(
         chain,
@@ -235,6 +252,10 @@ class PeerResult:
     caller_attestation: str = CALLER_NOT_OFFERED
     """What the callee established about the caller's runtime. Also on ``record``,
     where it is part of the portable evidence rather than just this return value."""
+    revocation: RevocationStatus = REVOCATION_NOT_CHECKED
+    """Whether the chain was checked against a revocation snapshot. ``checked`` is
+    False when the callee was given none, in which case a revoked chain would
+    have been accepted."""
 
 
 def appraise_caller_runtime(
@@ -380,6 +401,8 @@ def handle_peer_request(
     audience: str | None = None,
     require_holder_proof: bool = True,
     trusted_root_issuers: Collection[str] = (),
+    revocations: RevocationSnapshot | None = None,
+    max_revocation_staleness: int | None = None,
 ) -> PeerResult:
     """Run the full inbound pipeline for a parsed peer request.
 
@@ -408,16 +431,24 @@ def handle_peer_request(
     leaf's authority; it exists for offline replay of recorded evidence, where
     there is no live caller to challenge, and must not be used on a live peer
     path.
+
+    ``revocations`` is the callee's current revocation snapshot, if it has one;
+    a chain with a revoked hop is then refused with ``CREDENTIAL_REVOKED`` before
+    the caller is challenged. ``max_revocation_staleness`` makes a snapshot of at
+    most that age mandatory. Without either, revocation is not checked and the
+    returned ``PeerResult.revocation`` says so.
     """
     # The chain, trust set included, is verified exactly once: here, before the
     # caller is challenged, so an untrusted or malformed chain is refused before
     # a proof is demanded about a credential this peer was never going to honour.
     # The scope intersection below reads the leaf of this verified chain, so it
     # does not verify it again.
-    verify_chain(
+    revocation = verify_chain(
         request.chain,
         max_depth=max_depth,
         trusted_root_issuers=trusted_root_issuers,
+        revocations=revocations,
+        max_revocation_staleness=max_revocation_staleness,
     )
     if require_holder_proof:
         # Before the scope intersection, so an unauthenticated caller never
@@ -459,4 +490,5 @@ def handle_peer_request(
         record=decision.record,
         payload=payload,
         caller_attestation=caller_attestation,
+        revocation=revocation,
     )

@@ -10,7 +10,12 @@ from typing import Any
 
 from ca2a_runtime import __version__
 from ca2a_runtime.config import Ca2aConfig
-from ca2a_runtime.delegation import DelegationCredential, verify_chain
+from ca2a_runtime.delegation import (
+    DelegationCredential,
+    RevocationSnapshot,
+    RevocationStatus,
+    verify_chain,
+)
 from ca2a_runtime.errors import CA2AError, ConfigError, InvalidCredential, ProvenanceLinkBroken
 from ca2a_runtime.provenance import (
     CALLER_NOT_OFFERED,
@@ -18,7 +23,7 @@ from ca2a_runtime.provenance import (
     cross_check_chain,
     verify_dag,
 )
-from ca2a_verify import verify_chain_file
+from ca2a_verify import load_revocation_snapshot, verify_chain_file
 
 
 def _cmd_validate_config(args: argparse.Namespace) -> int:
@@ -31,6 +36,20 @@ def _cmd_validate_config(args: argparse.Namespace) -> int:
     return 0
 
 
+def _revocation_fields(status: RevocationStatus) -> dict[str, Any]:
+    # Printed always, including "not_checked". A chain that verified offline
+    # with no revocation data may still have been revoked, and output that only
+    # mentioned revocation when it was checked would let a reader miss that.
+    out: dict[str, Any] = {"revocation": status.state}
+    if status.checked:
+        out["revocation_as_of"] = status.as_of
+    return out
+
+
+def _load_revocations(args: argparse.Namespace) -> RevocationSnapshot | None:
+    return None if args.revocations is None else load_revocation_snapshot(args.revocations)
+
+
 def _cmd_verify_chain(args: argparse.Namespace) -> int:
     try:
         result = verify_chain_file(
@@ -38,11 +57,17 @@ def _cmd_verify_chain(args: argparse.Namespace) -> int:
             trusted_root_issuers=args.trusted_root_issuer,
             max_depth=args.max_depth,
             at_time=args.at_time,
+            revocations=_load_revocations(args),
+            max_revocation_staleness=args.max_revocation_staleness,
         )
     except CA2AError as exc:
         print(json.dumps({"verified": False, "code": exc.code, "error": str(exc)}))
         return 1
-    print(json.dumps({"verified": True, "hops": result.hops, "leaf_scope": result.leaf_scope}))
+    out: dict[str, Any] = {"verified": True, "hops": result.hops, "leaf_scope": result.leaf_scope}
+    out.update(
+        _revocation_fields(RevocationStatus(result.revocation_checked, result.revocation_as_of))
+    )
+    print(json.dumps(out))
     return 0
 
 
@@ -116,13 +141,16 @@ def _cmd_verify_dag(args: argparse.Namespace) -> int:
     try:
         records = verify_dag(_load_records(args.dag))
         cross_checked = False
+        revocation: RevocationStatus | None = None
         if args.chain:
             chain = _load_chain(args.chain)
-            verify_chain(
+            revocation = verify_chain(
                 chain,
                 max_depth=args.max_depth,
                 trusted_root_issuers=args.trusted_root_issuer,
                 at_time=args.at_time,
+                revocations=_load_revocations(args),
+                max_revocation_staleness=args.max_revocation_staleness,
             )
             cross_check_chain(records, chain)
             cross_checked = True
@@ -147,6 +175,8 @@ def _cmd_verify_dag(args: argparse.Namespace) -> int:
         out["denial_reason"] = leaf.denial_reason
     if args.chain:
         out["cross_checked"] = cross_checked
+    if revocation is not None:
+        out.update(_revocation_fields(revocation))
     print(json.dumps(out))
     return 0
 
@@ -215,6 +245,21 @@ def _cmd_start(args: argparse.Namespace) -> int:
     return 0
 
 
+def _add_revocation_args(p: argparse.ArgumentParser, note: str = "") -> None:
+    p.add_argument(
+        "--revocations",
+        default=None,
+        help="Revocation snapshot JSON to check every hop against" + note,
+    )
+    p.add_argument(
+        "--max-revocation-staleness",
+        type=int,
+        default=None,
+        help="Fail closed unless a revocation snapshot no older than this many "
+        "seconds (relative to the evaluation time) is supplied" + note,
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="ca2a", description="Confidential agent-to-agent")
     parser.add_argument("--version", action="version", version=f"ca2a {__version__}")
@@ -239,6 +284,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Unix time validity windows are evaluated at (default: now)",
     )
+    _add_revocation_args(vch)
     vch.set_defaults(func=_cmd_verify_chain)
 
     vd = sub.add_parser("verify-dag", help="Verify a provenance DAG offline")
@@ -260,6 +306,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Unix time validity windows are evaluated at (default: now)",
     )
+    _add_revocation_args(vd, note=" (applies with --chain)")
     vd.set_defaults(func=_cmd_verify_dag)
 
     st = sub.add_parser(
@@ -277,6 +324,14 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.command == "verify-dag" and args.chain and not args.trusted_root_issuer:
         parser.error("verify-dag with --chain requires --trusted-root-issuer")
+    if (
+        args.command == "verify-dag"
+        and not args.chain
+        and (args.revocations is not None or args.max_revocation_staleness is not None)
+    ):
+        # Revocation applies to credentials, and without --chain none are checked.
+        # Accepting the flag silently would look like a check that never ran.
+        parser.error("verify-dag revocation options require --chain")
     result: int = args.func(args)
     return result
 
