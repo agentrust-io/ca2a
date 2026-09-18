@@ -12,6 +12,7 @@ from ca2a_verify.dag import (
 from ca2a_verify.verify import (
     ChainResult,
     VerificationError,
+    load_revocation_snapshot,
     verify_chain_file,
     verify_delegation_chain,
 )
@@ -22,6 +23,7 @@ __all__ = [
     "TraceDagResult",
     "VerificationError",
     "cross_check_trace_dag",
+    "load_revocation_snapshot",
     "verify_chain_file",
     "verify_delegation_chain",
     "verify_trace_dag",

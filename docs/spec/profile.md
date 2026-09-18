@@ -54,6 +54,8 @@ A peer that does not implement this profile MUST ignore the cA2A extension field
 
 A callee MUST verify the presented delegation chain before acting: every credential's signature, the continuity of each parent link, and the attenuation rule that a child's scope is a subset of its parent's. A callee MUST reject a chain whose depth exceeds its configured maximum, and MUST reject a credential replayed from a different chain. Verification MUST be possible offline, without contacting the issuer.
 
+> **Revocation is an optional input, not a network dependency.** A verifier can also be given a snapshot of signed revocation statements and will then refuse a chain containing a hop revoked by its issuer or an issuer above it. Consulting a snapshot contacts nobody, so this does not conflict with offline verification. Without one, the reference verifier reports revocation as `not_checked` rather than implying the chain is unrevoked. See [delegation chain](delegation-chain.md#ca2a-delegation-revocation).
+
 ### P-4a Holder binding
 
 A callee MUST NOT act on a delegation chain until the presenter has proved it controls the private key of the leaf credential's `subject`. The callee MUST issue the challenge the proof answers, and MUST reject a proof that does not commit to the callee's own identity, that challenge, the leaf `credential_id` and `subject`, the requested capability, the `record_id`, the `parent_record_hash`, the sealed payload if one is present, and the caller's own offered channel key if one is present. A chain presented without such a proof MUST be refused with `HOLDER_PROOF_INVALID`.

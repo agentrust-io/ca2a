@@ -55,7 +55,7 @@ In PowerShell:
 ca2a verify-chain --chain chain.json --trusted-root-issuer (Get-Content trusted-root.txt -Raw)
 ```
 
-Expect exit 0 and `{"verified": true, "hops": 3, "leaf_scope": ["cap:read"]}`. Substituting `tampered-chain.json` should exit nonzero with `INVALID_CREDENTIAL`.
+Expect exit 0 and `{"verified": true, "hops": 3, "leaf_scope": ["cap:read"], "revocation": "not_checked"}`. Substituting `tampered-chain.json` should exit nonzero with `INVALID_CREDENTIAL`.
 
 ## What this establishes
 

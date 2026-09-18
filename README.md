@@ -98,7 +98,7 @@ ca2a verify-dag --dag examples/rejection-with-proof/dag.json \
 ```json
 {"verified": true, "records": 4, "outcome": "denied",
  "requested_capability": "tool:purchase", "effective_scope": ["tool:search"],
- "cross_checked": true}
+ "cross_checked": true, "revocation": "not_checked"}
 ```
 
 The callee's own policy permits `tool:purchase`. It is refused anyway, because
