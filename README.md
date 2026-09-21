@@ -4,6 +4,8 @@
 
 # cA2A: Confidential Agent-to-Agent
 
+Community updates and contributor highlights: [AgenTrust on LinkedIn](https://www.linkedin.com/company/agentrust-io/).
+
 ### The secure, confidential profile for agent-to-agent (A2A) delegation
 
 <p align="center">
