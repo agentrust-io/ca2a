@@ -44,6 +44,7 @@ def test_committed_dag_verifies(example: str, tmp_path: Path) -> None:
         cli_main(
             [
                 "verify-dag",
+                "--structural-only",
                 "--dag",
                 str(dag_path),
                 "--chain",

@@ -45,10 +45,11 @@ def test_demo_refuses_the_over_scoped_call(demo_run) -> None:
 
 
 def test_demo_denial_verifies_through_the_cli(demo_run) -> None:
-    """The CLI line the README quotes must actually say denied and verified."""
+    """The CLI line the README quotes must report a structurally consistent unsigned denial."""
     line = next(ln for ln in demo_run.stdout.splitlines() if '"outcome": "denied"' in ln)
     payload = json.loads(line.strip())
-    assert payload["verified"] is True
+    assert payload["verified"] is False
+    assert payload["structural_verified"] is True
     assert payload["cross_checked"] is True
     assert payload["requested_capability"] == "tool:purchase"
     assert payload["effective_scope"] == ["tool:search"]

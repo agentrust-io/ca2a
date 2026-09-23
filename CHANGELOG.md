@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Separate authenticated lineage (`verify-lineage`, signed TRACE records plus a
+  trusted credential chain) from unsigned `verify-dag` structural diagnostics
+  (#168). Native DAG success now reports `verified: false` and exits 1 unless
+  `--structural-only` was explicitly requested. See the provenance tutorial for
+  migration and the remaining live-request binding limits.
+
 ### Added
 
 - Add opt-in live response authentication through `require_authenticated_response`.

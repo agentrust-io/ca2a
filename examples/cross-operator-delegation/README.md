@@ -80,9 +80,10 @@ Cross-operator delegation example (offline; synthetic SEV-SNP vectors)
       $ ca2a verify-chain --chain .../chain.json --trusted-root-issuer <root-issuer-hex>
         {"verified": true, "hops": 2, "leaf_scope": ["task:read", "task:write"], "revocation": "not_checked"}
   [11] ca2a verify-chain accepts chain.json: OK
-      $ ca2a verify-dag --dag .../dag.json --chain .../chain.json --trusted-root-issuer <root-issuer-hex>
-        {"verified": true, "records": 2, "leaf_scope": ["task:read", "task:write"], "cross_checked": true, "revocation": "not_checked"}
-  [12] ca2a verify-dag accepts dag.json and cross-checks the chain: OK
+      $ ca2a verify-dag --structural-only --dag .../dag.json --chain .../chain.json --trusted-root-issuer <root-issuer-hex>
+        {"verified": false, "structural_verified": true, "verification": "structural_only",
+ "code": "UNAUTHENTICATED_LINEAGE", "records": 2, "leaf_scope": ["task:read", "task:write"], "cross_checked": true, "revocation": "not_checked"}
+  [12] ca2a verify-dag --structural-only accepts dag.json and cross-checks the chain: OK
 
 KEY RESULT: 12/12 ...
 ```
@@ -97,8 +98,8 @@ cd examples/cross-operator-delegation
 
 ca2a validate-config --config ca2a-config.yaml
 ca2a verify-chain   --chain chain.json --trusted-root-issuer <root-issuer-hex>
-ca2a verify-dag     --dag dag.json                    # DAG links only
-ca2a verify-dag     --dag dag.json --chain chain.json \
+ca2a verify-dag --structural-only     --dag dag.json                    # DAG links only
+ca2a verify-dag --structural-only     --dag dag.json --chain chain.json \
   --trusted-root-issuer <root-issuer-hex> # also bind DAG to the chain
 ```
 

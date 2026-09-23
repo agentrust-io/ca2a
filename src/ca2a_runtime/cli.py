@@ -8,6 +8,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+
 from ca2a_runtime import __version__
 from ca2a_runtime.config import Ca2aConfig
 from ca2a_runtime.delegation import (
@@ -23,7 +25,12 @@ from ca2a_runtime.provenance import (
     cross_check_chain,
     verify_dag,
 )
-from ca2a_verify import load_revocation_snapshot, verify_chain_file
+from ca2a_verify import (
+    cross_check_trace_dag,
+    load_revocation_snapshot,
+    verify_chain_file,
+    verify_trace_dag,
+)
 
 
 def _cmd_validate_config(args: argparse.Namespace) -> int:
@@ -159,7 +166,10 @@ def _cmd_verify_dag(args: argparse.Namespace) -> int:
         return 1
     leaf = records[-1]
     out: dict[str, Any] = {
-        "verified": True,
+        "verified": False,
+        "verification": "structural_only",
+        "structural_verified": True,
+        "code": "UNAUTHENTICATED_LINEAGE",
         "records": len(records),
         "leaf_scope": sorted(leaf.scope),
         # Printed always, including "not_offered". A verifier that only mentioned
@@ -177,6 +187,44 @@ def _cmd_verify_dag(args: argparse.Namespace) -> int:
         out["cross_checked"] = cross_checked
     if revocation is not None:
         out.update(_revocation_fields(revocation))
+    print(json.dumps(out))
+    return 0 if args.structural_only else 1
+
+
+def _cmd_verify_lineage(args: argparse.Namespace) -> int:
+    """Authenticate the submitted signed path against an independently trusted chain."""
+    try:
+        chain = _load_chain(args.chain)
+        revocation = verify_chain(
+            chain,
+            max_depth=args.max_depth,
+            trusted_root_issuers=args.trusted_root_issuer,
+            at_time=args.at_time,
+            revocations=_load_revocations(args),
+            max_revocation_staleness=args.max_revocation_staleness,
+        )
+        records = json.loads(Path(args.dag).read_text(encoding="utf-8"))
+        if isinstance(records, dict):
+            records = records.get("records")
+        if not isinstance(records, list) or not all(isinstance(r, dict) for r in records):
+            raise ProvenanceLinkBroken("signed DAG must be a list of record objects")
+        # Trust delegates only after their chain verifies against the caller's root.
+        keys = [Ed25519PublicKey.from_public_bytes(bytes.fromhex(c.subject)) for c in chain]
+        result = verify_trace_dag(records, trusted_keys=keys, max_age_seconds=args.max_age_seconds)
+        cross_check_trace_dag(records, chain)
+    except CA2AError as exc:
+        print(json.dumps({"verified": False, "code": exc.code, "error": str(exc)}))
+        return 1
+    except (OSError, ValueError, TypeError, KeyError, AttributeError) as exc:
+        print(json.dumps({"verified": False, "code": "MALFORMED_LINEAGE", "error": str(exc)}))
+        return 1
+    out = {
+        "verified": True,
+        "verification": "authenticated_lineage",
+        "records": result.hops,
+        "cross_checked": True,
+        **_revocation_fields(revocation),
+    }
     print(json.dumps(out))
     return 0
 
@@ -287,7 +335,12 @@ def build_parser() -> argparse.ArgumentParser:
     _add_revocation_args(vch)
     vch.set_defaults(func=_cmd_verify_chain)
 
-    vd = sub.add_parser("verify-dag", help="Verify a provenance DAG offline")
+    vd = sub.add_parser("verify-dag", help="Check unsigned DAG structure (not authenticity)")
+    vd.add_argument(
+        "--structural-only",
+        action="store_true",
+        help="Exit 0 on valid structure; verified remains false",
+    )
     vd.add_argument("--dag", required=True)
     vd.add_argument(
         "--chain",
@@ -308,6 +361,26 @@ def build_parser() -> argparse.ArgumentParser:
     )
     _add_revocation_args(vd, note=" (applies with --chain)")
     vd.set_defaults(func=_cmd_verify_dag)
+
+    vl = sub.add_parser("verify-lineage", help="Authenticate a signed TRACE path and its chain")
+    vl.add_argument("--dag", required=True, help="Signed TRACE record list or records wrapper")
+    vl.add_argument("--chain", required=True)
+    vl.add_argument("--trusted-root-issuer", action="append", required=True)
+    vl.add_argument("--max-depth", type=int, default=8)
+    vl.add_argument(
+        "--at-time",
+        type=int,
+        default=None,
+        help="Credential validity/revocation evaluation time; not the TRACE clock",
+    )
+    vl.add_argument(
+        "--max-age-seconds",
+        type=int,
+        default=None,
+        help="TRACE record age bound against the current clock (default: no age bound)",
+    )
+    _add_revocation_args(vl)
+    vl.set_defaults(func=_cmd_verify_lineage)
 
     st = sub.add_parser(
         "start",

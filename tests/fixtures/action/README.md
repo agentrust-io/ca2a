@@ -29,39 +29,27 @@ One directory per case, each holding:
 
 `verdict` is the scenario's ACTION classification (the label from
 `tests/conformance/README.md`), **not** what the offline verifier reports.
-`ca2a verify-dag --chain` observes only two of the three axes:
+`ca2a verify-dag --structural-only --chain` checks credential signatures,
+attenuation, validity and native record consistency. A successful diagnostic has
+`verified: false`, `structural_verified: true` and
+`code: UNAUTHENTICATED_LINEAGE`. It does not authenticate record contents.
+The fixture's scenario classification does not change that result.
 
-- `provenance_status` — `verified`, or a fail-closed reason `code`. Always asserted.
-- `authorization_decision` — only the `denied` case is offline-observable, as the
-  CLI's recorded-denial outcome (`code` holds the denial reason). Asserted for
-  denial bundles.
-
-The CLI never reports an *allowed* action or an *accepted*/*rejected*
-`controller_outcome`; those come from the live authorization and controller
-paths, so the loader test does not assert them and they must be read as scenario
-labels only. `controller_outcome` in particular remains a claimed test input,
-not cryptographically proven evidence — the same limitation stated for the ACTION
-helper in `tests/conformance/README.md`. These bundles do not widen that boundary.
-
-## What these do and do not cover
-
-The offline path covers provenance (chain signatures, attenuation, and validity
-windows), the DAG, the chain↔record cross-check, and any recorded denial
-outcome. It does **not** exercise the holder-proof *authorization-replay* axis:
-that needs live audience / secret / challenge material and is not
-offline-replayable evidence. See the ACTION helper and holder-proof note in
-[`tests/conformance/README.md`](../../conformance/README.md) rather than a
-restatement here.
+Recorded denial fields remain unsigned claims. Neither an allowed action nor a
+controller outcome is established offline. These bundles exercise structural
+checks and credential failures; they are not authenticated-lineage conformance.
+The substitution regression for #168 is an expected refusal in
+`tests/unit/test_lineage_cli.py`, never an accepted authenticated result.
 
 ## Cases
 
-| Bundle | ACTION | Offline verdict |
-|---|---|---|
-| `action-001-verified` | ACTION-001 | `verify-dag` verifies; provenance verified, authorized, accepted. |
-| `action-002-parent-hash-mismatch` | ACTION-002 | Fails closed with `PROVENANCE_LINK_BROKEN`. |
-| `action-006-policy-denial` | ACTION-005/006 | Verifies with a recorded authorization denial (`outcome: denied`). |
-| `action-010-scope-escalation` | ACTION-010 | Fails closed with `SCOPE_ESCALATION`. |
-| `action-012-credential-expired` | ACTION-012 | Fails closed with `CREDENTIAL_EXPIRED` when replayed at `at_time=3000`. |
+| Bundle | Offline diagnostic |
+|---|---|
+| `action-001-verified` | Structure matches; lineage unauthenticated. |
+| `action-002-parent-hash-mismatch` | `PROVENANCE_LINK_BROKEN`. |
+| `action-006-policy-denial` | Structure matches; unsigned denial claim retained. |
+| `action-010-scope-escalation` | `SCOPE_ESCALATION`. |
+| `action-012-credential-expired` | `CREDENTIAL_EXPIRED` at `at_time=3000`. |
 
 ## Regenerating
 

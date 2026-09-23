@@ -93,15 +93,21 @@ DENY   tool:purchase  capability 'tool:purchase' is not in the effective scope
 ```
 
 ```bash
-ca2a verify-dag --dag examples/rejection-with-proof/dag.json \
-                --chain examples/rejection-with-proof/chain.json
+ca2a verify-dag --structural-only --dag examples/rejection-with-proof/dag.json \
+                --chain examples/rejection-with-proof/chain.json \
+                --trusted-root-issuer <independently-trusted-root-issuer-hex>
 ```
 
 ```json
-{"verified": true, "records": 4, "outcome": "denied",
+{"verified": false, "structural_verified": true, "verification": "structural_only",
+ "code": "UNAUTHENTICATED_LINEAGE", "records": 4, "outcome": "denied",
  "requested_capability": "tool:purchase", "effective_scope": ["tool:search"],
  "cross_checked": true, "revocation": "not_checked"}
 ```
+
+This checks the unsigned record's structure and credential references. For
+authenticated lineage, use `ca2a verify-lineage` with signed TRACE records;
+see the [migration guide](docs/tutorials/emit-and-verify-provenance.md#use-signed-evidence-for-authenticity).
 
 The callee's own policy permits `tool:purchase`. It is refused anyway, because
 the delegated scope does not carry it. See
