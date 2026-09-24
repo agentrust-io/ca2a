@@ -67,6 +67,19 @@ This does not change the signed delegation or grant additional runtime authority
 
 ## Use signed evidence for authenticity
 
+The CLI now separates authenticated lineage from structural diagnostics:
+
+```
+ca2a verify-lineage --dag signed-trace-records.json --chain chain.json \
+  --trusted-root-issuer <independently-trusted-root-issuer-hex>
+```
+
+The DAG file contains a list of signed TRACE records or `{"records": [...]}`. Generate it with `ca2a_runtime.trace_binding.emit_dag`; see `examples/trace-dag/`. This command verifies the credential chain first, uses its delegates as trusted record signers, verifies signatures and signed parent links, then cross-checks hop credential IDs and signer keys. Only success on all checks returns `verified: true`, `verification: authenticated_lineage` and exit 0. Revocation is reported separately; absent revocation evidence is `not_checked`. `--at-time` applies to credential validity and revocation; TRACE freshness uses the current clock, optionally bounded by `--max-age-seconds`.
+
+Migration: `ca2a verify-dag` still reads the original unsigned format, but valid structure now returns `verified: false`, `structural_verified: true`, `code: UNAUTHENTICATED_LINEAGE` and exit 1. Add `--structural-only` to obtain exit 0 for a successful diagnostic; it never changes `verified` to true. Structural failures still return exit 1. This is an intentional CLI compatibility change. Existing native records cannot be upgraded by relabeling them: their producers must emit and sign TRACE records. The native Python helpers retain their return types and perform structural checks only.
+
+This authenticates the submitted path's declarations, not the truth of every declaration. It does not establish task completion, a unique or complete history, or that a live request continued this path. The root TRACE record carries no credential ID, so its binding is to the root delegate key rather than a specific grant to that key. These limits and live-request binding remain under #168.
+
 The implemented TRACE binding signs records carrying delegation links. `verify_trace_dag` requires the recipient's trusted signing keys and checks signatures, structure, and parent links. `cross_check_trace_dag` then aligns the DAG with a separately verified chain: path length, non-root credential IDs, and each record's `cnf.jwk` against that hop's credential `subject`. See the [verification library](https://ca2a.agentrust-io.com/docs/spec/verification-library/index.md).
 
 Both path verifiers accept one ordered root-to-leaf sequence, not an arbitrary branching graph. Even signed authorization evidence does not establish task completion or completeness of the submitted history. For runtime checks, see [inbound peer-call decision](https://ca2a.agentrust-io.com/docs/spec/call-graph/index.md).
