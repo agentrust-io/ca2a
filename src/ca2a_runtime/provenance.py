@@ -1,4 +1,8 @@
-"""Delegation provenance: linked records forming a tamper-evident delegation DAG.
+"""Unsigned delegation provenance: structural consistency checks only.
+
+These functions do not authenticate execution lineage. A writer can substitute
+a whole path and recompute its links. Use the signed TRACE path for authenticity
+(see ``ca2a verify-lineage``); see issue #168.
 
 Each delegation hop emits a ``DelegationRecord`` that references its parent
 record by hash and names the credential it acted under. A chain of records is
@@ -161,7 +165,9 @@ def denial_record_for(
 
 
 def verify_dag(records: list[DelegationRecord]) -> list[DelegationRecord]:
-    """Verify a root-to-leaf provenance chain and return it in order.
+    """Check unsigned root-to-leaf structure and return it in order.
+
+    Success is structural consistency, not authenticated provenance.
 
     Raises ProvenanceLinkBroken on the first violation:
 

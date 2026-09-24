@@ -12,7 +12,7 @@ against a bundle the generator just rewrote. Regenerate with
 **What is asserted vs. what is a scenario label.** ``expected.json``'s
 ``verdict`` is the scenario's ACTION three-axis *classification* from
 ``tests/conformance/README.md``, not the offline verifier's output. The offline
-path only observes: ``provenance_status`` (verified vs. a fail-closed code) and,
+path checks structural consistency (never authenticated lineage) and,
 for a recorded denial, ``authorization_decision == "denied"`` (the CLI's denial
 outcome). ``authorization_decision == "allowed"`` and every ``controller_outcome``
 are NOT offline-observable — the CLI never reports an allowed action or an
@@ -61,6 +61,7 @@ def _run_verify_dag(
 
     argv = [
         "verify-dag",
+        "--structural-only",
         "--dag",
         str(dag_path),
         "--chain",
@@ -104,15 +105,16 @@ def test_action_bundle_verifies_as_documented(
         assert out["verified"] is False
         assert out["code"] == expected["code"]
     elif verdict["authorization_decision"] == "denied":
-        # Valid provenance plus a recorded authorization denial: the DAG still
-        # verifies, and the refusal is evidence rather than an absence of it.
+        # A structurally consistent unsigned claim of denial, not an authenticated refusal.
         assert rc == 0, out
-        assert out["verified"] is True
+        assert out["verified"] is False
+        assert out["structural_verified"] is True
         assert out.get("outcome") == "denied"
         assert out.get("denial_reason") == expected["code"]
     else:
         assert rc == 0, out
-        assert out["verified"] is True
+        assert out["verified"] is False
+        assert out["structural_verified"] is True
         assert out.get("outcome") != "denied"
 
 

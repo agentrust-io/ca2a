@@ -181,6 +181,7 @@ def main() -> int:
         ],
         [
             "verify-dag",
+            "--structural-only",
             "--dag",
             str(dag_path),
             "--chain",

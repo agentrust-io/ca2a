@@ -341,6 +341,7 @@ def main() -> int:
             run_cli(
                 [
                     "verify-dag",
+                    "--structural-only",
                     "--dag",
                     str(dag_path),
                     "--chain",
