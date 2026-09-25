@@ -6,7 +6,7 @@ offline, from the committed files, without trusting the operator that produced
 them.
 
 ```bash
-# From repo root with ca2a-runtime 0.2.0+ installed.
+# From repo root with ca2a-runtime 0.3.0+ installed.
 python examples/rejection-with-proof/demo.py
 ```
 

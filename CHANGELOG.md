@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-25
+
 ### Changed
 
 - Separate authenticated lineage (`verify-lineage`, signed TRACE records plus a
@@ -87,6 +89,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   are warnings for deployment policy rather than an implicit trust decision.
   Tests use the real `a2a-sdk` protobuf models and preserve existing card fields
   and unrelated extensions.
+
+### Fixed
+
+- `canonical.py` refuses integers outside the RFC 8785 safe range (magnitude
+  above 2**53 - 1), as it already refused floats (#159). Under the ECMAScript
+  Number conversion RFC 8785 requires, 9007199254740992 and 9007199254740993
+  serialize identically, so emitting them verbatim diverged from a conforming
+  verifier. Matches agent-manifest#404 and trace-spec.
+- Reusing an `a2a-sdk` `Message` across calls no longer carries an earlier
+  task's `sealed_payload`, `caller_offer` or `holder_proof` into the next one
+  (#166, #167). `attach_to_sdk_message` now clears stale optional cA2A keys.
+- The reference wire codec carries hardware attestation evidence, so a live
+  call can present a hardware offer instead of dropping it in transit (#143).
+- `verify_trace_dag` reports a parent link that names a digest it does not
+  compute (such as `sha384:`) as `TRACE_DIGEST_UNSUPPORTED` rather than as
+  `ProvenanceLinkBroken`, which means tampering (#119). Every sha256 chain
+  verifies as before.
+- The inbound peer path verifies the delegation chain once per request instead
+  of twice (#120).
 
 ### Security
 
@@ -370,6 +391,7 @@ built/stubbed boundary.
 - The sealed channel does not by itself establish the enclave-held-private-key property; that is a hardware attestation guarantee that lands with real-hardware validation.
 - Alpha schemas: the delegation credential and TRACE link schemas are not yet stable or versioned, and peer attestation evidence is not yet RATS/EAT conformant.
 
-[Unreleased]: https://github.com/agentrust-io/ca2a/compare/v0.2.0...main
+[Unreleased]: https://github.com/agentrust-io/ca2a/compare/v0.3.0...main
+[0.3.0]: https://github.com/agentrust-io/ca2a/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/agentrust-io/ca2a/compare/v0.1.0a1...v0.2.0
 [0.1.0a1]: https://github.com/agentrust-io/ca2a/releases/tag/v0.1.0a1

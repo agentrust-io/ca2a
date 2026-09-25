@@ -16,7 +16,7 @@ cA2A is a profile on A2A that adds signed attenuated delegation, peer appraisal,
 [What this proves, and what it does not](LIMITATIONS.md){ .md-button }
 
 !!! tip "TL;DR"
-    [ca2a-runtime](https://pypi.org/project/ca2a-runtime/) 0.2.0 (MIT developer preview; the PyPI name `ca2a` belongs to an unrelated project) rejects scope escalation offline with no hardware or running peer. SEV-SNP and TDX appraisal ran on real Azure and GCP evidence, including an Azure SEV-SNP peer calling a GCP TDX peer on 2026-07-27, but peer appraisal is one-directional so far and binding the seal to a verified measurement on a live call is on the roadmap.
+    [ca2a-runtime](https://pypi.org/project/ca2a-runtime/) 0.3.0 (MIT developer preview; the PyPI name `ca2a` belongs to an unrelated project) rejects scope escalation offline with no hardware or running peer. SEV-SNP and TDX appraisal ran on real Azure and GCP evidence, including an Azure SEV-SNP peer calling a GCP TDX peer on 2026-07-27, but peer appraisal is one-directional so far and binding the seal to a verified measurement on a live call is on the roadmap.
 
 <div class="grid cards" markdown>
 
@@ -71,4 +71,4 @@ Software and hardware modes provide different assurance. Peer appraisal has been
 
 For the architecture and trust boundaries, read [How It Works](docs/concepts.md). The normative profile, with the delegation chain, sealed channel, and conformance rules, is in [Profile](docs/spec/profile.md).
 
-**Status:** ca2a-runtime 0.2.0 developer preview · MIT · hosting at the Agentic AI Foundation proposed, not accepted · Sponsored by OPAQUE, which funds the engineering, infrastructure and confidential-computing work behind these projects.
+**Status:** ca2a-runtime 0.3.0 developer preview · MIT · hosting at the Agentic AI Foundation proposed, not accepted · Sponsored by OPAQUE, which funds the engineering, infrastructure and confidential-computing work behind these projects.

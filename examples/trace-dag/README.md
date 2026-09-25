@@ -5,7 +5,7 @@ delegation hop, linked into a verifiable DAG via the A2A profile's `delegation`
 block, then verify the DAG offline.
 
 ```bash
-# From repo root with ca2a-runtime 0.2.0+ installed.
+# From repo root with ca2a-runtime 0.3.0+ installed.
 python examples/trace-dag/demo.py
 ```
 
