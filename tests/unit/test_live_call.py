@@ -413,6 +413,35 @@ def test_invalid_utf8_gets_a_structured_error() -> None:
         srv.server_close()
 
 
+@pytest.mark.parametrize(
+    "raw",
+    [
+        # Nested past the parser's recursion limit: json.loads raises RecursionError.
+        b"[" * 100_000,
+        # Past the integer-digit limit: json.loads raises a plain ValueError.
+        b'{"n": ' + b"1" * 5000 + b"}",
+    ],
+    ids=["deep-nesting", "long-integer"],
+)
+def test_parser_limits_get_a_structured_error(raw: bytes) -> None:
+    """Both bodies fit the size cap, and both used to escape the handler.
+
+    The exception killed the request thread, so the caller saw the connection
+    drop with no response instead of the 400 every other bad body gets.
+    """
+    node = PeerNode(LocalPolicy.of({"read"}))
+    srv = server.serve(node, host="127.0.0.1", port=0)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        url = f"http://127.0.0.1:{srv.server_address[1]}{server.TASK_PATH}"
+        status, body = _post_bytes(url, raw)
+        assert status == 400
+        assert body["error"]["code"] == "BAD_REQUEST"
+    finally:
+        srv.shutdown()
+        srv.server_close()
+
+
 @pytest.mark.parametrize("query", ["", "nonce=", "nonce=a&nonce=b", "nonce=" + "x" * 257])
 def test_handshake_requires_one_bounded_nonce(query: str) -> None:
     node = PeerNode(LocalPolicy.of({"read"}))

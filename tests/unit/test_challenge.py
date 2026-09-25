@@ -106,3 +106,21 @@ def test_a_restarted_peer_invalidates_outstanding_challenges() -> None:
     challenge = issue_challenge(generate_secret())
     with pytest.raises(AttestationFailed):
         verify_challenge(generate_secret(), challenge)
+
+
+@pytest.mark.parametrize(
+    "mac",
+    ["é" * 64, "A" * 64, "0" * 63, "0" * 65, "g" * 64],
+    ids=["non-ascii", "uppercase", "short", "long", "non-hex"],
+)
+def test_a_malformed_mac_is_refused_as_attestation_failure(mac: str) -> None:
+    """The MAC arrives from the caller, inside a holder proof or an offer nonce.
+
+    A non-ASCII MAC used to reach hmac.compare_digest, which raises TypeError on
+    such a str, so the refusal escaped as an unhandled exception rather than as
+    the AttestationFailed every other bad challenge produces.
+    """
+    secret = generate_secret()
+    prefix, expiry, rand, _ = issue_challenge(secret).split(".")
+    with pytest.raises(AttestationFailed, match="malformed"):
+        verify_challenge(secret, f"{prefix}.{expiry}.{rand}.{mac}")

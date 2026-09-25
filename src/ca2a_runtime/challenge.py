@@ -25,6 +25,7 @@ enclave, and a challenge it never issued should not verify.
 from __future__ import annotations
 
 import hmac
+import re
 import secrets
 import time
 from hashlib import sha256
@@ -36,6 +37,7 @@ __all__ = ["DEFAULT_TTL_SECONDS", "generate_secret", "issue_challenge", "verify_
 DEFAULT_TTL_SECONDS = 60
 _PREFIX = "v1"
 _RANDOM_BYTES = 16
+_MAC_RE = re.compile(r"[0-9a-f]{64}")
 
 
 def generate_secret() -> bytes:
@@ -73,6 +75,14 @@ def verify_challenge(secret: bytes, challenge: str, *, now: int | None = None) -
             detail="expected v1.<expiry>.<random>.<mac>",
         )
     _, expiry_str, rand, mac = parts
+    # The MAC is attacker-supplied text. hmac.compare_digest raises TypeError on
+    # a str holding non-ASCII characters, which would escape this function's
+    # AttestationFailed contract, so its shape is checked first.
+    if not _MAC_RE.fullmatch(mac):
+        raise AttestationFailed(
+            "challenge is malformed",
+            detail="the MAC is not 64 lowercase hex characters",
+        )
     try:
         expiry = int(expiry_str)
     except ValueError as exc:

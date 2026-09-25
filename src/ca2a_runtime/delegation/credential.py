@@ -167,6 +167,13 @@ class DelegationCredential:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> DelegationCredential:
+        # A chain document is untrusted JSON. set() over a number or null raises
+        # TypeError, and over a string or list would treat its characters or
+        # items as field names, so anything but an object is refused up front.
+        if not isinstance(data, dict):
+            raise InvalidCredential(
+                "credential must be a JSON object", detail=f"got {type(data).__name__}"
+            )
         unknown = set(data) - _REQUIRED_CREDENTIAL_FIELDS - _OPTIONAL_CREDENTIAL_FIELDS
         missing = _REQUIRED_CREDENTIAL_FIELDS - set(data)
         if unknown or missing:

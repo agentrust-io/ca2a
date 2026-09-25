@@ -123,7 +123,12 @@ class _PeerHandler(BaseHTTPRequestHandler):
         try:
             raw = self.rfile.read(length)
             message = decode(raw) if path == AUTHENTICATED_TASK_PATH else json.loads(raw)
-        except (json.JSONDecodeError, UnicodeDecodeError, TimeoutError, CA2AError):
+        # ValueError covers JSONDecodeError and UnicodeDecodeError, and also the
+        # integer-digit limit json.loads enforces on a long number literal;
+        # RecursionError is deeply nested arrays or objects. Both are reachable
+        # from an unauthenticated body and must be a 400, not a dropped
+        # connection with a traceback.
+        except (ValueError, RecursionError, TimeoutError, CA2AError):
             self._send_json(400, {"error": {"code": "BAD_REQUEST", "message": "invalid JSON"}})
             return
         if not isinstance(message, dict):

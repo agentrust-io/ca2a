@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+import tomllib
 from pathlib import Path
 
 import yaml
@@ -9,12 +11,32 @@ import yaml
 
 def test_runtime_image_is_multistage_non_root_and_offline_installed() -> None:
     dockerfile = Path("Dockerfile").read_text(encoding="utf-8")
-    assert dockerfile.count("FROM python:3.11.15-slim-bookworm") == 2
+    # Both stages pin the base image by digest, not by tag alone.
+    assert dockerfile.count("FROM python:3.11.15-slim-bookworm@sha256:") == 2
     assert "AS builder" in dockerfile
-    assert "pip wheel --wheel-dir /wheels ." in dockerfile
-    assert "pip install --no-index --find-links=/wheels ca2a-runtime" in dockerfile
+    assert "pip install --require-hashes -r requirements/build.txt" in dockerfile
+    assert "pip wheel --no-deps --no-build-isolation --wheel-dir /wheels ." in dockerfile
+    assert "pip install --require-hashes -r /tmp/runtime.txt" in dockerfile
+    assert "pip install --no-deps /wheels/ca2a_runtime-*.whl" in dockerfile
     assert "USER 10001:10001" in dockerfile
     assert 'ENTRYPOINT ["ca2a"]' in dockerfile
+
+
+def test_runtime_lock_mirrors_project_dependencies() -> None:
+    """The image installs requirements/runtime.txt, not pyproject's ranges.
+
+    A dependency added to pyproject.toml but not to the lock would be missing
+    from the image, since the ca2a-runtime wheel goes in with --no-deps.
+    """
+
+    def name(spec: str) -> str:
+        return re.split(r"[<>=!~;\[ ]", spec, maxsplit=1)[0].strip().lower().replace("_", "-")
+
+    project = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))["project"]
+    declared = {name(spec) for spec in project["dependencies"]}
+    lock = Path("requirements/runtime.txt").read_text(encoding="utf-8")
+    locked = {name(line) for line in lock.splitlines() if line and line[0].isalpha()}
+    assert declared <= locked, sorted(declared - locked)
 
 
 def test_container_context_excludes_development_and_vcs_state() -> None:

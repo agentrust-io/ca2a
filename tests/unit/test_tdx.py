@@ -198,3 +198,65 @@ def test_real_tdx_quote_verifies_to_the_intel_root() -> None:
     assert quote.tee_type == 0x81
     assert len(quote.measurement) == 48
     assert quote.measurement != bytes(48)
+
+
+def _truncated_quotes(quote: bytes) -> dict[str, bytes]:
+    signed = 48 + 584
+    sig = quote[signed + 4 :]
+    head = quote[:signed]
+
+    def with_sig(body: bytes) -> bytes:
+        return head + struct.pack("<I", len(body)) + body
+
+    qe = 128 + 6  # quote signature + attestation key, then the type-6 header
+    cert_data = sig[qe:]
+    return {
+        # Signature length declared as zero: the old parser read the type-6
+        # header past the end of the buffer.
+        "empty-signature-section": with_sig(b""),
+        # Declared section ends inside the type-6 header.
+        "cut-in-outer-header": with_sig(sig[: qe - 2]),
+        # Type-6 header claims more certification data than the section holds.
+        "outer-length-overruns": with_sig(sig[: qe - 6] + struct.pack("<HI", 6, 65535) + cert_data),
+        # QE auth length pushes the type-5 header past the certification data.
+        "auth-length-overruns": with_sig(
+            sig[:qe] + cert_data[: 384 + 64] + struct.pack("<H", 0xFFFF) + cert_data[384 + 64 + 2 :]
+        ),
+        # Bytes after the declared section are not read as signature data.
+        "section-shorter-than-content": head + struct.pack("<I", 200) + sig,
+    }
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        "empty-signature-section",
+        "cut-in-outer-header",
+        "outer-length-overruns",
+        "auth-length-overruns",
+        "section-shorter-than-content",
+    ],
+)
+def test_lying_lengths_fail_closed(quote_and_root, case: str) -> None:
+    """Every length in the signature section comes from the unverified quote.
+
+    Before the bounds checks, the first two cases raised struct.error out of
+    TdxQuote.parse, past verify_tdx_quote's "raises AttestationFailed on any
+    failure" contract.
+    """
+    blob = _truncated_quotes(quote_and_root["quote"])[case]
+    with pytest.raises(AttestationFailed, match="truncated"):
+        TdxQuote.parse(blob)
+    with pytest.raises(AttestationFailed):
+        verify_tdx_quote(blob, trusted_roots=[quote_and_root["root"]])
+
+
+def test_trailing_padding_after_the_signature_section_is_ignored(quote_and_root) -> None:
+    """Collected quotes arrive zero-padded; the GCP capture is 8000 bytes for 4935."""
+    padded = quote_and_root["quote"] + bytes(3000)
+    verify_tdx_quote(
+        padded,
+        trusted_roots=[quote_and_root["root"]],
+        expected_mrtd=quote_and_root["mrtd"],
+        expected_report_data=quote_and_root["rd"],
+    )

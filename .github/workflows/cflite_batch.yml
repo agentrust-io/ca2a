@@ -1,0 +1,36 @@
+name: ClusterFuzzLite batch
+
+on:
+  schedule:
+    # 04:40 UTC daily, off the hour and off agent-manifest's 04:20 slot.
+    - cron: '40 4 * * *'
+  workflow_dispatch:
+
+permissions: read-all
+
+concurrency:
+  group: cflite-batch
+  cancel-in-progress: false
+
+jobs:
+  fuzz:
+    name: Batch fuzz
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Build fuzzers
+        uses: google/clusterfuzzlite/actions/build_fuzzers@884713a6c30a92e5e8544c39945cd7cb630abcd1 # v1
+        with:
+          language: python
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          sanitizer: address
+
+      - name: Run fuzzers
+        uses: google/clusterfuzzlite/actions/run_fuzzers@884713a6c30a92e5e8544c39945cd7cb630abcd1 # v1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          # Every target, not just what changed. Thirty minutes of fuzzing
+          # leaves room for the base image build inside the 45 minute timeout.
+          fuzz-seconds: 1800
+          mode: batch
+          sanitizer: address

@@ -1,0 +1,12 @@
+# Runtime dependencies for the container image, mirroring [project.dependencies]
+# in pyproject.toml. The Dockerfile installs this lock with --require-hashes and
+# then adds the locally built ca2a-runtime wheel with --no-deps, so nothing in
+# the image is fetched unpinned. Keep it in step with pyproject.toml. Compile with:
+#   uv pip compile requirements/runtime.in --generate-hashes --universal \
+#     --python-version 3.11 -o requirements/runtime.txt
+cryptography>=50.0
+pyyaml>=6.0
+cedarpy==4.8.7
+agentrust-trace>=0.5
+agent-manifest>=0.11.1
+rfc8785>=0.1

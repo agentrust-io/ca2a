@@ -374,3 +374,14 @@ def test_supported_digest_still_detects_a_broken_link() -> None:
     )
     with pytest.raises(ProvenanceLinkBroken, match="parent link does not match"):
         verify_trace_dag([root, child], trusted_keys=_trusted(keys))
+
+
+@pytest.mark.parametrize("record", [None, 1, "record", ["a"]], ids=["null", "int", "str", "list"])
+def test_non_object_record_is_invalid_not_a_crash(record: object) -> None:
+    """A DAG document is untrusted input; a non-object entry is a malformed record.
+
+    It used to raise AttributeError from ``record.items()``, outside the
+    documented TraceRecordInvalid / ProvenanceLinkBroken contract.
+    """
+    with pytest.raises(TraceRecordInvalid, match="not a JSON object"):
+        verify_trace_dag([record], trusted_keys=[])  # type: ignore[list-item]
