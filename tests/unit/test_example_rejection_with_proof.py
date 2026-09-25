@@ -21,15 +21,24 @@ DEMO = REPO_ROOT / "examples" / "rejection-with-proof" / "demo.py"
 
 @pytest.fixture(scope="module")
 def demo_run(tmp_path_factory) -> subprocess.CompletedProcess[str]:
+    # The demo rewrites chain.json and dag.json beside itself with fresh keys.
+    # Put the committed bytes back as soon as it exits, so the suite leaves the
+    # checkout clean and the committed-artifact test below reads what is
+    # committed rather than whatever this run generated.
+    committed = {p: p.read_bytes() for p in (DEMO.parent / "chain.json", DEMO.parent / "dag.json")}
     env = {**os.environ, "PYTHONPATH": str(REPO_ROOT / "src")}
-    return subprocess.run(  # noqa: S603
-        [sys.executable, str(DEMO)],
-        capture_output=True,
-        text=True,
-        cwd=REPO_ROOT,
-        env=env,
-        check=False,
-    )
+    try:
+        return subprocess.run(  # noqa: S603
+            [sys.executable, str(DEMO)],
+            capture_output=True,
+            text=True,
+            cwd=REPO_ROOT,
+            env=env,
+            check=False,
+        )
+    finally:
+        for path, data in committed.items():
+            path.write_bytes(data)
 
 
 def test_demo_exits_clean(demo_run) -> None:

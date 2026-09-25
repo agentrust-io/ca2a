@@ -21,3 +21,12 @@ updates:
       codeql-action:
         patterns:
           - "github/codeql-action*"
+
+  # Refreshes the digest the Dockerfile pins its base image to. Without this the
+  # pin would hold the image at whatever it was on the day it was written.
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5

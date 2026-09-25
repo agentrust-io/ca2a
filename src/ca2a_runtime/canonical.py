@@ -75,8 +75,15 @@ def _serialize(value: Any) -> str:
     if isinstance(value, list):
         return "[" + ",".join(_serialize(v) for v in value) + "]"
     if isinstance(value, dict):
-        items = sorted(value.items(), key=lambda kv: str(kv[0]).encode("utf-16-be"))
-        return "{" + ",".join(f"{_escape_string(str(k))}:{_serialize(v)}" for k, v in items) + "}"
+        # JSON object keys are strings. Coercing with str() would turn {1: "a",
+        # "1": "b"} into the same key twice, and a parser keeps one of the pair,
+        # so a field the signature covers would vanish on the verifier's side.
+        # The rfc8785 reference implementation refuses non-string keys too.
+        for key in value:
+            if not isinstance(key, str):
+                raise TypeError(f"object keys must be strings, got {type(key).__name__}")
+        items = sorted(value.items(), key=lambda kv: kv[0].encode("utf-16-be"))
+        return "{" + ",".join(f"{_escape_string(k)}:{_serialize(v)}" for k, v in items) + "}"
     raise TypeError(f"unsupported type for canonicalization: {type(value).__name__}")
 
 

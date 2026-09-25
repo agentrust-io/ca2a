@@ -64,3 +64,16 @@ def test_integer_outside_safe_domain_rejected() -> None:
 def test_safe_domain_boundary_accepted() -> None:
     assert canonicalize({"x": 2**53 - 1}) == b'{"x":9007199254740991}'
     assert canonicalize({"x": -(2**53 - 1)}) == b'{"x":-9007199254740991}'
+
+
+def test_non_string_object_keys_rejected() -> None:
+    """JSON object keys are strings; coercing them made one key appear twice.
+
+    ``str(1) == "1"``, so ``{1: "a", "1": "b"}`` used to serialize as
+    ``{"1":"a","1":"b"}``. A parser keeps one of the pair, so a field the
+    signature covered disappeared on the verifier's side. The rfc8785 reference
+    implementation refuses these inputs as well.
+    """
+    for value in ({1: "a", "1": "b"}, {True: 1}, {None: 1}, {"outer": {2: "x"}}):
+        with pytest.raises(TypeError, match="keys must be strings"):
+            canonicalize(value)

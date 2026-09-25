@@ -9,6 +9,8 @@ on:
       - "Dockerfile"
       - ".dockerignore"
       - "pyproject.toml"
+      - "requirements/build.txt"
+      - "requirements/runtime.txt"
       - "src/**"
       - ".github/workflows/docker.yml"
 

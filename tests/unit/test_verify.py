@@ -65,6 +65,19 @@ def test_verify_chain_file_wrong_shape(tmp_path: Path) -> None:
         verify_chain_file(p, trusted_root_issuers=set())
 
 
+@pytest.mark.parametrize("hop", [None, 1, True, 1.5, "cred", ["credential_id"]])
+def test_verify_chain_file_non_object_hop(tmp_path: Path, hop: object) -> None:
+    """A hop that is not a JSON object is a malformed credential.
+
+    null, numbers and booleans used to raise TypeError out of from_dict, and
+    the verify-chain CLI, which catches CA2AError, printed a traceback.
+    """
+    p = tmp_path / "chain.json"
+    p.write_text(json.dumps([hop]))
+    with pytest.raises(InvalidCredential, match="must be a JSON object"):
+        verify_chain_file(p, trusted_root_issuers=set())
+
+
 def test_offline_verifier_rejects_self_consistent_untrusted_chain(
     valid_chain: list[DelegationCredential],
 ) -> None:

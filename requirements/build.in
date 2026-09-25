@@ -1,0 +1,6 @@
+# Build backend for the container image's builder stage. The wheel is built with
+# --no-build-isolation so pip does not fetch hatchling unpinned into a throwaway
+# environment. Compile with:
+#   uv pip compile requirements/build.in --generate-hashes --universal \
+#     --python-version 3.11 -o requirements/build.txt
+hatchling

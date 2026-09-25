@@ -157,6 +157,10 @@ def verify_trace_dag(
     subjects: list[str] = []
 
     for i, record in enumerate(records):
+        if not isinstance(record, dict):
+            raise TraceRecordInvalid(
+                f"record {i} is not a JSON object", detail=f"got {type(record).__name__}"
+            )
         # Validate the base record with agentrust-trace, and the A2A profile's
         # delegation block here (see the module docstring): the base schema is
         # version-stable, the profile extension is cA2A's own.

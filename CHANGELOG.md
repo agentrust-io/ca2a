@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Malformed input from outside now fails with the documented error instead of
+  escaping as a Python exception. `TdxQuote.parse` confines reads to the declared
+  signature section and checks each nested length (it raised `struct.error` on a
+  short section); `verify_challenge` refuses a MAC that is not 64 lowercase hex
+  (a non-ASCII one raised `TypeError`); `DelegationCredential.from_dict` and
+  `verify_trace_dag` refuse entries that are not objects; the reference server
+  answers 400 to bodies that hit the JSON parser's nesting or integer-digit
+  limits instead of dropping the connection.
+- `canonicalize` refuses non-string object keys. It coerced them with `str()`, so
+  `{1: "a", "1": "b"}` serialized one key twice.
+- The container image installs its dependencies from hash-pinned locks
+  (`requirements/runtime.txt`, `requirements/build.txt`) and pins the base image
+  by digest. ClusterFuzzLite targets cover the wire documents, the attestation
+  parsers and the canonicalizer.
+
 ## [0.3.0] - 2026-09-25
 
 ### Changed
