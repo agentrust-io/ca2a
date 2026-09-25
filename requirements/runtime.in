@@ -6,7 +6,7 @@
 #     --python-version 3.11 -o requirements/runtime.txt
 cryptography>=50.0
 pyyaml>=6.0
-cedarpy==4.8.7
+cedarpy==4.12.0
 agentrust-trace>=0.5
 agent-manifest>=0.11.1
 rfc8785>=0.1
