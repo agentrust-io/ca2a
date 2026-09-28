@@ -21,7 +21,7 @@ types-pyyaml
 bandit[toml]>=1.7
 pip-audit>=2.6
 agentrust-trace-tests>=0.4,<0.6
-a2a-sdk[http-server]==1.1.4
+a2a-sdk[http-server]==1.1.5
 uvicorn==0.53.0
 aiohttp>=3.14.3
 setuptools>=83.0.0
