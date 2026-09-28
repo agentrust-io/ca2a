@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-09-26
+
 ### Fixed
 
 - Malformed input from outside now fails with the documented error instead of
@@ -16,13 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (a non-ASCII one raised `TypeError`); `DelegationCredential.from_dict` and
   `verify_trace_dag` refuse entries that are not objects; the reference server
   answers 400 to bodies that hit the JSON parser's nesting or integer-digit
-  limits instead of dropping the connection.
+  limits instead of dropping the connection (#202).
 - `canonicalize` refuses non-string object keys. It coerced them with `str()`, so
-  `{1: "a", "1": "b"}` serialized one key twice.
+  `{1: "a", "1": "b"}` serialized one key twice (#202).
 - The container image installs its dependencies from hash-pinned locks
   (`requirements/runtime.txt`, `requirements/build.txt`) and pins the base image
   by digest. ClusterFuzzLite targets cover the wire documents, the attestation
-  parsers and the canonicalizer.
+  parsers and the canonicalizer (#202).
 
 ## [0.3.0] - 2026-09-25
 
@@ -408,7 +410,8 @@ built/stubbed boundary.
 - The sealed channel does not by itself establish the enclave-held-private-key property; that is a hardware attestation guarantee that lands with real-hardware validation.
 - Alpha schemas: the delegation credential and TRACE link schemas are not yet stable or versioned, and peer attestation evidence is not yet RATS/EAT conformant.
 
-[Unreleased]: https://github.com/agentrust-io/ca2a/compare/v0.3.0...main
+[Unreleased]: https://github.com/agentrust-io/ca2a/compare/v0.3.1...main
+[0.3.1]: https://github.com/agentrust-io/ca2a/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/agentrust-io/ca2a/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/agentrust-io/ca2a/compare/v0.1.0a1...v0.2.0
 [0.1.0a1]: https://github.com/agentrust-io/ca2a/releases/tag/v0.1.0a1
