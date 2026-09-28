@@ -12,7 +12,7 @@ import yaml
 def test_runtime_image_is_multistage_non_root_and_offline_installed() -> None:
     dockerfile = Path("Dockerfile").read_text(encoding="utf-8")
     # Both stages pin the base image by digest, not by tag alone.
-    assert dockerfile.count("FROM python:3.11.15-slim-bookworm@sha256:") == 2
+    assert dockerfile.count("FROM python:3.11.16-slim-bookworm@sha256:") == 2
     assert "AS builder" in dockerfile
     assert "pip install --require-hashes -r requirements/build.txt" in dockerfile
     assert "pip wheel --no-deps --no-build-isolation --wheel-dir /wheels ." in dockerfile
