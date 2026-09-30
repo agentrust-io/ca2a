@@ -15,6 +15,7 @@ import time
 
 import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 
 from ca2a_runtime import challenge as challenge_mod
 from ca2a_runtime import peer as peer_mod
@@ -37,10 +38,10 @@ from ca2a_runtime.provenance import (
     CALLER_NOT_OFFERED,
     CALLER_SOFTWARE_ONLY,
 )
-from ca2a_runtime.tee.base import AttestationReport
 from ca2a_runtime.tee.software import SoftwareProvider
 from ca2a_runtime.transport import a2a_adapter, client, server, wire
 from ca2a_runtime.transport.constants import KEY_CALLER_OFFER
+from tests.unit.conftest import TEST_CALLEE_KEY, TEST_CALLEE_PUB, caller_offer, with_possession
 
 POLICY = LocalPolicy.of({"read"})
 
@@ -79,6 +80,7 @@ def handle_peer_request(request, **kwargs):
     holder-proof failure and mask the appraisal outcome each test asserts.
     """
     kwargs.setdefault("require_holder_proof", False)
+    kwargs.setdefault("enclave_private_key", TEST_CALLEE_KEY)
     return _handle_peer_request(request, trusted_root_issuers={request.chain[0].issuer}, **kwargs)
 
 
@@ -86,18 +88,16 @@ def PeerNode(policy, **kwargs):
     return _PeerNode(policy, trusted_root_issuers={_CHAIN[0].issuer}, **kwargs)
 
 
+#: The private half of every caller offer minted here, so a request can carry
+#: the caller's proof of possession for it.
+_CALLER_KEYS: dict[str, X25519PrivateKey] = {}
+
+
 def _caller_offer(challenge: str, *, platform: str = "software-only") -> ChannelOffer:
-    """A caller's own attested channel key, bound to ``challenge``."""
-    public_key = SoftwareProvider().attest("x", "y").public_key  # a well-formed key string
-    return ChannelOffer(
-        channel_public_key=public_key,
-        report=AttestationReport(
-            platform=platform,
-            measurement="caller-measurement",
-            public_key=public_key,
-            nonce=challenge,
-        ),
-    )
+    """A caller's own attested channel key, bound to ``challenge`` in the caller role."""
+    key, offer = caller_offer(challenge, platform=platform)
+    _CALLER_KEYS[offer.channel_public_key] = key
+    return offer
 
 
 def _request(
@@ -126,7 +126,7 @@ def _request(
             sealed_payload=sealed,
             caller_channel_key=(None if caller_offer is None else caller_offer.channel_public_key),
         )
-    return PeerRequest(
+    request = PeerRequest(
         chain=_chain(),
         requested_capability=capability,
         record_id="r0",
@@ -134,6 +134,10 @@ def _request(
         caller_offer=caller_offer,
         holder_proof=holder_proof,
     )
+    if caller_offer is not None and caller_offer.channel_public_key in _CALLER_KEYS:
+        callee = TEST_CALLEE_PUB if node is None else node.channel_public_key
+        request = with_possession(request, _CALLER_KEYS[caller_offer.channel_public_key], callee)
+    return request
 
 
 # --------------------------------------------------------------------------
@@ -188,7 +192,7 @@ def test_sealed_payload_is_never_opened_when_appraisal_refuses(
         handle_peer_request(
             _request(sealed=b"ciphertext", caller_offer=offer),
             policy=POLICY,
-            enclave_private_key=object(),  # never reached, so never used
+            enclave_private_key=TEST_CALLEE_KEY,  # open_sealed is the spy
             challenge_secret=secret,
             require_caller_attestation=requirement,
             caller_verifier=lambda report, nonce: "m",
@@ -211,7 +215,6 @@ def test_payload_is_opened_once_the_caller_does_appraise(
             caller_offer=_caller_offer(challenge_mod.issue_challenge(secret)),
         ),
         policy=POLICY,
-        enclave_private_key=object(),
         challenge_secret=secret,
         require_caller_attestation=REQUIRE_ANY,
     )
@@ -580,5 +583,6 @@ def test_hardware_floor_accepts_appraised_hardware_offer() -> None:
         expected_nonce="fresh",
         verifier=lambda report, nonce: "verified",
         require_hardware=True,
+        role=offer.report.role,
     )
     assert peer.assurance == "hardware"

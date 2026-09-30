@@ -19,6 +19,7 @@ import time
 
 import pytest
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 
 from ca2a_runtime import challenge as challenge_mod
 from ca2a_runtime.attestation import ChannelOffer
@@ -31,14 +32,16 @@ from ca2a_runtime.node import PeerNode
 from ca2a_runtime.peer import REQUIRE_ANY, PeerRequest
 from ca2a_runtime.peer import handle_peer_request as _handle_peer_request
 from ca2a_runtime.policy import LocalPolicy
-from ca2a_runtime.tee.base import AttestationReport
-from ca2a_runtime.tee.software import SoftwareProvider
 from ca2a_runtime.transport import a2a_adapter, client, server
 from tests.unit.conftest import (
     TEST_AUDIENCE,
+    TEST_CALLEE_KEY,
+    TEST_CALLEE_PUB,
     TEST_SECRET,
     build_chain_with_keys,
+    caller_offer,
     proved_request,
+    with_possession,
 )
 
 POLICY = LocalPolicy.of(["read", "write"])
@@ -66,15 +69,14 @@ def _handle(req, **kwargs):
     )
 
 
+_CALLER_KEYS: dict[str, X25519PrivateKey] = {}
+
+
 def _offer(challenge: str, *, platform: str = "software-only") -> ChannelOffer:
-    """A caller's own attested channel key, bound to ``challenge``."""
-    key = SoftwareProvider().attest("x", "y").public_key
-    return ChannelOffer(
-        channel_public_key=key,
-        report=AttestationReport(
-            platform=platform, measurement="caller-measurement", public_key=key, nonce=challenge
-        ),
-    )
+    """A caller's own attested channel key, bound to ``challenge`` in the caller role."""
+    key, offer = caller_offer(challenge, platform=platform)
+    _CALLER_KEYS[offer.channel_public_key] = key
+    return offer
 
 
 # --------------------------------------------------------------------------
@@ -190,7 +192,10 @@ def test_holder_binding_and_attestation_compose() -> None:
     challenge = challenge_mod.issue_challenge(TEST_SECRET)
     offer = _offer(challenge)
     req = proved_request(chain, keys[-1], "write", "r0", caller_offer=offer, challenge=challenge)
-    result = _handle(req, require_caller_attestation=REQUIRE_ANY)
+    req = with_possession(req, _CALLER_KEYS[offer.channel_public_key], TEST_CALLEE_PUB)
+    result = _handle(
+        req, require_caller_attestation=REQUIRE_ANY, enclave_private_key=TEST_CALLEE_KEY
+    )
     assert result.granted_capability == "write"
     assert result.caller_attestation == "software-only"
 

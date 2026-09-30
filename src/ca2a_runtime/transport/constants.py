@@ -28,6 +28,11 @@ KEY_CALLER_OFFER = f"{EXTENSION_URI}/caller_offer"
 #: caller that cannot sign for the key it was delegated is not the delegate.
 KEY_HOLDER_PROOF = f"{EXTENSION_URI}/holder_proof"
 
+#: The caller's proof that it holds the private half of ``caller_offer``'s
+#: channel key (``ca2a-caller-offer-v2``): ``{"version", "mac"}``. Required with
+#: every ``caller_offer``; an offer without it is a pre-v2 offer and is refused.
+KEY_CALLER_POSSESSION = f"{EXTENSION_URI}/caller_possession"
+
 CA2A_METADATA_KEYS = frozenset(
     {
         KEY_DELEGATION_CHAIN,
@@ -37,5 +42,6 @@ CA2A_METADATA_KEYS = frozenset(
         KEY_SEALED_PAYLOAD,
         KEY_CALLER_OFFER,
         KEY_HOLDER_PROOF,
+        KEY_CALLER_POSSESSION,
     }
 )

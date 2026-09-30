@@ -71,6 +71,43 @@ property. An earlier draft of this document claimed the key would be ceremonial
 unless the response were sealed to it; see the withdrawn decision below for why
 that was wrong in this protocol.
 
+**The caller must prove it holds that key (`ca2a-caller-offer-v2`).** An
+appraised offer shows that *some* enclave holds the offered key, not that the
+party presenting it is that enclave. Before v2 nothing joined the two: the handshake
+endpoint attests its node's key under any nonce anybody sends, and callee and
+caller offers were signed over the same binding, so a delegate with no enclave
+could take challenge C from target T, fetch honest hardware peer V's
+`/channel?nonce=C` offer, present it as its own, and be recorded as
+`caller_attestation="hardware"`. Two changes close that, each sufficient against
+that relay on its own:
+
+- *Role separation.* Every offer is minted for a role, carried as
+  `attestation.role` and folded into the signed binding prefix
+  ([attestation.md](attestation.md#the-signed-key-and-nonce-binding)). The handshake
+  endpoint only ever mints `callee` offers; a callee accepts only `caller` offers
+  as `caller_offer`, and a caller accepts only `callee` offers from a handshake. A
+  node mints a caller offer only for its own outbound call.
+- *Proof of possession.* With every `caller_offer` the caller sends
+  `caller_possession = {"version": "ca2a-caller-offer-v2", "mac": <hex>}`. The
+  MAC is HMAC-SHA256 over the JCS-canonical transcript (version, challenge, callee
+  channel key, caller channel key, `credential_id`, `subject`,
+  `requested_capability`, `record_id`, `payload_sha256`, `parent_record_hash`, the
+  holder proof's signature), keyed by HKDF-SHA256 (info
+  `ca2a/caller-possession/v2/key`) over caller key, callee key and
+  X25519(caller channel private key, callee channel public key). The callee
+  recomputes it with its own channel private key and the key the caller's report
+  attests, and compares in constant time. A relayed offer, even a genuine
+  caller-role one, fails because the presenter lacks that private key; a captured
+  offer and proof fail on any other request or callee because the transcript and
+  the key differ.
+
+A missing, malformed, wrong-version or non-verifying proof is refused whenever a
+`caller_offer` is present, at every rung including `"none"`, with the denial
+record stating `failed`. This is a breaking change for callers that send
+`caller_offer`: a pre-v2 offer has no `role` and no `caller_possession`, parses as
+a callee offer, and is refused with an error naming `ca2a-caller-offer-v2`. Callers
+that send no offer, and handshake responses, are unchanged on the wire.
+
 ## Decisions taken 2026-08-09
 
 1. **Stateless HMAC challenge** (option B below). Works across instances with no
@@ -181,9 +218,11 @@ The same rung is reachable from a config file. `ca2a start` reads
 |---|---|
 | Stateless challenge (`v1.<expiry>.<random>.<mac>`) | `ca2a_runtime.challenge` |
 | Callee-side appraisal, challenge then offer | `attestation.appraise_caller` |
+| Role-separated binding prefixes | `tee.binding.role_prefix` |
+| Caller proof of possession | `attestation.prove_caller_possession`, `attestation.verify_caller_possession` |
 | Requirement ladder and the refusal records | `peer.appraise_caller_runtime` |
 | Ordering: appraise before `open_sealed` | `peer.handle_peer_request` |
-| `caller_offer` on the wire | `transport.constants`, `transport.a2a_adapter` |
+| `caller_offer` and `caller_possession` on the wire | `transport.constants`, `transport.a2a_adapter` |
 | Challenge on the handshake response | `transport.server`, `transport.wire` |
 | Caller-side opt-in | `transport.client.send_task(caller_provider=...)` |
 

@@ -53,6 +53,7 @@ from ca2a_runtime.policy import LocalPolicy  # noqa: E402
 from ca2a_runtime.tee.base import AttestationReport  # noqa: E402
 from ca2a_runtime.transport import a2a_sdk  # noqa: E402
 from ca2a_runtime.transport.constants import EXTENSION_URI  # noqa: E402
+from tests.unit.conftest import caller_offer, with_possession  # noqa: E402
 
 
 def _chain_with_keys(hops: int = 1) -> tuple[list[DelegationCredential], Ed25519PrivateKey]:
@@ -566,18 +567,12 @@ def test_mutual_attestation_works_over_the_sdk_bridge() -> None:
         trusted_root_issuers={chain[0].issuer},
     )
     challenge = node.issue_challenge()
-    offer = ChannelOffer(
-        channel_public_key="k" * 43,
-        report=AttestationReport(
-            platform="software-only",
-            measurement="caller",
-            public_key="k" * 43,
-            nonce=challenge,
-        ),
-    )
-    message = a2a_sdk.attach_to_sdk_message(
-        Message(message_id="m1"),
+    caller_key, offer = caller_offer(challenge, measurement="caller")
+    request = with_possession(
         _request(caller_offer=offer, node=node, chain=chain, leaf_key=leaf_key),
+        caller_key,
+        node.channel_public_key,
     )
+    message = a2a_sdk.attach_to_sdk_message(Message(message_id="m1"), request)
     result = node.handle({"metadata": a2a_sdk.metadata_from_sdk_message(message)})
     assert result.caller_attestation == "software-only"

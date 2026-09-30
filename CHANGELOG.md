@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- A delegate with no enclave could be recorded as `caller_attestation="hardware"`
+  by relaying an honest hardware peer's attestation: it asked that peer's public
+  `/.well-known/ca2a/channel` endpoint to attest under the target's challenge and
+  presented the result as its `caller_offer`. Caller offers are now minted in a
+  separate role, signed under their own binding prefixes (`ca2a-*-caller-v2|`),
+  and the handshake endpoint only mints callee-role offers. The caller must also
+  send `caller_possession`, a MAC over the request transcript keyed from X25519
+  between its attested channel key and the callee's, which the callee verifies
+  before recording any outcome.
+
+### Changed
+
+- **Breaking for callers that send `caller_offer`** (`ca2a-caller-offer-v2`). A
+  pre-v2 caller offer has no `role` and no `caller_possession` and is refused with
+  `ATTESTATION_FAILED`. Callers that send no offer, and the handshake response,
+  are unchanged on the wire. `BaseProvider.attest` and the binding helpers
+  (`tpm_qualifying_data`, `snp_report_data`, `tdx_report_data`) take a keyword
+  `role`, defaulting to the callee role; a custom `Verifier` must derive the
+  binding under `report.role`.
+
 ## [0.3.1] - 2026-09-26
 
 ### Fixed
