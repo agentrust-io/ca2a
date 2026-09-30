@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-30
+
 ### Security
 
 - A delegate with no enclave could be recorded as `caller_attestation="hardware"`
@@ -432,7 +434,8 @@ built/stubbed boundary.
 - The sealed channel does not by itself establish the enclave-held-private-key property; that is a hardware attestation guarantee that lands with real-hardware validation.
 - Alpha schemas: the delegation credential and TRACE link schemas are not yet stable or versioned, and peer attestation evidence is not yet RATS/EAT conformant.
 
-[Unreleased]: https://github.com/agentrust-io/ca2a/compare/v0.3.1...main
+[Unreleased]: https://github.com/agentrust-io/ca2a/compare/v0.4.0...main
+[0.4.0]: https://github.com/agentrust-io/ca2a/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/agentrust-io/ca2a/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/agentrust-io/ca2a/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/agentrust-io/ca2a/compare/v0.1.0a1...v0.2.0
