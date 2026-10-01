@@ -42,7 +42,7 @@ from typing import Any
 
 from ca2a_runtime.errors import AttestationFailed, AttestationUnsupported
 from ca2a_runtime.tee.base import AttestationReport, BaseProvider
-from ca2a_runtime.tee.binding import TPM_PREFIX, derive_binding
+from ca2a_runtime.tee.binding import ROLE_CALLEE, TPM_PREFIX, derive_binding, role_prefix
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +82,7 @@ _AIA_MAX_DEPTH = 4
 _AIA_CA_ISSUERS_OID = "1.3.6.1.5.5.7.48.2"
 
 
-def tpm_qualifying_data(public_key: str, nonce: str) -> bytes:
+def tpm_qualifying_data(public_key: str, nonce: str, *, role: str = ROLE_CALLEE) -> bytes:
     """Return the 32 bytes a cA2A TPM quote commits in ``extraData``.
 
     Binds the channel public key and the nonce together, so one signature covers
@@ -95,7 +95,7 @@ def tpm_qualifying_data(public_key: str, nonce: str) -> bytes:
     The derivation itself is :func:`ca2a_runtime.tee.binding.derive_binding`,
     shared with the SEV-SNP and TDX bindings so the three cannot drift apart.
     """
-    return derive_binding(_QUALIFYING_DATA_PREFIX, public_key, nonce)
+    return derive_binding(role_prefix(_QUALIFYING_DATA_PREFIX, role), public_key, nonce)
 
 
 def _read_u16(buf: bytes, pos: int) -> tuple[int, int]:
@@ -178,7 +178,7 @@ class TpmProvider(BaseProvider):
             return False
         return _tpm2_pytss_available()
 
-    def attest(self, public_key: str, nonce: str) -> AttestationReport:
+    def attest(self, public_key: str, nonce: str, *, role: str = ROLE_CALLEE) -> AttestationReport:
         """Quote PCRs 0-7, committing ``public_key`` and ``nonce`` in extraData.
 
         Raises :class:`AttestationUnsupported` when this host cannot produce a
@@ -186,7 +186,7 @@ class TpmProvider(BaseProvider):
         did not yield verifiable evidence.
         """
         self._require_host()
-        return self._collect(public_key, nonce)
+        return self._collect(public_key, nonce, role=role)
 
     # ── host preconditions ────────────────────────────────────────────────────
 
@@ -217,11 +217,13 @@ class TpmProvider(BaseProvider):
 
     # ── collection ────────────────────────────────────────────────────────────
 
-    def _collect(self, public_key: str, nonce: str) -> AttestationReport:
+    def _collect(
+        self, public_key: str, nonce: str, *, role: str = ROLE_CALLEE
+    ) -> AttestationReport:
         from tpm2_pytss.ESAPI import ESAPI
         from tpm2_pytss.types import TPM2B_DATA, TPML_PCR_SELECTION
 
-        qualifying_data = tpm_qualifying_data(public_key, nonce)
+        qualifying_data = tpm_qualifying_data(public_key, nonce, role=role)
 
         with ESAPI() as ectx:
             pcr_digest_local = self._read_pcrs(ectx, TPML_PCR_SELECTION)
@@ -273,6 +275,7 @@ class TpmProvider(BaseProvider):
             quote_signature=signature_blob,
             attestation_key_pem=ak_pem,
             attestation_key_chain_pem=chain_pem,
+            role=role,
         )
 
     @staticmethod

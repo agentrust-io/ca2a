@@ -9,7 +9,8 @@ When a peer presents a delegation chain and requests a capability, the callee:
 3. computes the effective scope as the leaf's delegated scope intersected with
    the callee's local policy;
 4. appraises what the caller is *running*, if it offered an attestation bound to
-   a challenge this callee issued (see ``docs/spec/mutual-attestation.md``);
+   a challenge this callee issued, and requires the caller to prove it holds the
+   attested channel key (see ``docs/spec/mutual-attestation.md``);
 5. enforces: the requested capability must be in the effective scope;
 6. emits a provenance record for the accepted hop, linked to its parent.
 
@@ -41,7 +42,14 @@ from dataclasses import dataclass
 
 from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 
-from ca2a_runtime.attestation import ChannelOffer, Verifier, appraise_caller
+from ca2a_runtime.attestation import (
+    CallerPossession,
+    ChannelOffer,
+    Verifier,
+    appraise_caller,
+    caller_possession_transcript,
+    verify_caller_possession,
+)
 from ca2a_runtime.channel import open_sealed
 from ca2a_runtime.delegation.credential import DelegationCredential, verify_chain
 from ca2a_runtime.delegation.holder import HolderProof, verify_holder_proof
@@ -239,6 +247,11 @@ class PeerRequest:
     challenge this callee issued. Required by default, unlike ``caller_offer``:
     attesting a runtime is a capability not every caller has, but holding the key
     you were delegated is not optional -- it is what being the delegate means."""
+    caller_possession: CallerPossession | None = None
+    """The caller's proof that it holds the private half of ``caller_offer``'s
+    channel key, over this request's transcript. Required whenever
+    ``caller_offer`` is present: an offer alone shows some enclave holds the key,
+    not that the presenter is that enclave."""
 
 
 @dataclass(frozen=True)
@@ -265,8 +278,13 @@ def appraise_caller_runtime(
     requirement: str = REQUIRE_NONE,
     challenge_secret: bytes | None = None,
     caller_verifier: Verifier | None = None,
+    callee_private_key: X25519PrivateKey | None = None,
 ) -> str:
     """Appraise the caller's offer and return the recorded outcome, or refuse.
+
+    ``callee_private_key`` is this callee's channel private key, the other half
+    of the key the caller's proof of possession is derived from. Without it no
+    offer can be accepted, so a present offer is refused rather than recorded.
 
     Returns one of the ``CALLER_*`` values. Raises :class:`AttestationFailed`,
     carrying a linked denial record, when the caller does not meet
@@ -296,6 +314,14 @@ def appraise_caller_runtime(
         )
 
     if request.caller_offer is None:
+        if request.caller_possession is not None:
+            # A proof of possession for no offer is not something a conforming
+            # caller sends. Refused, so a malformed request is never read as an
+            # unattested one.
+            raise refuse(
+                "a caller proof of possession was sent without a caller offer",
+                outcome=CALLER_FAILED,
+            )
         if requirement == REQUIRE_NONE:
             return CALLER_NOT_OFFERED
         raise refuse(
@@ -324,6 +350,42 @@ def appraise_caller_runtime(
     except AttestationFailed as exc:
         raise refuse(
             f"the caller's attestation did not appraise: {exc}",
+            outcome=CALLER_FAILED,
+            detail=exc.detail,
+        ) from exc
+
+    # The offer says an enclave with this measurement holds the key. The proof
+    # of possession says the party presenting the offer is that enclave: without
+    # it, anyone could relay an honest peer's offer and be recorded as hardware.
+    if callee_private_key is None:
+        raise refuse(
+            "the caller offered an attestation but this callee has no channel key "
+            "to check its proof of possession against",
+            outcome=CALLER_FAILED,
+        )
+    offer = request.caller_offer
+    try:
+        verify_caller_possession(
+            request.caller_possession,
+            callee_private_key=callee_private_key,
+            transcript=caller_possession_transcript(
+                challenge=offer.report.nonce,
+                callee_channel_key=callee_private_key.public_key().public_bytes_raw().hex(),
+                caller_channel_key=offer.report.public_key,
+                credential_id=request.chain[-1].credential_id,
+                subject=request.chain[-1].subject,
+                requested_capability=request.requested_capability,
+                record_id=request.record_id,
+                sealed_payload=request.sealed_payload,
+                parent_record_hash=request.parent_record_hash,
+                holder_proof_signature=(
+                    None if request.holder_proof is None else request.holder_proof.signature
+                ),
+            ),
+        )
+    except AttestationFailed as exc:
+        raise refuse(
+            f"the caller's proof of possession did not verify: {exc}",
             outcome=CALLER_FAILED,
             detail=exc.detail,
         ) from exc
@@ -467,6 +529,7 @@ def handle_peer_request(
         requirement=require_caller_attestation,
         challenge_secret=challenge_secret,
         caller_verifier=caller_verifier,
+        callee_private_key=enclave_private_key,
     )
 
     decision = decide_capability(

@@ -15,6 +15,7 @@ no-guarantee posture is always a deliberate, explicit choice (config provider
 from __future__ import annotations
 
 from ca2a_runtime.tee.base import AttestationReport, BaseProvider
+from ca2a_runtime.tee.binding import ROLE_CALLEE
 
 SOFTWARE_MEASUREMENT = "software-only-no-hardware-guarantee"
 
@@ -29,10 +30,13 @@ class SoftwareProvider(BaseProvider):
         # Never auto-selected: a no-guarantee posture must be chosen explicitly.
         return False
 
-    def attest(self, public_key: str, nonce: str) -> AttestationReport:
+    def attest(self, public_key: str, nonce: str, *, role: str = ROLE_CALLEE) -> AttestationReport:
+        # Nothing signs the role here, as nothing signs anything: a software
+        # report is an assertion, appraised at assurance "none".
         return AttestationReport(
             platform=self.platform,
             measurement=SOFTWARE_MEASUREMENT,
             public_key=public_key,
             nonce=nonce,
+            role=role,
         )

@@ -29,6 +29,7 @@ from ca2a_runtime.node import PeerNode
 from ca2a_runtime.peer import PeerResult
 from ca2a_runtime.policy import LocalPolicy
 from ca2a_runtime.tee.base import AttestationReport, BaseProvider
+from ca2a_runtime.tee.binding import ROLE_CALLEE
 from ca2a_runtime.tee.sev_snp import SevSnpProvider
 from ca2a_runtime.transport import client, server
 from ca2a_verify.sev_snp import sev_snp_verifier
@@ -87,9 +88,13 @@ class ObservedSnpProvider(SevSnpProvider):
         self.inner = inner
         self.log = log
 
-    def attest(self, public_key: str, nonce: str) -> AttestationReport:
+    def attest(self, public_key: str, nonce: str, *, role: str = ROLE_CALLEE) -> AttestationReport:
         with self.log.span("local_quote_collection", nonce_sha256=_nonce_hash(nonce)):
-            return self.inner.attest(public_key, nonce)
+            # Forward the role only when it is not the default, so an inner provider
+            # written against the pre-role interface still serves handshakes.
+            if role == ROLE_CALLEE:
+                return self.inner.attest(public_key, nonce)
+            return self.inner.attest(public_key, nonce, role=role)
 
 
 def _nonce_hash(nonce: str) -> str:

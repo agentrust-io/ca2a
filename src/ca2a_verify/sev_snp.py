@@ -168,7 +168,8 @@ def sev_snp_verifier(
             chain,
             trusted_roots=roots,
             expected_measurement=expected_measurement,
-            expected_report_data=snp_report_data(report.public_key, nonce),
+            # role selects the binding prefix, so relabelling an offer's role fails.
+            expected_report_data=snp_report_data(report.public_key, nonce, role=report.role),
             require_platform=required,
             forbid_platform=forbidden,
             reject_unrecognized_platform_bits=reject_unrecognized_platform_bits,

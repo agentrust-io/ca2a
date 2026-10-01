@@ -41,7 +41,13 @@ from agent_manifest import SNP_OFFSETS, SNP_REPORT_LEN, SnpVerificationError, pa
 
 from ca2a_runtime.errors import AttestationFailed, AttestationUnsupported
 from ca2a_runtime.tee.base import AttestationReport, BaseProvider
-from ca2a_runtime.tee.binding import SNP_PREFIX, derive_binding, pad_report_data
+from ca2a_runtime.tee.binding import (
+    ROLE_CALLEE,
+    SNP_PREFIX,
+    derive_binding,
+    pad_report_data,
+    role_prefix,
+)
 from ca2a_runtime.tee.tsm import (
     PROVIDER_SEV_GUEST,
     collect_report,
@@ -74,13 +80,15 @@ SEV_GUEST_DEVICE = "/dev/sev-guest"
 MEASUREMENT_DIGEST_LABEL = "sha384"
 
 
-def snp_report_data(public_key: str, nonce: str) -> bytes:
+def snp_report_data(public_key: str, nonce: str, *, role: str = ROLE_CALLEE) -> bytes:
     """Return the 64 bytes a cA2A SEV-SNP report commits in ``REPORT_DATA``.
 
     The 32-byte binding digest, zero-padded to the field width. See
     :mod:`ca2a_runtime.tee.binding` and ``docs/spec/attestation.md``.
     """
-    return pad_report_data(derive_binding(SNP_PREFIX, public_key, nonce), TSM_REPORT_DATA_LEN)
+    return pad_report_data(
+        derive_binding(role_prefix(SNP_PREFIX, role), public_key, nonce), TSM_REPORT_DATA_LEN
+    )
 
 
 @dataclass(frozen=True)
@@ -170,7 +178,7 @@ class SevSnpProvider(BaseProvider):
             return False
         return Path(SEV_GUEST_DEVICE).exists()
 
-    def attest(self, public_key: str, nonce: str) -> AttestationReport:
+    def attest(self, public_key: str, nonce: str, *, role: str = ROLE_CALLEE) -> AttestationReport:
         """Request an SNP report committing ``public_key`` and ``nonce``.
 
         Raises :class:`AttestationUnsupported` when this host cannot produce a
@@ -179,7 +187,7 @@ class SevSnpProvider(BaseProvider):
         """
         self._require_host()
 
-        expected = snp_report_data(public_key, nonce)
+        expected = snp_report_data(public_key, nonce, role=role)
         # auxblob carries AMD's certificate table (VCEK/ASK/ARK as GUID-tagged DER
         # blobs), not PEM. Passing it through as attestation_key_chain_pem would
         # assert a format this collector has never seen from real hardware, so it
@@ -206,6 +214,7 @@ class SevSnpProvider(BaseProvider):
             # The SNP signature is carried inside the report body rather than
             # alongside it, so this is a slice of raw_evidence, not a second blob.
             quote_signature=report.raw[SIG_OFFSET : SIG_OFFSET + 2 * SIG_COMPONENT_LEN],
+            role=role,
         )
 
     @classmethod

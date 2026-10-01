@@ -12,15 +12,16 @@ from __future__ import annotations
 import copy
 from typing import Any
 
-from ca2a_runtime.attestation import ChannelOffer
+from ca2a_runtime.attestation import CallerPossession, ChannelOffer
 from ca2a_runtime.delegation.credential import DelegationCredential
 from ca2a_runtime.delegation.holder import HolderProof
-from ca2a_runtime.errors import InvalidCredential, TransportError
+from ca2a_runtime.errors import AttestationFailed, InvalidCredential, TransportError
 from ca2a_runtime.peer import PeerRequest
 from ca2a_runtime.transport._b64url import b64url_decode, b64url_encode
 from ca2a_runtime.transport.constants import (
     CA2A_METADATA_KEYS,
     KEY_CALLER_OFFER,
+    KEY_CALLER_POSSESSION,
     KEY_DELEGATION_CHAIN,
     KEY_HOLDER_PROOF,
     KEY_PARENT_RECORD_HASH,
@@ -159,6 +160,15 @@ def parse_peer_request(
     if KEY_CALLER_OFFER in meta and meta[KEY_CALLER_OFFER] is not None:
         caller_offer = parse_channel_offer(meta[KEY_CALLER_OFFER])
 
+    # Parsed on its own; whether it is required, and whether it verifies, is the
+    # handler's decision, which is where a missing proof becomes a denial record.
+    caller_possession: CallerPossession | None = None
+    if KEY_CALLER_POSSESSION in meta and meta[KEY_CALLER_POSSESSION] is not None:
+        try:
+            caller_possession = CallerPossession.from_dict(meta[KEY_CALLER_POSSESSION])
+        except AttestationFailed as exc:
+            raise TransportError("malformed caller_possession", detail=str(exc)) from exc
+
     # Absent parses to None so the handler decides whether a proof was required;
     # present-but-malformed raises HolderProofInvalid rather than TransportError,
     # because the metadata parsed and the proof inside it did not hold up.
@@ -174,6 +184,7 @@ def parse_peer_request(
         parent_record_hash=parent_record_hash,
         caller_offer=caller_offer,
         holder_proof=holder_proof,
+        caller_possession=caller_possession,
     )
 
 
@@ -235,4 +246,8 @@ def attach_ca2a_metadata(
         meta.pop(KEY_HOLDER_PROOF, None)
     else:
         meta[KEY_HOLDER_PROOF] = request.holder_proof.to_dict()
+    if request.caller_possession is None:
+        meta.pop(KEY_CALLER_POSSESSION, None)
+    else:
+        meta[KEY_CALLER_POSSESSION] = request.caller_possession.to_dict()
     return out

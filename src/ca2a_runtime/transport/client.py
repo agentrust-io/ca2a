@@ -18,12 +18,15 @@ from dataclasses import dataclass
 from typing import Any
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 
 from ca2a_runtime.attestation import (
     ChannelOffer,
     VerifiedPeer,
     Verifier,
+    caller_possession_transcript,
     offer_channel,
+    prove_caller_possession,
     seal_to_peer,
     verify_offer,
 )
@@ -37,6 +40,7 @@ from ca2a_runtime.response import (
     ResponseAuthenticationFailed,
 )
 from ca2a_runtime.tee.base import BaseProvider
+from ca2a_runtime.tee.binding import ROLE_CALLER
 from ca2a_runtime.transport import a2a_adapter, wire
 from ca2a_runtime.transport.server import AUTHENTICATED_TASK_PATH, CHANNEL_PATH, TASK_PATH
 
@@ -184,7 +188,10 @@ def send_task(
     the callee learns what the caller is running as well as that it is the
     delegate. The two are independent, and the holder proof commits to the offer's
     channel key when one is sent, which is what ties the attested runtime and the
-    delegated principal into a single statement.
+    delegated principal into a single statement. The offer is minted in the
+    caller role, and the caller proves it holds the offer's channel private key
+    with a MAC over the request (``caller_possession``), so an offer relayed from
+    another enclave does not appraise (``ca2a-caller-offer-v2``).
 
     Returns the parsed response body on acceptance. Raises a :class:`CA2AError`
     carrying the peer's error code and message on any peer-side failure.
@@ -199,6 +206,7 @@ def send_task(
     """
     sealed: bytes | None = None
     caller_offer: ChannelOffer | None = None
+    caller_private_key: X25519PrivateKey | None = None
     # Always: the holder proof needs the callee's identity as its audience and a
     # challenge the callee issued, and both arrive in this one round trip.
     hello = handshake(base_url, verifier=verifier, require_hardware=require_hardware)
@@ -210,12 +218,11 @@ def send_task(
     if payload is not None:
         sealed = seal_to_peer(hello.peer, payload)
     if caller_provider is not None:
-        # The private half goes unused today: response sealing was withdrawn
-        # because nothing confidential comes back (the response is the
-        # provenance record, which has to stay readable). The key's job here
-        # is to be what the report binds, which is what makes the caller's
-        # measurement live rather than replayed.
-        _caller_private_key, caller_offer = offer_channel(caller_provider, nonce=hello.challenge)
+        # The report binds the public half; the private half proves possession
+        # below, which is what stops a relayed offer from appraising.
+        caller_private_key, caller_offer = offer_channel(
+            caller_provider, nonce=hello.challenge, role=ROLE_CALLER
+        )
 
     # After sealing and after the offer, because the proof commits to both.
     holder_proof = build_holder_proof(
@@ -229,6 +236,25 @@ def send_task(
         caller_channel_key=(None if caller_offer is None else caller_offer.channel_public_key),
         parent_record_hash=parent_record_hash,
     )
+    caller_possession = None
+    if caller_offer is not None and caller_private_key is not None:
+        # Last, because the transcript commits to the holder proof's signature.
+        caller_possession = prove_caller_possession(
+            caller_private_key,
+            callee_channel_key=hello.peer.public_key,
+            transcript=caller_possession_transcript(
+                challenge=hello.challenge,
+                callee_channel_key=hello.peer.public_key,
+                caller_channel_key=caller_offer.channel_public_key,
+                credential_id=chain[-1].credential_id,
+                subject=chain[-1].subject,
+                requested_capability=requested_capability,
+                record_id=record_id,
+                sealed_payload=sealed,
+                parent_record_hash=parent_record_hash,
+                holder_proof_signature=holder_proof.signature,
+            ),
+        )
     request = PeerRequest(
         chain=chain,
         requested_capability=requested_capability,
@@ -237,6 +263,7 @@ def send_task(
         parent_record_hash=parent_record_hash,
         caller_offer=caller_offer,
         holder_proof=holder_proof,
+        caller_possession=caller_possession,
     )
     message = a2a_adapter.attach_ca2a_metadata({}, request)
     if require_authenticated_response:

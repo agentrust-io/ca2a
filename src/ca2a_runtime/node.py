@@ -30,6 +30,7 @@ from ca2a_runtime.peer import (
 )
 from ca2a_runtime.policy import Policy
 from ca2a_runtime.tee.base import BaseProvider
+from ca2a_runtime.tee.binding import ROLE_CALLEE
 from ca2a_runtime.tee.software import SoftwareProvider
 
 
@@ -92,8 +93,14 @@ class PeerNode:
         self._challenge_secret = generate_secret()
 
     def offer(self, nonce: str) -> ChannelOffer:
-        """Re-attest the stable enclave channel key under a caller-supplied nonce."""
-        return attest_channel(self.provider, self.channel_public_key, nonce)
+        """Re-attest the stable enclave channel key under a caller-supplied nonce.
+
+        Always a callee-role offer. This is what the public handshake endpoint
+        serves, to any nonce anybody sends, so it must never produce something a
+        callee would accept as a caller offer. A caller offer is minted only for
+        this node's own outbound call (:func:`ca2a_runtime.transport.client.send_task`).
+        """
+        return attest_channel(self.provider, self.channel_public_key, nonce, role=ROLE_CALLEE)
 
     def issue_challenge(self) -> str:
         """Issue a challenge for the caller to bind its own channel key into."""

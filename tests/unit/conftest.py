@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import struct
 from datetime import UTC, datetime, timedelta
 
@@ -10,12 +11,21 @@ from cryptography import x509
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.asymmetric.utils import decode_dss_signature
+from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
 from cryptography.hazmat.primitives.hashes import SHA384
 from cryptography.x509.oid import NameOID
 
+from ca2a_runtime.attestation import (
+    ChannelOffer,
+    caller_possession_transcript,
+    prove_caller_possession,
+)
 from ca2a_runtime.challenge import generate_secret, issue_challenge
+from ca2a_runtime.channel import generate_channel_keypair
 from ca2a_runtime.delegation import DelegationCredential, build_holder_proof, new_keypair
 from ca2a_runtime.peer import PeerRequest
+from ca2a_runtime.tee.base import AttestationReport
+from ca2a_runtime.tee.binding import ROLE_CALLER
 from ca2a_runtime.tee.sev_snp import REPORT_SIZE, SIG_OFFSET
 
 #: A stand-in for a callee's channel key, which is the audience a holder proof
@@ -23,6 +33,54 @@ from ca2a_runtime.tee.sev_snp import REPORT_SIZE, SIG_OFFSET
 #: :class:`~ca2a_runtime.node.PeerNode`, pass this and ``TEST_SECRET`` together.
 TEST_AUDIENCE = "test-callee-channel-key"
 TEST_SECRET = generate_secret()
+
+#: A real callee channel keypair, for direct-handler tests that need the callee's
+#: half of a caller's proof of possession.
+TEST_CALLEE_KEY, TEST_CALLEE_PUB = generate_channel_keypair()
+
+
+def caller_offer(
+    challenge: str,
+    *,
+    platform: str = "software-only",
+    measurement: str = "caller-measurement",
+) -> tuple[X25519PrivateKey, ChannelOffer]:
+    """A caller-role offer over a fresh channel key, with that key's private half."""
+    private_key, public_key = generate_channel_keypair()
+    report = AttestationReport(
+        platform=platform,
+        measurement=measurement,
+        public_key=public_key,
+        nonce=challenge,
+        role=ROLE_CALLER,
+    )
+    return private_key, ChannelOffer(channel_public_key=public_key, report=report)
+
+
+def with_possession(
+    request: PeerRequest, caller_key: X25519PrivateKey, callee_channel_key: str
+) -> PeerRequest:
+    """``request`` with the caller's proof of possession over its own transcript."""
+    offer = request.caller_offer
+    assert offer is not None
+    transcript = caller_possession_transcript(
+        challenge=offer.report.nonce,
+        callee_channel_key=callee_channel_key,
+        caller_channel_key=offer.channel_public_key,
+        credential_id=request.chain[-1].credential_id,
+        subject=request.chain[-1].subject,
+        requested_capability=request.requested_capability,
+        record_id=request.record_id,
+        sealed_payload=request.sealed_payload,
+        parent_record_hash=request.parent_record_hash,
+        holder_proof_signature=(
+            None if request.holder_proof is None else request.holder_proof.signature
+        ),
+    )
+    possession = prove_caller_possession(
+        caller_key, callee_channel_key=callee_channel_key, transcript=transcript
+    )
+    return dataclasses.replace(request, caller_possession=possession)
 
 
 def build_chain_with_keys(
