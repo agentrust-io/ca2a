@@ -5,6 +5,8 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 
+from ca2a_runtime.tee.binding import ROLE_CALLEE
+
 
 @dataclass(frozen=True)
 class AttestationReport:
@@ -30,6 +32,11 @@ class AttestationReport:
     quote_signature: bytes | None = None  # the signature over raw_evidence
     attestation_key_pem: bytes | None = None  # the key that produced it
     attestation_key_chain_pem: bytes | None = None  # leaf-first chain for that key
+    # Which role the offer was minted for (``ROLE_CALLEE`` or ``ROLE_CALLER``).
+    # On hardware it selects the binding prefix, so it is covered by the quote
+    # signature: editing it changes the bytes a verifier recomputes. Last, with a
+    # default, so positional construction of a callee report is unchanged.
+    role: str = ROLE_CALLEE
 
 
 class BaseProvider(ABC):
@@ -56,5 +63,11 @@ class BaseProvider(ABC):
         """Return True if this provider is available on the current host."""
 
     @abstractmethod
-    def attest(self, public_key: str, nonce: str) -> AttestationReport:
-        """Produce an attestation report binding ``public_key`` under ``nonce``."""
+    def attest(self, public_key: str, nonce: str, *, role: str = ROLE_CALLEE) -> AttestationReport:
+        """Produce an attestation report binding ``public_key`` under ``nonce``.
+
+        ``role`` selects the domain-separated binding (see
+        :mod:`ca2a_runtime.tee.binding`) and is recorded on the report. Only a
+        node's own outbound call mints ``ROLE_CALLER``; the handshake endpoint
+        always attests as ``ROLE_CALLEE``.
+        """

@@ -161,7 +161,9 @@ def test_wire_carries_every_attestation_report_field() -> None:
     -- which is exactly the shape of the bug this module exists to fix. Pinning
     the two tuples against dataclasses.fields makes that impossible to miss.
     """
-    covered = set(wire._CLAIM_FIELDS) | set(wire._EVIDENCE_FIELDS)
+    # ``role`` is serialized separately: only for a caller-role offer, so a
+    # handshake response is unchanged from before roles existed.
+    covered = set(wire._CLAIM_FIELDS) | set(wire._EVIDENCE_FIELDS) | {"role"}
     declared = {f.name for f in dataclasses.fields(AttestationReport)}
     assert covered == declared
 

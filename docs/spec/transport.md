@@ -97,13 +97,18 @@ Namespaced keys on A2A `metadata` (message and/or params):
 | `https://agentrust-io.com/extensions/ca2a/v0.1/record_id` | string | Provenance record id for this hop |
 | `https://agentrust-io.com/extensions/ca2a/v0.1/parent_record_hash` | string or `null` | Parent TRACE/provenance hash; `null` for a root hop |
 | `https://agentrust-io.com/extensions/ca2a/v0.1/sealed_payload` | string (base64url) or omitted | Opaque sealed ciphertext only, not a verified measurement binding |
-| `https://agentrust-io.com/extensions/ca2a/v0.1/caller_offer` | channel-offer object or omitted | The caller's own attested channel key, bound to a challenge the callee issued ([mutual attestation](mutual-attestation.md)) |
+| `https://agentrust-io.com/extensions/ca2a/v0.1/caller_offer` | channel-offer object or omitted | The caller's own attested channel key, bound to a challenge the callee issued, with `attestation.role` set to `"caller"` ([mutual attestation](mutual-attestation.md)) |
+| `https://agentrust-io.com/extensions/ca2a/v0.1/caller_possession` | `{"version": "ca2a-caller-offer-v2", "mac": <hex>}` or omitted | The caller's proof that it holds the private half of `caller_offer`'s channel key. Required whenever `caller_offer` is present |
 
 `caller_offer` is **optional**, unlike `parent_record_hash`: a caller that cannot
 attest omits the key entirely rather than sending `null`, and a callee serves it
 by default. A key that is present but is not a well-formed offer is malformed and
 fails closed, so a caller cannot get itself treated as unattested by sending
-rubbish. Its object shape is the same one the handshake endpoint returns.
+rubbish. Its object shape is the same one the handshake endpoint returns, plus
+`attestation.role: "caller"`. The handshake endpoint omits `role`, which reads as
+`"callee"`, and a callee refuses a callee-role offer presented as `caller_offer`.
+An offer without `caller_possession`, or whose proof does not verify, is refused
+([mutual attestation](mutual-attestation.md)).
 
 Constants and helpers live in `ca2a_runtime.transport`.
 

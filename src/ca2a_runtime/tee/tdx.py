@@ -31,7 +31,13 @@ from cryptography.hazmat.primitives.serialization import Encoding
 
 from ca2a_runtime.errors import AttestationFailed, AttestationUnsupported
 from ca2a_runtime.tee.base import AttestationReport, BaseProvider
-from ca2a_runtime.tee.binding import TDX_PREFIX, derive_binding, pad_report_data
+from ca2a_runtime.tee.binding import (
+    ROLE_CALLEE,
+    TDX_PREFIX,
+    derive_binding,
+    pad_report_data,
+    role_prefix,
+)
 from ca2a_runtime.tee.tsm import (
     PROVIDER_TDX_GUEST,
     collect_report,
@@ -67,13 +73,15 @@ TDX_GUEST_DEVICE = "/dev/tdx_guest"
 MEASUREMENT_DIGEST_LABEL = "sha384"
 
 
-def tdx_report_data(public_key: str, nonce: str) -> bytes:
+def tdx_report_data(public_key: str, nonce: str, *, role: str = ROLE_CALLEE) -> bytes:
     """Return the 64 bytes a cA2A TDX quote commits in ``REPORTDATA``.
 
     The 32-byte binding digest, zero-padded to the field width. See
     :mod:`ca2a_runtime.tee.binding` and ``docs/spec/attestation.md``.
     """
-    return pad_report_data(derive_binding(TDX_PREFIX, public_key, nonce), TSM_REPORT_DATA_LEN)
+    return pad_report_data(
+        derive_binding(role_prefix(TDX_PREFIX, role), public_key, nonce), TSM_REPORT_DATA_LEN
+    )
 
 
 @dataclass(frozen=True)
@@ -203,7 +211,7 @@ class TdxProvider(BaseProvider):
             return False
         return Path(TDX_GUEST_DEVICE).exists()
 
-    def attest(self, public_key: str, nonce: str) -> AttestationReport:
+    def attest(self, public_key: str, nonce: str, *, role: str = ROLE_CALLEE) -> AttestationReport:
         """Request a TDX quote committing ``public_key`` and ``nonce``.
 
         Raises :class:`AttestationUnsupported` when this host cannot produce a
@@ -212,7 +220,7 @@ class TdxProvider(BaseProvider):
         """
         self._require_host()
 
-        expected = tdx_report_data(public_key, nonce)
+        expected = tdx_report_data(public_key, nonce, role=role)
         outblob, _auxblob = collect_report(expected, expect_provider=PROVIDER_TDX_GUEST)
         quote = TdxQuote.parse(outblob)
 
@@ -241,6 +249,7 @@ class TdxProvider(BaseProvider):
             raw_evidence=outblob,
             quote_signature=quote.quote_signature,
             attestation_key_chain_pem=chain_pem or None,
+            role=role,
         )
 
     @classmethod

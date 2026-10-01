@@ -224,7 +224,11 @@ def verify_tpm_report(
             detail="a chain validated against no anchor would accept any chain",
         )
 
-    expected_qualifying_data = tpm_qualifying_data(report.public_key, report.nonce)
+    # The role selects the binding prefix, so a callee offer relabelled as a
+    # caller offer (or the reverse) recomputes different bytes and is rejected.
+    expected_qualifying_data = tpm_qualifying_data(
+        report.public_key, report.nonce, role=report.role
+    )
     parsed = parse_tpmt_signature(report.quote_signature)
 
     quote = TpmQuote.parse(report.raw_evidence)
