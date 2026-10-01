@@ -16,7 +16,7 @@ cA2A is a profile on A2A that adds signed attenuated delegation, peer appraisal,
 
 TL;DR
 
-[ca2a-runtime](https://pypi.org/project/ca2a-runtime/) 0.3.1 (MIT developer preview; the PyPI name `ca2a` belongs to an unrelated project) rejects scope escalation offline with no hardware or running peer. SEV-SNP and TDX appraisal ran on real Azure and GCP evidence, including an Azure SEV-SNP peer calling a GCP TDX peer on 2026-07-27, but peer appraisal is one-directional so far and binding the seal to a verified measurement on a live call is on the roadmap.
+[ca2a-runtime](https://pypi.org/project/ca2a-runtime/) 0.4.0 (MIT developer preview; the PyPI name `ca2a` belongs to an unrelated project) rejects scope escalation offline with no hardware or running peer. SEV-SNP and TDX appraisal ran on real Azure and GCP evidence, including an Azure SEV-SNP peer calling a GCP TDX peer on 2026-07-27, but peer appraisal is one-directional so far and binding the seal to a verified measurement on a live call is on the roadmap.
 
 - **Run it**
 
@@ -67,7 +67,7 @@ Software and hardware modes provide different assurance. Peer appraisal has been
 
 For the architecture and trust boundaries, read [How It Works](https://ca2a.agentrust-io.com/docs/concepts/index.md). The normative profile, with the delegation chain, sealed channel, and conformance rules, is in [Profile](https://ca2a.agentrust-io.com/docs/spec/profile/index.md).
 
-**Status:** ca2a-runtime 0.3.1 developer preview · MIT · hosting at the Agentic AI Foundation proposed, not accepted · Sponsored by OPAQUE, which funds the engineering, infrastructure and confidential-computing work behind these projects.
+**Status:** ca2a-runtime 0.4.0 developer preview · MIT · hosting at the Agentic AI Foundation proposed, not accepted · Sponsored by OPAQUE, which funds the engineering, infrastructure and confidential-computing work behind these projects.
 
 # Verify your first delegation chain
 
@@ -640,13 +640,15 @@ binding = sha256(prefix || len32(public_key) || public_key || len32(nonce) || no
 | AMD SEV-SNP | `ca2a-snp-v1\|` | `REPORT_DATA` (64 bytes) | the binding, zero-padded on the right |
 | Intel TDX   | `ca2a-tdx-v1\|` | `REPORTDATA` (64 bytes)  | the binding, zero-padded on the right |
 
+Those are the **callee-role** prefixes: what the handshake endpoint signs. A caller offer (see [mutual attestation](https://ca2a.agentrust-io.com/docs/spec/mutual-attestation/index.md)) is signed under its own prefix per platform, `ca2a-tpm-caller-v2|`, `ca2a-snp-caller-v2|` and `ca2a-tdx-caller-v2|`, selected by the report's `role`. A verifier MUST derive the binding under the report's role, so an offer relabelled from one role to the other recomputes different bytes and is rejected.
+
 Committing the nonce alone would sign for freshness only, leaving `public_key` an unsigned assertion, so sealing a payload "to a key from a verified report" would not actually be rooted in hardware. A verifier re-derives this value from the report's own fields and requires equality, which is what promotes `public_key` and `nonce` from claim to signed fact. A report whose key was substituted after collection is rejected.
 
 Three encoding details are load-bearing, and each prefix is versioned because this is wire format: a peer and its verifier MUST derive identical bytes.
 
 - **Hashed, not raw.** `TPM2B_DATA` is capped below 64 bytes on some platforms (Azure returns `TPM_RC_SIZE`), and 32 bytes always fits. SEV-SNP and TDX reserve 64, so the digest is left-aligned and zero-padded, which is the convention the kernel's own callers and `agent-manifest` use; a report collected by either runtime is then byte-comparable.
 - **Length-prefixed, not delimiter-joined.** With a delimiter a value containing it shifts the split without changing the digest, so `("a|b", "c")` and `("a", "b|c")` would commit identical bytes and a peer could bind a key other than the one it appears to offer. `nonce` is an arbitrary caller-supplied string, so that is reachable rather than theoretical.
-- **Domain-separated per platform.** The three prefixes differ so a report collected on one platform cannot be replayed as another's evidence.
+- **Domain-separated per platform and per role.** The prefixes differ so a report collected on one platform cannot be replayed as another's evidence, and so a callee offer, which anybody can obtain from the public handshake endpoint under a nonce of their choosing, cannot be presented as a caller offer.
 
 `ca2a_runtime.tee.binding` holds the single derivation the three providers share.
 
@@ -791,6 +793,13 @@ Three properties fall out, and each is a requirement rather than a consequence:
 
 **The caller's key is the vehicle, not the payoff.** Binding it into a report under the callee's challenge is what makes the caller's measurement live rather than replayed. The callee learns what the caller is running, and that is the property. An earlier draft of this document claimed the key would be ceremonial unless the response were sealed to it; see the withdrawn decision below for why that was wrong in this protocol.
 
+**The caller must prove it holds that key (`ca2a-caller-offer-v2`).** An appraised offer shows that *some* enclave holds the offered key, not that the party presenting it is that enclave. Before v2 nothing joined the two: the handshake endpoint attests its node's key under any nonce anybody sends, and callee and caller offers were signed over the same binding, so a delegate with no enclave could take challenge C from target T, fetch honest hardware peer V's `/channel?nonce=C` offer, present it as its own, and be recorded as `caller_attestation="hardware"`. Two changes close that, each sufficient against that relay on its own:
+
+- *Role separation.* Every offer is minted for a role, carried as `attestation.role` and folded into the signed binding prefix ([attestation.md](https://ca2a.agentrust-io.com/docs/spec/attestation/#the-signed-key-and-nonce-binding)). The handshake endpoint only ever mints `callee` offers; a callee accepts only `caller` offers as `caller_offer`, and a caller accepts only `callee` offers from a handshake. A node mints a caller offer only for its own outbound call.
+- *Proof of possession.* With every `caller_offer` the caller sends `caller_possession = {"version": "ca2a-caller-offer-v2", "mac": <hex>}`. The MAC is HMAC-SHA256 over the JCS-canonical transcript (version, challenge, callee channel key, caller channel key, `credential_id`, `subject`, `requested_capability`, `record_id`, `payload_sha256`, `parent_record_hash`, the holder proof's signature), keyed by HKDF-SHA256 (info `ca2a/caller-possession/v2/key`) over caller key, callee key and X25519(caller channel private key, callee channel public key). The callee recomputes it with its own channel private key and the key the caller's report attests, and compares in constant time. A relayed offer, even a genuine caller-role one, fails because the presenter lacks that private key; a captured offer and proof fail on any other request or callee because the transcript and the key differ.
+
+A missing, malformed, wrong-version or non-verifying proof is refused whenever a `caller_offer` is present, at every rung including `"none"`, with the denial record stating `failed`. This is a breaking change for callers that send `caller_offer`: a pre-v2 offer has no `role` and no `caller_possession`, parses as a callee offer, and is refused with an error naming `ca2a-caller-offer-v2`. Callers that send no offer, and handshake responses, are unchanged on the wire.
+
 ## Decisions taken 2026-08-09
 
 1. **Stateless HMAC challenge** (option B below). Works across instances with no storage, and the guarantee it gives is at-most-once-per-window rather than exactly-once. That weaker property is stated here rather than left implied.
@@ -846,15 +855,17 @@ client.send_task(base_url, chain, "read", "r0",
 
 The same rung is reachable from a config file. `ca2a start` reads `attestation.require_caller_attestation`, builds the `caller_verifier` from `attestation.caller_verifier` (TPM roots today; see [configuration](https://ca2a.agentrust-io.com/docs/configuration/index.md)), and passes both to the `PeerNode` it serves.
 
-| Piece                                              | Where                                             |
-| -------------------------------------------------- | ------------------------------------------------- |
-| Stateless challenge (`v1.<expiry>.<random>.<mac>`) | `ca2a_runtime.challenge`                          |
-| Callee-side appraisal, challenge then offer        | `attestation.appraise_caller`                     |
-| Requirement ladder and the refusal records         | `peer.appraise_caller_runtime`                    |
-| Ordering: appraise before `open_sealed`            | `peer.handle_peer_request`                        |
-| `caller_offer` on the wire                         | `transport.constants`, `transport.a2a_adapter`    |
-| Challenge on the handshake response                | `transport.server`, `transport.wire`              |
-| Caller-side opt-in                                 | `transport.client.send_task(caller_provider=...)` |
+| Piece                                              | Where                                                                         |
+| -------------------------------------------------- | ----------------------------------------------------------------------------- |
+| Stateless challenge (`v1.<expiry>.<random>.<mac>`) | `ca2a_runtime.challenge`                                                      |
+| Callee-side appraisal, challenge then offer        | `attestation.appraise_caller`                                                 |
+| Role-separated binding prefixes                    | `tee.binding.role_prefix`                                                     |
+| Caller proof of possession                         | `attestation.prove_caller_possession`, `attestation.verify_caller_possession` |
+| Requirement ladder and the refusal records         | `peer.appraise_caller_runtime`                                                |
+| Ordering: appraise before `open_sealed`            | `peer.handle_peer_request`                                                    |
+| `caller_offer` and `caller_possession` on the wire | `transport.constants`, `transport.a2a_adapter`                                |
+| Challenge on the handshake response                | `transport.server`, `transport.wire`                                          |
+| Caller-side opt-in                                 | `transport.client.send_task(caller_provider=...)`                             |
 
 Two consequences worth stating plainly, because neither is free:
 

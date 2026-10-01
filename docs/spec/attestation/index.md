@@ -23,13 +23,15 @@ binding = sha256(prefix || len32(public_key) || public_key || len32(nonce) || no
 | AMD SEV-SNP | `ca2a-snp-v1\|` | `REPORT_DATA` (64 bytes) | the binding, zero-padded on the right |
 | Intel TDX   | `ca2a-tdx-v1\|` | `REPORTDATA` (64 bytes)  | the binding, zero-padded on the right |
 
+Those are the **callee-role** prefixes: what the handshake endpoint signs. A caller offer (see [mutual attestation](https://ca2a.agentrust-io.com/docs/spec/mutual-attestation/index.md)) is signed under its own prefix per platform, `ca2a-tpm-caller-v2|`, `ca2a-snp-caller-v2|` and `ca2a-tdx-caller-v2|`, selected by the report's `role`. A verifier MUST derive the binding under the report's role, so an offer relabelled from one role to the other recomputes different bytes and is rejected.
+
 Committing the nonce alone would sign for freshness only, leaving `public_key` an unsigned assertion, so sealing a payload "to a key from a verified report" would not actually be rooted in hardware. A verifier re-derives this value from the report's own fields and requires equality, which is what promotes `public_key` and `nonce` from claim to signed fact. A report whose key was substituted after collection is rejected.
 
 Three encoding details are load-bearing, and each prefix is versioned because this is wire format: a peer and its verifier MUST derive identical bytes.
 
 - **Hashed, not raw.** `TPM2B_DATA` is capped below 64 bytes on some platforms (Azure returns `TPM_RC_SIZE`), and 32 bytes always fits. SEV-SNP and TDX reserve 64, so the digest is left-aligned and zero-padded, which is the convention the kernel's own callers and `agent-manifest` use; a report collected by either runtime is then byte-comparable.
 - **Length-prefixed, not delimiter-joined.** With a delimiter a value containing it shifts the split without changing the digest, so `("a|b", "c")` and `("a", "b|c")` would commit identical bytes and a peer could bind a key other than the one it appears to offer. `nonce` is an arbitrary caller-supplied string, so that is reachable rather than theoretical.
-- **Domain-separated per platform.** The three prefixes differ so a report collected on one platform cannot be replayed as another's evidence.
+- **Domain-separated per platform and per role.** The prefixes differ so a report collected on one platform cannot be replayed as another's evidence, and so a callee offer, which anybody can obtain from the public handshake endpoint under a nonce of their choosing, cannot be presented as a caller offer.
 
 `ca2a_runtime.tee.binding` holds the single derivation the three providers share.
 
