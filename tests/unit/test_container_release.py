@@ -12,9 +12,10 @@ import yaml
 def test_runtime_image_is_multistage_non_root_and_offline_installed() -> None:
     dockerfile = Path("Dockerfile").read_text(encoding="utf-8")
     # Both stages pin the base image by patch release and digest, not by tag alone.
-    assert len(re.findall(
+    base_stages = re.findall(
         r"^FROM python:3\.11\.\d+-slim-bookworm@sha256:[0-9a-f]{64} AS ", dockerfile, re.M
-    )) == 2
+    )
+    assert len(base_stages) == 2
     assert "AS builder" in dockerfile
     assert "pip install --require-hashes -r requirements/build.txt" in dockerfile
     assert "pip wheel --no-deps --no-build-isolation --wheel-dir /wheels ." in dockerfile
