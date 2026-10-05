@@ -1,0 +1,894 @@
+INFO:testlib:Executing baseline-jsonrpc-streaming-False traversal test...
+INFO:testlib:Test instruction: steps {
+  instructions {
+    steps {
+      instructions {
+        return_response {
+          response: "[python_v10 -> ts_v10 (jsonrpc)]"
+        }
+      }
+      instructions {
+        call_agent {
+          transport: "jsonrpc"
+          agent_card_uri: "http://127.0.0.1:19003"
+          instruction {
+            steps {
+              instructions {
+                return_response {
+                  response: "[ts_v10 -> python_v10 (jsonrpc)]"
+                }
+              }
+              instructions {
+                call_agent {
+                  transport: "jsonrpc"
+                  agent_card_uri: "http://127.0.0.1:19001"
+                  instruction {
+                    return_response {
+                      response: "traversal-completed:jsonrpc"
+                    }
+                  }
+                  send_message {
+                  }
+                }
+              }
+              response_generator: RESPONSE_GENERATOR_CONCAT
+            }
+          }
+          send_message {
+          }
+        }
+      }
+      response_generator: RESPONSE_GENERATOR_CONCAT
+    }
+  }
+  response_generator: RESPONSE_GENERATOR_CONCAT
+}
+
+INFO:testlib:POST http://127.0.0.1:19001/jsonrpc/ payload={
+  "jsonrpc": "2.0",
+  "method": "SendMessage",
+  "params": {
+    "message": {
+      "role": "ROLE_USER",
+      "messageId": "9a53d9ac-251b-4f69-8fd7-b1018e0ee4ba",
+      "parts": [
+        {
+          "raw": "Gs0BCsgBGsUBCiQSIgogW3B5dGhvbl92MTAgLT4gdHNfdjEwIChqc29ucnBjKV0KmgEKlwEKB2pzb25ycGMSFmh0dHA6Ly8xMjcuMC4wLjE6MTkwMDMachpwCiQSIgogW3RzX3YxMCAtPiBweXRob25fdjEwIChqc29ucnBjKV0KRgpECgdqc29ucnBjEhZodHRwOi8vMTI3LjAuMC4xOjE5MDAxGh8SHQobdHJhdmVyc2FsLWNvbXBsZXRlZDpqc29ucnBjKgAQASoAEAEQAQ==",
+          "mediaType": "application/x-protobuf",
+          "filename": "instruction.bin"
+        }
+      ]
+    }
+  },
+  "id": "dd07ad7a-ee3e-403a-b86b-b52186092a21"
+} headers={'A2A-Version': '1.0'}
+INFO:httpx:HTTP Request: POST http://127.0.0.1:19001/jsonrpc/ "HTTP/1.1 200 OK"
+INFO:testlib:!!!!!!!!!!!!Received response: {'result': {'task': {'id': '2fe02cf2-446b-4999-8600-d78ad05c566e', 'contextId': '0a10fbd1-f699-4d09-ab32-8b83a3e22135', 'status': {'state': 'TASK_STATE_COMPLETED', 'message': {'messageId': '1cd67df4-6586-4f89-bf51-ba1f9f51ea51', 'contextId': '0a10fbd1-f699-4d09-ab32-8b83a3e22135', 'taskId': '2fe02cf2-446b-4999-8600-d78ad05c566e', 'role': 'ROLE_AGENT', 'parts': [{'text': '[python_v10 -> ts_v10 (jsonrpc)]\n[ts_v10 -> python_v10 (jsonrpc)]\ntraversal-completed:jsonrpc'}]}, 'timestamp': '2026-10-05T18:30:02.532136Z'}, 'history': [{'messageId': '9a53d9ac-251b-4f69-8fd7-b1018e0ee4ba', 'contextId': '0a10fbd1-f699-4d09-ab32-8b83a3e22135', 'taskId': '2fe02cf2-446b-4999-8600-d78ad05c566e', 'role': 'ROLE_USER', 'parts': [{'raw': 'Gs0BCsgBGsUBCiQSIgogW3B5dGhvbl92MTAgLT4gdHNfdjEwIChqc29ucnBjKV0KmgEKlwEKB2pzb25ycGMSFmh0dHA6Ly8xMjcuMC4wLjE6MTkwMDMachpwCiQSIgogW3RzX3YxMCAtPiBweXRob25fdjEwIChqc29ucnBjKV0KRgpECgdqc29ucnBjEhZodHRwOi8vMTI3LjAuMC4xOjE5MDAxGh8SHQobdHJhdmVyc2FsLWNvbXBsZXRlZDpqc29ucnBjKgAQASoAEAEQAQ==', 'filename': 'instruction.bin', 'mediaType': 'application/x-protobuf'}]}]}}, 'id': 'dd07ad7a-ee3e-403a-b86b-b52186092a21', 'jsonrpc': '2.0'}!!!!!!!!!!!!!
+INFO:testlib:Test Result for baseline-jsonrpc-streaming-False: [python_v10 -> ts_v10 (jsonrpc)]
+[ts_v10 -> python_v10 (jsonrpc)]
+traversal-completed:jsonrpc
+INFO:testlib:--- INTEGRATION TEST PASSED: baseline-jsonrpc-streaming-False ---
+{"baseline-jsonrpc-streaming-False": {"passed": true, "sdks": ["python_v10", "ts_v10"], "edges": ["0->1", "1->0"]}}
+INFO:testlib:Executing baseline-jsonrpc-streaming-True traversal test...
+INFO:testlib:Test instruction: steps {
+  instructions {
+    steps {
+      instructions {
+        return_response {
+          response: "[python_v10 -> ts_v10 (jsonrpc)]"
+        }
+      }
+      instructions {
+        call_agent {
+          transport: "jsonrpc"
+          agent_card_uri: "http://127.0.0.1:19003"
+          instruction {
+            steps {
+              instructions {
+                return_response {
+                  response: "[ts_v10 -> python_v10 (jsonrpc)]"
+                }
+              }
+              instructions {
+                call_agent {
+                  transport: "jsonrpc"
+                  agent_card_uri: "http://127.0.0.1:19001"
+                  instruction {
+                    return_response {
+                      response: "traversal-completed:jsonrpc"
+                    }
+                  }
+                  streaming: true
+                  send_message {
+                  }
+                }
+              }
+              response_generator: RESPONSE_GENERATOR_CONCAT
+            }
+          }
+          streaming: true
+          send_message {
+          }
+        }
+      }
+      response_generator: RESPONSE_GENERATOR_CONCAT
+    }
+  }
+  response_generator: RESPONSE_GENERATOR_CONCAT
+}
+
+INFO:testlib:Starting streaming request to agent...
+INFO:testlib:POST http://127.0.0.1:19001/jsonrpc/ payload={
+  "jsonrpc": "2.0",
+  "method": "SendStreamingMessage",
+  "params": {
+    "message": {
+      "role": "ROLE_USER",
+      "messageId": "5dcb1466-2085-47b7-8b9c-3dcdc462e4f4",
+      "parts": [
+        {
+          "raw": "GtEBCswBGskBCiQSIgogW3B5dGhvbl92MTAgLT4gdHNfdjEwIChqc29ucnBjKV0KngEKmwEKB2pzb25ycGMSFmh0dHA6Ly8xMjcuMC4wLjE6MTkwMDMadBpyCiQSIgogW3RzX3YxMCAtPiBweXRob25fdjEwIChqc29ucnBjKV0KSApGCgdqc29ucnBjEhZodHRwOi8vMTI3LjAuMC4xOjE5MDAxGh8SHQobdHJhdmVyc2FsLWNvbXBsZXRlZDpqc29ucnBjIAEqABABIAEqABABEAE=",
+          "mediaType": "application/x-protobuf",
+          "filename": "instruction.bin"
+        }
+      ]
+    }
+  },
+  "id": "ede4246c-fe07-44d7-808f-1ea8bf5fb28c"
+} headers={'A2A-Version': '1.0'}
+INFO:httpx:HTTP Request: POST http://127.0.0.1:19001/jsonrpc/ "HTTP/1.1 200 OK"
+INFO:testlib:SSE response: status=200, content-type=text/event-stream; charset=utf-8, headers={'date': 'Mon, 05 Oct 2026 18:30:02 GMT', 'server': 'uvicorn', 'cache-control': 'no-store', 'connection': 'keep-alive', 'x-accel-buffering': 'no', 'content-type': 'text/event-stream; charset=utf-8', 'transfer-encoding': 'chunked'}
+INFO:testlib:SSE Event: {"result": {"task": {"id": "916e7d35-ed29-4d9c-88fd-942939a49144", "contextId": "0c991b11-7bb5-4bd4-912d-6fbc39fe3118", "status": {"state": "TASK_STATE_SUBMITTED"}, "history": [{"messageId": "5dcb1466-2085-47b7-8b9c-3dcdc462e4f4", "contextId": "0c991b11-7bb5-4bd4-912d-6fbc39fe3118", "taskId": "916e7d35-ed29-4d9c-88fd-942939a49144", "role": "ROLE_USER", "parts": [{"raw": "GtEBCswBGskBCiQSIgogW3B5dGhvbl92MTAgLT4gdHNfdjEwIChqc29ucnBjKV0KngEKmwEKB2pzb25ycGMSFmh0dHA6Ly8xMjcuMC4wLjE6MTkwMDMadBpyCiQSIgogW3RzX3YxMCAtPiBweXRob25fdjEwIChqc29ucnBjKV0KSApGCgdqc29ucnBjEhZodHRwOi8vMTI3LjAuMC4xOjE5MDAxGh8SHQobdHJhdmVyc2FsLWNvbXBsZXRlZDpqc29ucnBjIAEqABABIAEqABABEAE=", "filename": "instruction.bin", "mediaType": "application/x-protobuf"}]}]}}, "id": "ede4246c-fe07-44d7-808f-1ea8bf5fb28c", "jsonrpc": "2.0"}
+INFO:testlib:SSE Event: {"result": {"statusUpdate": {"taskId": "916e7d35-ed29-4d9c-88fd-942939a49144", "contextId": "0c991b11-7bb5-4bd4-912d-6fbc39fe3118", "status": {"state": "TASK_STATE_WORKING", "timestamp": "2026-10-05T18:30:03.216726Z"}}}, "id": "ede4246c-fe07-44d7-808f-1ea8bf5fb28c", "jsonrpc": "2.0"}
+INFO:testlib:SSE Event: {"result": {"statusUpdate": {"taskId": "916e7d35-ed29-4d9c-88fd-942939a49144", "contextId": "0c991b11-7bb5-4bd4-912d-6fbc39fe3118", "status": {"state": "TASK_STATE_COMPLETED", "message": {"messageId": "8b6633b6-fa27-4b75-af4d-8b5543d1c25e", "contextId": "0c991b11-7bb5-4bd4-912d-6fbc39fe3118", "taskId": "916e7d35-ed29-4d9c-88fd-942939a49144", "role": "ROLE_AGENT", "parts": [{"text": "[python_v10 -> ts_v10 (jsonrpc)]\n[ts_v10 -> python_v10 (jsonrpc)]\ntraversal-completed:jsonrpc"}]}, "timestamp": "2026-10-05T18:30:03.954831Z"}}}, "id": "ede4246c-fe07-44d7-808f-1ea8bf5fb28c", "jsonrpc": "2.0"}
+INFO:testlib:Found all expected tokens in stream, breaking.
+INFO:testlib:Test Result for baseline-jsonrpc-streaming-True: [python_v10 -> ts_v10 (jsonrpc)]
+[ts_v10 -> python_v10 (jsonrpc)]
+traversal-completed:jsonrpc
+INFO:testlib:--- INTEGRATION TEST PASSED: baseline-jsonrpc-streaming-True ---
+{"baseline-jsonrpc-streaming-True": {"passed": true, "sdks": ["python_v10", "ts_v10"], "edges": ["0->1", "1->0"]}}
+INFO:testlib:Executing baseline-grpc-streaming-False traversal test...
+INFO:testlib:Test instruction: steps {
+  instructions {
+    steps {
+      instructions {
+        return_response {
+          response: "[python_v10 -> ts_v10 (grpc)]"
+        }
+      }
+      instructions {
+        call_agent {
+          transport: "grpc"
+          agent_card_uri: "http://127.0.0.1:19003"
+          instruction {
+            steps {
+              instructions {
+                return_response {
+                  response: "[ts_v10 -> python_v10 (grpc)]"
+                }
+              }
+              instructions {
+                call_agent {
+                  transport: "grpc"
+                  agent_card_uri: "http://127.0.0.1:19001"
+                  instruction {
+                    return_response {
+                      response: "traversal-completed:grpc"
+                    }
+                  }
+                  send_message {
+                  }
+                }
+              }
+              response_generator: RESPONSE_GENERATOR_CONCAT
+            }
+          }
+          send_message {
+          }
+        }
+      }
+      response_generator: RESPONSE_GENERATOR_CONCAT
+    }
+  }
+  response_generator: RESPONSE_GENERATOR_CONCAT
+}
+
+INFO:testlib:POST http://127.0.0.1:19001/jsonrpc/ payload={
+  "jsonrpc": "2.0",
+  "method": "SendMessage",
+  "params": {
+    "message": {
+      "role": "ROLE_USER",
+      "messageId": "4266a238-4a7d-4501-a428-4cb59a28e842",
+      "parts": [
+        {
+          "raw": "Gr4BCrkBGrYBCiESHwodW3B5dGhvbl92MTAgLT4gdHNfdjEwIChncnBjKV0KjgEKiwEKBGdycGMSFmh0dHA6Ly8xMjcuMC4wLjE6MTkwMDMaaRpnCiESHwodW3RzX3YxMCAtPiBweXRob25fdjEwIChncnBjKV0KQAo+CgRncnBjEhZodHRwOi8vMTI3LjAuMC4xOjE5MDAxGhwSGgoYdHJhdmVyc2FsLWNvbXBsZXRlZDpncnBjKgAQASoAEAEQAQ==",
+          "mediaType": "application/x-protobuf",
+          "filename": "instruction.bin"
+        }
+      ]
+    }
+  },
+  "id": "9fa106e2-dd18-4781-84d7-2e89f17004f0"
+} headers={'A2A-Version': '1.0'}
+INFO:httpx:HTTP Request: POST http://127.0.0.1:19001/jsonrpc/ "HTTP/1.1 200 OK"
+INFO:testlib:!!!!!!!!!!!!Received response: {'result': {'task': {'id': 'e5a64b1f-232c-4b40-8874-7f18d61fadb5', 'contextId': 'c4d47427-ebe9-4ade-a2d1-f611d381b6f8', 'status': {'state': 'TASK_STATE_COMPLETED', 'message': {'messageId': '35eddd33-3e09-4e16-910d-ec4be3e5c723', 'contextId': 'c4d47427-ebe9-4ade-a2d1-f611d381b6f8', 'taskId': 'e5a64b1f-232c-4b40-8874-7f18d61fadb5', 'role': 'ROLE_AGENT', 'parts': [{'text': '[python_v10 -> ts_v10 (grpc)]\n[ts_v10 -> python_v10 (grpc)]\ntraversal-completed:grpc'}]}, 'timestamp': '2026-10-05T18:30:05.527166Z'}, 'history': [{'messageId': '4266a238-4a7d-4501-a428-4cb59a28e842', 'contextId': 'c4d47427-ebe9-4ade-a2d1-f611d381b6f8', 'taskId': 'e5a64b1f-232c-4b40-8874-7f18d61fadb5', 'role': 'ROLE_USER', 'parts': [{'raw': 'Gr4BCrkBGrYBCiESHwodW3B5dGhvbl92MTAgLT4gdHNfdjEwIChncnBjKV0KjgEKiwEKBGdycGMSFmh0dHA6Ly8xMjcuMC4wLjE6MTkwMDMaaRpnCiESHwodW3RzX3YxMCAtPiBweXRob25fdjEwIChncnBjKV0KQAo+CgRncnBjEhZodHRwOi8vMTI3LjAuMC4xOjE5MDAxGhwSGgoYdHJhdmVyc2FsLWNvbXBsZXRlZDpncnBjKgAQASoAEAEQAQ==', 'filename': 'instruction.bin', 'mediaType': 'application/x-protobuf'}]}]}}, 'id': '9fa106e2-dd18-4781-84d7-2e89f17004f0', 'jsonrpc': '2.0'}!!!!!!!!!!!!!
+INFO:testlib:Test Result for baseline-grpc-streaming-False: [python_v10 -> ts_v10 (grpc)]
+[ts_v10 -> python_v10 (grpc)]
+traversal-completed:grpc
+INFO:testlib:--- INTEGRATION TEST PASSED: baseline-grpc-streaming-False ---
+{"baseline-grpc-streaming-False": {"passed": true, "sdks": ["python_v10", "ts_v10"], "edges": ["0->1", "1->0"]}}
+INFO:testlib:Executing baseline-grpc-streaming-True traversal test...
+INFO:testlib:Test instruction: steps {
+  instructions {
+    steps {
+      instructions {
+        return_response {
+          response: "[python_v10 -> ts_v10 (grpc)]"
+        }
+      }
+      instructions {
+        call_agent {
+          transport: "grpc"
+          agent_card_uri: "http://127.0.0.1:19003"
+          instruction {
+            steps {
+              instructions {
+                return_response {
+                  response: "[ts_v10 -> python_v10 (grpc)]"
+                }
+              }
+              instructions {
+                call_agent {
+                  transport: "grpc"
+                  agent_card_uri: "http://127.0.0.1:19001"
+                  instruction {
+                    return_response {
+                      response: "traversal-completed:grpc"
+                    }
+                  }
+                  streaming: true
+                  send_message {
+                  }
+                }
+              }
+              response_generator: RESPONSE_GENERATOR_CONCAT
+            }
+          }
+          streaming: true
+          send_message {
+          }
+        }
+      }
+      response_generator: RESPONSE_GENERATOR_CONCAT
+    }
+  }
+  response_generator: RESPONSE_GENERATOR_CONCAT
+}
+
+INFO:testlib:Starting streaming request to agent...
+INFO:testlib:POST http://127.0.0.1:19001/jsonrpc/ payload={
+  "jsonrpc": "2.0",
+  "method": "SendStreamingMessage",
+  "params": {
+    "message": {
+      "role": "ROLE_USER",
+      "messageId": "51f67c25-69ec-4a57-a90e-75840fe72c08",
+      "parts": [
+        {
+          "raw": "GsIBCr0BGroBCiESHwodW3B5dGhvbl92MTAgLT4gdHNfdjEwIChncnBjKV0KkgEKjwEKBGdycGMSFmh0dHA6Ly8xMjcuMC4wLjE6MTkwMDMaaxppCiESHwodW3RzX3YxMCAtPiBweXRob25fdjEwIChncnBjKV0KQgpACgRncnBjEhZodHRwOi8vMTI3LjAuMC4xOjE5MDAxGhwSGgoYdHJhdmVyc2FsLWNvbXBsZXRlZDpncnBjIAEqABABIAEqABABEAE=",
+          "mediaType": "application/x-protobuf",
+          "filename": "instruction.bin"
+        }
+      ]
+    }
+  },
+  "id": "4a668739-cf77-48ed-84e3-30cc07a66b1c"
+} headers={'A2A-Version': '1.0'}
+INFO:httpx:HTTP Request: POST http://127.0.0.1:19001/jsonrpc/ "HTTP/1.1 200 OK"
+INFO:testlib:SSE response: status=200, content-type=text/event-stream; charset=utf-8, headers={'date': 'Mon, 05 Oct 2026 18:30:04 GMT', 'server': 'uvicorn', 'cache-control': 'no-store', 'connection': 'keep-alive', 'x-accel-buffering': 'no', 'content-type': 'text/event-stream; charset=utf-8', 'transfer-encoding': 'chunked'}
+INFO:testlib:SSE Event: {"result": {"task": {"id": "fa529ec7-d249-4231-a901-f422e2bb2f2e", "contextId": "6658bdaf-7af7-4759-8b6d-cf97a567b0c9", "status": {"state": "TASK_STATE_SUBMITTED"}, "history": [{"messageId": "51f67c25-69ec-4a57-a90e-75840fe72c08", "contextId": "6658bdaf-7af7-4759-8b6d-cf97a567b0c9", "taskId": "fa529ec7-d249-4231-a901-f422e2bb2f2e", "role": "ROLE_USER", "parts": [{"raw": "GsIBCr0BGroBCiESHwodW3B5dGhvbl92MTAgLT4gdHNfdjEwIChncnBjKV0KkgEKjwEKBGdycGMSFmh0dHA6Ly8xMjcuMC4wLjE6MTkwMDMaaxppCiESHwodW3RzX3YxMCAtPiBweXRob25fdjEwIChncnBjKV0KQgpACgRncnBjEhZodHRwOi8vMTI3LjAuMC4xOjE5MDAxGhwSGgoYdHJhdmVyc2FsLWNvbXBsZXRlZDpncnBjIAEqABABIAEqABABEAE=", "filename": "instruction.bin", "mediaType": "application/x-protobuf"}]}]}}, "id": "4a668739-cf77-48ed-84e3-30cc07a66b1c", "jsonrpc": "2.0"}
+INFO:testlib:SSE Event: {"result": {"statusUpdate": {"taskId": "fa529ec7-d249-4231-a901-f422e2bb2f2e", "contextId": "6658bdaf-7af7-4759-8b6d-cf97a567b0c9", "status": {"state": "TASK_STATE_WORKING", "timestamp": "2026-10-05T18:30:06.232116Z"}}}, "id": "4a668739-cf77-48ed-84e3-30cc07a66b1c", "jsonrpc": "2.0"}
+INFO:testlib:SSE Event: {"result": {"statusUpdate": {"taskId": "fa529ec7-d249-4231-a901-f422e2bb2f2e", "contextId": "6658bdaf-7af7-4759-8b6d-cf97a567b0c9", "status": {"state": "TASK_STATE_COMPLETED", "message": {"messageId": "4a5cb211-86ed-41ea-a8c4-b717ab0d509a", "contextId": "6658bdaf-7af7-4759-8b6d-cf97a567b0c9", "taskId": "fa529ec7-d249-4231-a901-f422e2bb2f2e", "role": "ROLE_AGENT", "parts": [{"text": "[python_v10 -> ts_v10 (grpc)]\n[ts_v10 -> python_v10 (grpc)]\ntraversal-completed:grpc"}]}, "timestamp": "2026-10-05T18:30:06.981251Z"}}}, "id": "4a668739-cf77-48ed-84e3-30cc07a66b1c", "jsonrpc": "2.0"}
+INFO:testlib:Found all expected tokens in stream, breaking.
+INFO:testlib:Test Result for baseline-grpc-streaming-True: [python_v10 -> ts_v10 (grpc)]
+[ts_v10 -> python_v10 (grpc)]
+traversal-completed:grpc
+INFO:testlib:--- INTEGRATION TEST PASSED: baseline-grpc-streaming-True ---
+{"baseline-grpc-streaming-True": {"passed": true, "sdks": ["python_v10", "ts_v10"], "edges": ["0->1", "1->0"]}}
+INFO:testlib:Executing baseline-http_json-streaming-False traversal test...
+INFO:testlib:Test instruction: steps {
+  instructions {
+    steps {
+      instructions {
+        return_response {
+          response: "[python_v10 -> ts_v10 (http_json)]"
+        }
+      }
+      instructions {
+        call_agent {
+          transport: "http_json"
+          agent_card_uri: "http://127.0.0.1:19003"
+          instruction {
+            steps {
+              instructions {
+                return_response {
+                  response: "[ts_v10 -> python_v10 (http_json)]"
+                }
+              }
+              instructions {
+                call_agent {
+                  transport: "http_json"
+                  agent_card_uri: "http://127.0.0.1:19001"
+                  instruction {
+                    return_response {
+                      response: "traversal-completed:http_json"
+                    }
+                  }
+                  send_message {
+                  }
+                }
+              }
+              response_generator: RESPONSE_GENERATOR_CONCAT
+            }
+          }
+          send_message {
+          }
+        }
+      }
+      response_generator: RESPONSE_GENERATOR_CONCAT
+    }
+  }
+  response_generator: RESPONSE_GENERATOR_CONCAT
+}
+
+INFO:testlib:POST http://127.0.0.1:19001/jsonrpc/ payload={
+  "jsonrpc": "2.0",
+  "method": "SendMessage",
+  "params": {
+    "message": {
+      "role": "ROLE_USER",
+      "messageId": "55d79b4d-b2b5-4deb-ae47-1a797a4ed5a0",
+      "parts": [
+        {
+          "raw": "GtcBCtIBGs8BCiYSJAoiW3B5dGhvbl92MTAgLT4gdHNfdjEwIChodHRwX2pzb24pXQqiAQqfAQoJaHR0cF9qc29uEhZodHRwOi8vMTI3LjAuMC4xOjE5MDAzGngadgomEiQKIlt0c192MTAgLT4gcHl0aG9uX3YxMCAoaHR0cF9qc29uKV0KSgpICglodHRwX2pzb24SFmh0dHA6Ly8xMjcuMC4wLjE6MTkwMDEaIRIfCh10cmF2ZXJzYWwtY29tcGxldGVkOmh0dHBfanNvbioAEAEqABABEAE=",
+          "mediaType": "application/x-protobuf",
+          "filename": "instruction.bin"
+        }
+      ]
+    }
+  },
+  "id": "23c7c739-f630-4204-a762-f13a716da761"
+} headers={'A2A-Version': '1.0'}
+INFO:httpx:HTTP Request: POST http://127.0.0.1:19001/jsonrpc/ "HTTP/1.1 200 OK"
+INFO:testlib:!!!!!!!!!!!!Received response: {'result': {'task': {'id': 'c3bc764c-b899-49a1-b402-ab7db0dc33f5', 'contextId': '003a3d78-a8e4-46a5-b45c-1b5d13f308c5', 'status': {'state': 'TASK_STATE_COMPLETED', 'message': {'messageId': '1febfd98-f6ce-46fe-90e4-6f534cd4b4f3', 'contextId': '003a3d78-a8e4-46a5-b45c-1b5d13f308c5', 'taskId': 'c3bc764c-b899-49a1-b402-ab7db0dc33f5', 'role': 'ROLE_AGENT', 'parts': [{'text': '[python_v10 -> ts_v10 (http_json)]\n[ts_v10 -> python_v10 (http_json)]\ntraversal-completed:http_json'}]}, 'timestamp': '2026-10-05T18:30:08.342251Z'}, 'history': [{'messageId': '55d79b4d-b2b5-4deb-ae47-1a797a4ed5a0', 'contextId': '003a3d78-a8e4-46a5-b45c-1b5d13f308c5', 'taskId': 'c3bc764c-b899-49a1-b402-ab7db0dc33f5', 'role': 'ROLE_USER', 'parts': [{'raw': 'GtcBCtIBGs8BCiYSJAoiW3B5dGhvbl92MTAgLT4gdHNfdjEwIChodHRwX2pzb24pXQqiAQqfAQoJaHR0cF9qc29uEhZodHRwOi8vMTI3LjAuMC4xOjE5MDAzGngadgomEiQKIlt0c192MTAgLT4gcHl0aG9uX3YxMCAoaHR0cF9qc29uKV0KSgpICglodHRwX2pzb24SFmh0dHA6Ly8xMjcuMC4wLjE6MTkwMDEaIRIfCh10cmF2ZXJzYWwtY29tcGxldGVkOmh0dHBfanNvbioAEAEqABABEAE=', 'filename': 'instruction.bin', 'mediaType': 'application/x-protobuf'}]}]}}, 'id': '23c7c739-f630-4204-a762-f13a716da761', 'jsonrpc': '2.0'}!!!!!!!!!!!!!
+INFO:testlib:Test Result for baseline-http_json-streaming-False: [python_v10 -> ts_v10 (http_json)]
+[ts_v10 -> python_v10 (http_json)]
+traversal-completed:http_json
+INFO:testlib:--- INTEGRATION TEST PASSED: baseline-http_json-streaming-False ---
+{"baseline-http_json-streaming-False": {"passed": true, "sdks": ["python_v10", "ts_v10"], "edges": ["0->1", "1->0"]}}
+INFO:testlib:Executing baseline-http_json-streaming-True traversal test...
+INFO:testlib:Test instruction: steps {
+  instructions {
+    steps {
+      instructions {
+        return_response {
+          response: "[python_v10 -> ts_v10 (http_json)]"
+        }
+      }
+      instructions {
+        call_agent {
+          transport: "http_json"
+          agent_card_uri: "http://127.0.0.1:19003"
+          instruction {
+            steps {
+              instructions {
+                return_response {
+                  response: "[ts_v10 -> python_v10 (http_json)]"
+                }
+              }
+              instructions {
+                call_agent {
+                  transport: "http_json"
+                  agent_card_uri: "http://127.0.0.1:19001"
+                  instruction {
+                    return_response {
+                      response: "traversal-completed:http_json"
+                    }
+                  }
+                  streaming: true
+                  send_message {
+                  }
+                }
+              }
+              response_generator: RESPONSE_GENERATOR_CONCAT
+            }
+          }
+          streaming: true
+          send_message {
+          }
+        }
+      }
+      response_generator: RESPONSE_GENERATOR_CONCAT
+    }
+  }
+  response_generator: RESPONSE_GENERATOR_CONCAT
+}
+
+INFO:testlib:Starting streaming request to agent...
+INFO:testlib:POST http://127.0.0.1:19001/jsonrpc/ payload={
+  "jsonrpc": "2.0",
+  "method": "SendStreamingMessage",
+  "params": {
+    "message": {
+      "role": "ROLE_USER",
+      "messageId": "7db6f430-a697-43f5-8e12-953a9bef0066",
+      "parts": [
+        {
+          "raw": "GtsBCtYBGtMBCiYSJAoiW3B5dGhvbl92MTAgLT4gdHNfdjEwIChodHRwX2pzb24pXQqmAQqjAQoJaHR0cF9qc29uEhZodHRwOi8vMTI3LjAuMC4xOjE5MDAzGnoaeAomEiQKIlt0c192MTAgLT4gcHl0aG9uX3YxMCAoaHR0cF9qc29uKV0KTApKCglodHRwX2pzb24SFmh0dHA6Ly8xMjcuMC4wLjE6MTkwMDEaIRIfCh10cmF2ZXJzYWwtY29tcGxldGVkOmh0dHBfanNvbiABKgAQASABKgAQARAB",
+          "mediaType": "application/x-protobuf",
+          "filename": "instruction.bin"
+        }
+      ]
+    }
+  },
+  "id": "90971477-f7cf-45bd-9bfb-11c8651dbbb3"
+} headers={'A2A-Version': '1.0'}
+INFO:httpx:HTTP Request: POST http://127.0.0.1:19001/jsonrpc/ "HTTP/1.1 200 OK"
+INFO:testlib:SSE response: status=200, content-type=text/event-stream; charset=utf-8, headers={'date': 'Mon, 05 Oct 2026 18:30:08 GMT', 'server': 'uvicorn', 'cache-control': 'no-store', 'connection': 'keep-alive', 'x-accel-buffering': 'no', 'content-type': 'text/event-stream; charset=utf-8', 'transfer-encoding': 'chunked'}
+INFO:testlib:SSE Event: {"result": {"task": {"id": "47357066-1831-407b-9ba1-9a9406bee69a", "contextId": "35ebf68e-7b9c-4d64-b693-4b3517b536cd", "status": {"state": "TASK_STATE_SUBMITTED"}, "history": [{"messageId": "7db6f430-a697-43f5-8e12-953a9bef0066", "contextId": "35ebf68e-7b9c-4d64-b693-4b3517b536cd", "taskId": "47357066-1831-407b-9ba1-9a9406bee69a", "role": "ROLE_USER", "parts": [{"raw": "GtsBCtYBGtMBCiYSJAoiW3B5dGhvbl92MTAgLT4gdHNfdjEwIChodHRwX2pzb24pXQqmAQqjAQoJaHR0cF9qc29uEhZodHRwOi8vMTI3LjAuMC4xOjE5MDAzGnoaeAomEiQKIlt0c192MTAgLT4gcHl0aG9uX3YxMCAoaHR0cF9qc29uKV0KTApKCglodHRwX2pzb24SFmh0dHA6Ly8xMjcuMC4wLjE6MTkwMDEaIRIfCh10cmF2ZXJzYWwtY29tcGxldGVkOmh0dHBfanNvbiABKgAQASABKgAQARAB", "filename": "instruction.bin", "mediaType": "application/x-protobuf"}]}]}}, "id": "90971477-f7cf-45bd-9bfb-11c8651dbbb3", "jsonrpc": "2.0"}
+INFO:testlib:SSE Event: {"result": {"statusUpdate": {"taskId": "47357066-1831-407b-9ba1-9a9406bee69a", "contextId": "35ebf68e-7b9c-4d64-b693-4b3517b536cd", "status": {"state": "TASK_STATE_WORKING", "timestamp": "2026-10-05T18:30:09.125175Z"}}}, "id": "90971477-f7cf-45bd-9bfb-11c8651dbbb3", "jsonrpc": "2.0"}
+INFO:testlib:SSE Event: {"result": {"statusUpdate": {"taskId": "47357066-1831-407b-9ba1-9a9406bee69a", "contextId": "35ebf68e-7b9c-4d64-b693-4b3517b536cd", "status": {"state": "TASK_STATE_COMPLETED", "message": {"messageId": "4d53d473-0b7e-401e-88d5-8a832ee918ac", "contextId": "35ebf68e-7b9c-4d64-b693-4b3517b536cd", "taskId": "47357066-1831-407b-9ba1-9a9406bee69a", "role": "ROLE_AGENT", "parts": [{"text": "[python_v10 -> ts_v10 (http_json)]\n[ts_v10 -> python_v10 (http_json)]\ntraversal-completed:http_json"}]}, "timestamp": "2026-10-05T18:30:10.011550Z"}}}, "id": "90971477-f7cf-45bd-9bfb-11c8651dbbb3", "jsonrpc": "2.0"}
+INFO:testlib:Found all expected tokens in stream, breaking.
+INFO:testlib:Test Result for baseline-http_json-streaming-True: [python_v10 -> ts_v10 (http_json)]
+[ts_v10 -> python_v10 (http_json)]
+traversal-completed:http_json
+INFO:testlib:--- INTEGRATION TEST PASSED: baseline-http_json-streaming-True ---
+{"baseline-http_json-streaming-True": {"passed": true, "sdks": ["python_v10", "ts_v10"], "edges": ["0->1", "1->0"]}}
+INFO:testlib:Executing ca2a-jsonrpc-streaming-False traversal test...
+INFO:testlib:Test instruction: steps {
+  instructions {
+    steps {
+      instructions {
+        return_response {
+          response: "[python_v10 -> ts_v10 (jsonrpc)]"
+        }
+      }
+      instructions {
+        call_agent {
+          transport: "jsonrpc"
+          agent_card_uri: "http://127.0.0.1:19003"
+          instruction {
+            steps {
+              instructions {
+                return_response {
+                  response: "[ts_v10 -> python_v10 (jsonrpc)]"
+                }
+              }
+              instructions {
+                call_agent {
+                  transport: "jsonrpc"
+                  agent_card_uri: "http://127.0.0.1:19001"
+                  instruction {
+                    return_response {
+                      response: "traversal-completed:jsonrpc"
+                    }
+                  }
+                  send_message {
+                  }
+                }
+              }
+              response_generator: RESPONSE_GENERATOR_CONCAT
+            }
+          }
+          send_message {
+          }
+        }
+      }
+      response_generator: RESPONSE_GENERATOR_CONCAT
+    }
+  }
+  response_generator: RESPONSE_GENERATOR_CONCAT
+}
+
+INFO:testlib:POST http://127.0.0.1:19001/jsonrpc/ payload={
+  "jsonrpc": "2.0",
+  "method": "SendMessage",
+  "params": {
+    "message": {
+      "role": "ROLE_USER",
+      "messageId": "1ec86aeb-db82-43f6-a231-4cf08f0b4498",
+      "parts": [
+        {
+          "raw": "Gs0BCsgBGsUBCiQSIgogW3B5dGhvbl92MTAgLT4gdHNfdjEwIChqc29ucnBjKV0KmgEKlwEKB2pzb25ycGMSFmh0dHA6Ly8xMjcuMC4wLjE6MTkwMDMachpwCiQSIgogW3RzX3YxMCAtPiBweXRob25fdjEwIChqc29ucnBjKV0KRgpECgdqc29ucnBjEhZodHRwOi8vMTI3LjAuMC4xOjE5MDAxGh8SHQobdHJhdmVyc2FsLWNvbXBsZXRlZDpqc29ucnBjKgAQASoAEAEQAQ==",
+          "mediaType": "application/x-protobuf",
+          "filename": "instruction.bin"
+        }
+      ]
+    }
+  },
+  "id": "781d566e-2f98-429a-87c7-dce71e59bb3a"
+} headers={'A2A-Version': '1.0'}
+INFO:httpx:HTTP Request: POST http://127.0.0.1:19001/jsonrpc/ "HTTP/1.1 200 OK"
+INFO:testlib:!!!!!!!!!!!!Received response: {'result': {'task': {'id': '07fd81f8-f534-4739-8bae-fdf35b6041b2', 'contextId': 'face61c5-a39e-45d3-a7a0-9caeee69279f', 'status': {'state': 'TASK_STATE_COMPLETED', 'message': {'messageId': '4ee620b9-0f2b-4f44-8688-3b40a2dd4bfa', 'contextId': 'face61c5-a39e-45d3-a7a0-9caeee69279f', 'taskId': '07fd81f8-f534-4739-8bae-fdf35b6041b2', 'role': 'ROLE_AGENT', 'parts': [{'text': '[python_v10 -> ts_v10 (jsonrpc)]\n[ts_v10 -> python_v10 (jsonrpc)]\ntraversal-completed:jsonrpc'}]}, 'timestamp': '2026-10-05T18:30:14.260098Z'}, 'history': [{'messageId': '1ec86aeb-db82-43f6-a231-4cf08f0b4498', 'contextId': 'face61c5-a39e-45d3-a7a0-9caeee69279f', 'taskId': '07fd81f8-f534-4739-8bae-fdf35b6041b2', 'role': 'ROLE_USER', 'parts': [{'raw': 'Gs0BCsgBGsUBCiQSIgogW3B5dGhvbl92MTAgLT4gdHNfdjEwIChqc29ucnBjKV0KmgEKlwEKB2pzb25ycGMSFmh0dHA6Ly8xMjcuMC4wLjE6MTkwMDMachpwCiQSIgogW3RzX3YxMCAtPiBweXRob25fdjEwIChqc29ucnBjKV0KRgpECgdqc29ucnBjEhZodHRwOi8vMTI3LjAuMC4xOjE5MDAxGh8SHQobdHJhdmVyc2FsLWNvbXBsZXRlZDpqc29ucnBjKgAQASoAEAEQAQ==', 'filename': 'instruction.bin', 'mediaType': 'application/x-protobuf'}]}]}}, 'id': '781d566e-2f98-429a-87c7-dce71e59bb3a', 'jsonrpc': '2.0'}!!!!!!!!!!!!!
+INFO:testlib:Test Result for ca2a-jsonrpc-streaming-False: [python_v10 -> ts_v10 (jsonrpc)]
+[ts_v10 -> python_v10 (jsonrpc)]
+traversal-completed:jsonrpc
+INFO:testlib:--- INTEGRATION TEST PASSED: ca2a-jsonrpc-streaming-False ---
+{"ca2a-jsonrpc-streaming-False": {"passed": true, "sdks": ["python_v10", "ts_v10"], "edges": ["0->1", "1->0"]}}
+INFO:testlib:Executing ca2a-jsonrpc-streaming-True traversal test...
+INFO:testlib:Test instruction: steps {
+  instructions {
+    steps {
+      instructions {
+        return_response {
+          response: "[python_v10 -> ts_v10 (jsonrpc)]"
+        }
+      }
+      instructions {
+        call_agent {
+          transport: "jsonrpc"
+          agent_card_uri: "http://127.0.0.1:19003"
+          instruction {
+            steps {
+              instructions {
+                return_response {
+                  response: "[ts_v10 -> python_v10 (jsonrpc)]"
+                }
+              }
+              instructions {
+                call_agent {
+                  transport: "jsonrpc"
+                  agent_card_uri: "http://127.0.0.1:19001"
+                  instruction {
+                    return_response {
+                      response: "traversal-completed:jsonrpc"
+                    }
+                  }
+                  streaming: true
+                  send_message {
+                  }
+                }
+              }
+              response_generator: RESPONSE_GENERATOR_CONCAT
+            }
+          }
+          streaming: true
+          send_message {
+          }
+        }
+      }
+      response_generator: RESPONSE_GENERATOR_CONCAT
+    }
+  }
+  response_generator: RESPONSE_GENERATOR_CONCAT
+}
+
+INFO:testlib:Starting streaming request to agent...
+INFO:testlib:POST http://127.0.0.1:19001/jsonrpc/ payload={
+  "jsonrpc": "2.0",
+  "method": "SendStreamingMessage",
+  "params": {
+    "message": {
+      "role": "ROLE_USER",
+      "messageId": "5c77fe4a-fd1e-4d88-89bd-f2afac745ae7",
+      "parts": [
+        {
+          "raw": "GtEBCswBGskBCiQSIgogW3B5dGhvbl92MTAgLT4gdHNfdjEwIChqc29ucnBjKV0KngEKmwEKB2pzb25ycGMSFmh0dHA6Ly8xMjcuMC4wLjE6MTkwMDMadBpyCiQSIgogW3RzX3YxMCAtPiBweXRob25fdjEwIChqc29ucnBjKV0KSApGCgdqc29ucnBjEhZodHRwOi8vMTI3LjAuMC4xOjE5MDAxGh8SHQobdHJhdmVyc2FsLWNvbXBsZXRlZDpqc29ucnBjIAEqABABIAEqABABEAE=",
+          "mediaType": "application/x-protobuf",
+          "filename": "instruction.bin"
+        }
+      ]
+    }
+  },
+  "id": "5a2c346f-a801-4904-b861-cead03ce43ca"
+} headers={'A2A-Version': '1.0'}
+INFO:httpx:HTTP Request: POST http://127.0.0.1:19001/jsonrpc/ "HTTP/1.1 200 OK"
+INFO:testlib:SSE response: status=200, content-type=text/event-stream; charset=utf-8, headers={'date': 'Mon, 05 Oct 2026 18:30:13 GMT', 'server': 'uvicorn', 'cache-control': 'no-store', 'connection': 'keep-alive', 'x-accel-buffering': 'no', 'content-type': 'text/event-stream; charset=utf-8', 'transfer-encoding': 'chunked'}
+INFO:testlib:SSE Event: {"result": {"task": {"id": "cfdd51f0-b5c0-4bbf-8a1f-e0f45eb55568", "contextId": "ab0c4fed-a9c6-4c29-b253-3391b464b589", "status": {"state": "TASK_STATE_SUBMITTED"}, "history": [{"messageId": "5c77fe4a-fd1e-4d88-89bd-f2afac745ae7", "contextId": "ab0c4fed-a9c6-4c29-b253-3391b464b589", "taskId": "cfdd51f0-b5c0-4bbf-8a1f-e0f45eb55568", "role": "ROLE_USER", "parts": [{"raw": "GtEBCswBGskBCiQSIgogW3B5dGhvbl92MTAgLT4gdHNfdjEwIChqc29ucnBjKV0KngEKmwEKB2pzb25ycGMSFmh0dHA6Ly8xMjcuMC4wLjE6MTkwMDMadBpyCiQSIgogW3RzX3YxMCAtPiBweXRob25fdjEwIChqc29ucnBjKV0KSApGCgdqc29ucnBjEhZodHRwOi8vMTI3LjAuMC4xOjE5MDAxGh8SHQobdHJhdmVyc2FsLWNvbXBsZXRlZDpqc29ucnBjIAEqABABIAEqABABEAE=", "filename": "instruction.bin", "mediaType": "application/x-protobuf"}]}]}}, "id": "5a2c346f-a801-4904-b861-cead03ce43ca", "jsonrpc": "2.0"}
+INFO:testlib:SSE Event: {"result": {"statusUpdate": {"taskId": "cfdd51f0-b5c0-4bbf-8a1f-e0f45eb55568", "contextId": "ab0c4fed-a9c6-4c29-b253-3391b464b589", "status": {"state": "TASK_STATE_WORKING", "timestamp": "2026-10-05T18:30:14.939838Z"}}}, "id": "5a2c346f-a801-4904-b861-cead03ce43ca", "jsonrpc": "2.0"}
+INFO:testlib:SSE Event: {"result": {"statusUpdate": {"taskId": "cfdd51f0-b5c0-4bbf-8a1f-e0f45eb55568", "contextId": "ab0c4fed-a9c6-4c29-b253-3391b464b589", "status": {"state": "TASK_STATE_COMPLETED", "message": {"messageId": "6704776d-32db-4234-b381-75e544799d16", "contextId": "ab0c4fed-a9c6-4c29-b253-3391b464b589", "taskId": "cfdd51f0-b5c0-4bbf-8a1f-e0f45eb55568", "role": "ROLE_AGENT", "parts": [{"text": "[python_v10 -> ts_v10 (jsonrpc)]\n[ts_v10 -> python_v10 (jsonrpc)]\ntraversal-completed:jsonrpc"}]}, "timestamp": "2026-10-05T18:30:15.619607Z"}}}, "id": "5a2c346f-a801-4904-b861-cead03ce43ca", "jsonrpc": "2.0"}
+INFO:testlib:Found all expected tokens in stream, breaking.
+INFO:testlib:Test Result for ca2a-jsonrpc-streaming-True: [python_v10 -> ts_v10 (jsonrpc)]
+[ts_v10 -> python_v10 (jsonrpc)]
+traversal-completed:jsonrpc
+INFO:testlib:--- INTEGRATION TEST PASSED: ca2a-jsonrpc-streaming-True ---
+{"ca2a-jsonrpc-streaming-True": {"passed": true, "sdks": ["python_v10", "ts_v10"], "edges": ["0->1", "1->0"]}}
+INFO:testlib:Executing ca2a-grpc-streaming-False traversal test...
+INFO:testlib:Test instruction: steps {
+  instructions {
+    steps {
+      instructions {
+        return_response {
+          response: "[python_v10 -> ts_v10 (grpc)]"
+        }
+      }
+      instructions {
+        call_agent {
+          transport: "grpc"
+          agent_card_uri: "http://127.0.0.1:19003"
+          instruction {
+            steps {
+              instructions {
+                return_response {
+                  response: "[ts_v10 -> python_v10 (grpc)]"
+                }
+              }
+              instructions {
+                call_agent {
+                  transport: "grpc"
+                  agent_card_uri: "http://127.0.0.1:19001"
+                  instruction {
+                    return_response {
+                      response: "traversal-completed:grpc"
+                    }
+                  }
+                  send_message {
+                  }
+                }
+              }
+              response_generator: RESPONSE_GENERATOR_CONCAT
+            }
+          }
+          send_message {
+          }
+        }
+      }
+      response_generator: RESPONSE_GENERATOR_CONCAT
+    }
+  }
+  response_generator: RESPONSE_GENERATOR_CONCAT
+}
+
+INFO:testlib:POST http://127.0.0.1:19001/jsonrpc/ payload={
+  "jsonrpc": "2.0",
+  "method": "SendMessage",
+  "params": {
+    "message": {
+      "role": "ROLE_USER",
+      "messageId": "3727f079-3e89-4228-aa75-defaa67ce539",
+      "parts": [
+        {
+          "raw": "Gr4BCrkBGrYBCiESHwodW3B5dGhvbl92MTAgLT4gdHNfdjEwIChncnBjKV0KjgEKiwEKBGdycGMSFmh0dHA6Ly8xMjcuMC4wLjE6MTkwMDMaaRpnCiESHwodW3RzX3YxMCAtPiBweXRob25fdjEwIChncnBjKV0KQAo+CgRncnBjEhZodHRwOi8vMTI3LjAuMC4xOjE5MDAxGhwSGgoYdHJhdmVyc2FsLWNvbXBsZXRlZDpncnBjKgAQASoAEAEQAQ==",
+          "mediaType": "application/x-protobuf",
+          "filename": "instruction.bin"
+        }
+      ]
+    }
+  },
+  "id": "dd957449-6f3d-4666-8329-d4e2102d4199"
+} headers={'A2A-Version': '1.0'}
+INFO:httpx:HTTP Request: POST http://127.0.0.1:19001/jsonrpc/ "HTTP/1.1 200 OK"
+INFO:testlib:!!!!!!!!!!!!Received response: {'result': {'task': {'id': '2033c139-d627-4dd7-b626-f33874da8721', 'contextId': '71049917-6909-48a2-a13f-12ea6d206f4a', 'status': {'state': 'TASK_STATE_COMPLETED', 'message': {'messageId': 'c265caa6-3fa2-4d1d-83f0-336d7d80440b', 'contextId': '71049917-6909-48a2-a13f-12ea6d206f4a', 'taskId': '2033c139-d627-4dd7-b626-f33874da8721', 'role': 'ROLE_AGENT', 'parts': [{'text': '[python_v10 -> ts_v10 (grpc)]\n[ts_v10 -> python_v10 (grpc)]\ntraversal-completed:grpc'}]}, 'timestamp': '2026-10-05T18:30:16.968710Z'}, 'history': [{'messageId': '3727f079-3e89-4228-aa75-defaa67ce539', 'contextId': '71049917-6909-48a2-a13f-12ea6d206f4a', 'taskId': '2033c139-d627-4dd7-b626-f33874da8721', 'role': 'ROLE_USER', 'parts': [{'raw': 'Gr4BCrkBGrYBCiESHwodW3B5dGhvbl92MTAgLT4gdHNfdjEwIChncnBjKV0KjgEKiwEKBGdycGMSFmh0dHA6Ly8xMjcuMC4wLjE6MTkwMDMaaRpnCiESHwodW3RzX3YxMCAtPiBweXRob25fdjEwIChncnBjKV0KQAo+CgRncnBjEhZodHRwOi8vMTI3LjAuMC4xOjE5MDAxGhwSGgoYdHJhdmVyc2FsLWNvbXBsZXRlZDpncnBjKgAQASoAEAEQAQ==', 'filename': 'instruction.bin', 'mediaType': 'application/x-protobuf'}]}]}}, 'id': 'dd957449-6f3d-4666-8329-d4e2102d4199', 'jsonrpc': '2.0'}!!!!!!!!!!!!!
+INFO:testlib:Test Result for ca2a-grpc-streaming-False: [python_v10 -> ts_v10 (grpc)]
+[ts_v10 -> python_v10 (grpc)]
+traversal-completed:grpc
+INFO:testlib:--- INTEGRATION TEST PASSED: ca2a-grpc-streaming-False ---
+{"ca2a-grpc-streaming-False": {"passed": true, "sdks": ["python_v10", "ts_v10"], "edges": ["0->1", "1->0"]}}
+INFO:testlib:Executing ca2a-grpc-streaming-True traversal test...
+INFO:testlib:Test instruction: steps {
+  instructions {
+    steps {
+      instructions {
+        return_response {
+          response: "[python_v10 -> ts_v10 (grpc)]"
+        }
+      }
+      instructions {
+        call_agent {
+          transport: "grpc"
+          agent_card_uri: "http://127.0.0.1:19003"
+          instruction {
+            steps {
+              instructions {
+                return_response {
+                  response: "[ts_v10 -> python_v10 (grpc)]"
+                }
+              }
+              instructions {
+                call_agent {
+                  transport: "grpc"
+                  agent_card_uri: "http://127.0.0.1:19001"
+                  instruction {
+                    return_response {
+                      response: "traversal-completed:grpc"
+                    }
+                  }
+                  streaming: true
+                  send_message {
+                  }
+                }
+              }
+              response_generator: RESPONSE_GENERATOR_CONCAT
+            }
+          }
+          streaming: true
+          send_message {
+          }
+        }
+      }
+      response_generator: RESPONSE_GENERATOR_CONCAT
+    }
+  }
+  response_generator: RESPONSE_GENERATOR_CONCAT
+}
+
+INFO:testlib:Starting streaming request to agent...
+INFO:testlib:POST http://127.0.0.1:19001/jsonrpc/ payload={
+  "jsonrpc": "2.0",
+  "method": "SendStreamingMessage",
+  "params": {
+    "message": {
+      "role": "ROLE_USER",
+      "messageId": "7eb2b309-6ae8-4100-a508-c730b3fd043b",
+      "parts": [
+        {
+          "raw": "GsIBCr0BGroBCiESHwodW3B5dGhvbl92MTAgLT4gdHNfdjEwIChncnBjKV0KkgEKjwEKBGdycGMSFmh0dHA6Ly8xMjcuMC4wLjE6MTkwMDMaaxppCiESHwodW3RzX3YxMCAtPiBweXRob25fdjEwIChncnBjKV0KQgpACgRncnBjEhZodHRwOi8vMTI3LjAuMC4xOjE5MDAxGhwSGgoYdHJhdmVyc2FsLWNvbXBsZXRlZDpncnBjIAEqABABIAEqABABEAE=",
+          "mediaType": "application/x-protobuf",
+          "filename": "instruction.bin"
+        }
+      ]
+    }
+  },
+  "id": "df8c5e3a-a2ec-408f-8902-fbd5236eb982"
+} headers={'A2A-Version': '1.0'}
+INFO:httpx:HTTP Request: POST http://127.0.0.1:19001/jsonrpc/ "HTTP/1.1 200 OK"
+INFO:testlib:SSE response: status=200, content-type=text/event-stream; charset=utf-8, headers={'date': 'Mon, 05 Oct 2026 18:30:17 GMT', 'server': 'uvicorn', 'cache-control': 'no-store', 'connection': 'keep-alive', 'x-accel-buffering': 'no', 'content-type': 'text/event-stream; charset=utf-8', 'transfer-encoding': 'chunked'}
+INFO:testlib:SSE Event: {"result": {"task": {"id": "16a9c536-3ce1-45fd-bcec-4e9091e6e14b", "contextId": "d3afa384-a6b9-4489-b9d9-0e88da7d2c7b", "status": {"state": "TASK_STATE_SUBMITTED"}, "history": [{"messageId": "7eb2b309-6ae8-4100-a508-c730b3fd043b", "contextId": "d3afa384-a6b9-4489-b9d9-0e88da7d2c7b", "taskId": "16a9c536-3ce1-45fd-bcec-4e9091e6e14b", "role": "ROLE_USER", "parts": [{"raw": "GsIBCr0BGroBCiESHwodW3B5dGhvbl92MTAgLT4gdHNfdjEwIChncnBjKV0KkgEKjwEKBGdycGMSFmh0dHA6Ly8xMjcuMC4wLjE6MTkwMDMaaxppCiESHwodW3RzX3YxMCAtPiBweXRob25fdjEwIChncnBjKV0KQgpACgRncnBjEhZodHRwOi8vMTI3LjAuMC4xOjE5MDAxGhwSGgoYdHJhdmVyc2FsLWNvbXBsZXRlZDpncnBjIAEqABABIAEqABABEAE=", "filename": "instruction.bin", "mediaType": "application/x-protobuf"}]}]}}, "id": "df8c5e3a-a2ec-408f-8902-fbd5236eb982", "jsonrpc": "2.0"}
+INFO:testlib:SSE Event: {"result": {"statusUpdate": {"taskId": "16a9c536-3ce1-45fd-bcec-4e9091e6e14b", "contextId": "d3afa384-a6b9-4489-b9d9-0e88da7d2c7b", "status": {"state": "TASK_STATE_WORKING", "timestamp": "2026-10-05T18:30:17.694868Z"}}}, "id": "df8c5e3a-a2ec-408f-8902-fbd5236eb982", "jsonrpc": "2.0"}
+INFO:testlib:SSE Event: {"result": {"statusUpdate": {"taskId": "16a9c536-3ce1-45fd-bcec-4e9091e6e14b", "contextId": "d3afa384-a6b9-4489-b9d9-0e88da7d2c7b", "status": {"state": "TASK_STATE_COMPLETED", "message": {"messageId": "2c32e662-968d-47ee-9033-b077ca487c74", "contextId": "d3afa384-a6b9-4489-b9d9-0e88da7d2c7b", "taskId": "16a9c536-3ce1-45fd-bcec-4e9091e6e14b", "role": "ROLE_AGENT", "parts": [{"text": "[python_v10 -> ts_v10 (grpc)]\n[ts_v10 -> python_v10 (grpc)]\ntraversal-completed:grpc"}]}, "timestamp": "2026-10-05T18:30:18.409994Z"}}}, "id": "df8c5e3a-a2ec-408f-8902-fbd5236eb982", "jsonrpc": "2.0"}
+INFO:testlib:Found all expected tokens in stream, breaking.
+INFO:testlib:Test Result for ca2a-grpc-streaming-True: [python_v10 -> ts_v10 (grpc)]
+[ts_v10 -> python_v10 (grpc)]
+traversal-completed:grpc
+INFO:testlib:--- INTEGRATION TEST PASSED: ca2a-grpc-streaming-True ---
+{"ca2a-grpc-streaming-True": {"passed": true, "sdks": ["python_v10", "ts_v10"], "edges": ["0->1", "1->0"]}}
+INFO:testlib:Executing ca2a-http_json-streaming-False traversal test...
+INFO:testlib:Test instruction: steps {
+  instructions {
+    steps {
+      instructions {
+        return_response {
+          response: "[python_v10 -> ts_v10 (http_json)]"
+        }
+      }
+      instructions {
+        call_agent {
+          transport: "http_json"
+          agent_card_uri: "http://127.0.0.1:19003"
+          instruction {
+            steps {
+              instructions {
+                return_response {
+                  response: "[ts_v10 -> python_v10 (http_json)]"
+                }
+              }
+              instructions {
+                call_agent {
+                  transport: "http_json"
+                  agent_card_uri: "http://127.0.0.1:19001"
+                  instruction {
+                    return_response {
+                      response: "traversal-completed:http_json"
+                    }
+                  }
+                  send_message {
+                  }
+                }
+              }
+              response_generator: RESPONSE_GENERATOR_CONCAT
+            }
+          }
+          send_message {
+          }
+        }
+      }
+      response_generator: RESPONSE_GENERATOR_CONCAT
+    }
+  }
+  response_generator: RESPONSE_GENERATOR_CONCAT
+}
+
+INFO:testlib:POST http://127.0.0.1:19001/jsonrpc/ payload={
+  "jsonrpc": "2.0",
+  "method": "SendMessage",
+  "params": {
+    "message": {
+      "role": "ROLE_USER",
+      "messageId": "8fe7da20-c9a1-4165-a853-7a252d34faba",
+      "parts": [
+        {
+          "raw": "GtcBCtIBGs8BCiYSJAoiW3B5dGhvbl92MTAgLT4gdHNfdjEwIChodHRwX2pzb24pXQqiAQqfAQoJaHR0cF9qc29uEhZodHRwOi8vMTI3LjAuMC4xOjE5MDAzGngadgomEiQKIlt0c192MTAgLT4gcHl0aG9uX3YxMCAoaHR0cF9qc29uKV0KSgpICglodHRwX2pzb24SFmh0dHA6Ly8xMjcuMC4wLjE6MTkwMDEaIRIfCh10cmF2ZXJzYWwtY29tcGxldGVkOmh0dHBfanNvbioAEAEqABABEAE=",
+          "mediaType": "application/x-protobuf",
+          "filename": "instruction.bin"
+        }
+      ]
+    }
+  },
+  "id": "4a61683c-f1e7-4067-9913-cc69dfc5bf24"
+} headers={'A2A-Version': '1.0'}
+INFO:httpx:HTTP Request: POST http://127.0.0.1:19001/jsonrpc/ "HTTP/1.1 200 OK"
+INFO:testlib:!!!!!!!!!!!!Received response: {'result': {'task': {'id': 'f2686913-9218-4b4a-997b-3870ac15417f', 'contextId': '66814d9b-96f4-46a4-a44d-2e9f1c9bd645', 'status': {'state': 'TASK_STATE_COMPLETED', 'message': {'messageId': '996c0d3f-28aa-4bcf-b34b-af5b9909a623', 'contextId': '66814d9b-96f4-46a4-a44d-2e9f1c9bd645', 'taskId': 'f2686913-9218-4b4a-997b-3870ac15417f', 'role': 'ROLE_AGENT', 'parts': [{'text': '[python_v10 -> ts_v10 (http_json)]\n[ts_v10 -> python_v10 (http_json)]\ntraversal-completed:http_json'}]}, 'timestamp': '2026-10-05T18:30:19.726071Z'}, 'history': [{'messageId': '8fe7da20-c9a1-4165-a853-7a252d34faba', 'contextId': '66814d9b-96f4-46a4-a44d-2e9f1c9bd645', 'taskId': 'f2686913-9218-4b4a-997b-3870ac15417f', 'role': 'ROLE_USER', 'parts': [{'raw': 'GtcBCtIBGs8BCiYSJAoiW3B5dGhvbl92MTAgLT4gdHNfdjEwIChodHRwX2pzb24pXQqiAQqfAQoJaHR0cF9qc29uEhZodHRwOi8vMTI3LjAuMC4xOjE5MDAzGngadgomEiQKIlt0c192MTAgLT4gcHl0aG9uX3YxMCAoaHR0cF9qc29uKV0KSgpICglodHRwX2pzb24SFmh0dHA6Ly8xMjcuMC4wLjE6MTkwMDEaIRIfCh10cmF2ZXJzYWwtY29tcGxldGVkOmh0dHBfanNvbioAEAEqABABEAE=', 'filename': 'instruction.bin', 'mediaType': 'application/x-protobuf'}]}]}}, 'id': '4a61683c-f1e7-4067-9913-cc69dfc5bf24', 'jsonrpc': '2.0'}!!!!!!!!!!!!!
+INFO:testlib:Test Result for ca2a-http_json-streaming-False: [python_v10 -> ts_v10 (http_json)]
+[ts_v10 -> python_v10 (http_json)]
+traversal-completed:http_json
+INFO:testlib:--- INTEGRATION TEST PASSED: ca2a-http_json-streaming-False ---
+INFO:testlib:Executing ca2a-http_json-streaming-True traversal test...
+INFO:testlib:Test instruction: steps {
+  instructions {
+    steps {
+      instructions {
+        return_response {
+          response: "[python_v10 -> ts_v10 (http_json)]"
+        }
+      }
+      instructions {
+        call_agent {
+          transport: "http_json"
+          agent_card_uri: "http://127.0.0.1:19003"
+          instruction {
+            steps {
+              instructions {
+                return_response {
+                  response: "[ts_v10 -> python_v10 (http_json)]"
+                }
+              }
+              instructions {
+                call_agent {
+                  transport: "http_json"
+                  agent_card_uri: "http://127.0.0.1:19001"
+                  instruction {
+                    return_response {
+                      response: "traversal-completed:http_json"
+                    }
+                  }
+                  streaming: true
+                  send_message {
+                  }
+                }
+              }
+              response_generator: RESPONSE_GENERATOR_CONCAT
+            }
+          }
+          streaming: true
+          send_message {
+          }
+        }
+      }
+      response_generator: RESPONSE_GENERATOR_CONCAT
+    }
+  }
+  response_generator: RESPONSE_GENERATOR_CONCAT
+}
+
+{"ca2a-http_json-streaming-False": {"passed": true, "sdks": ["python_v10", "ts_v10"], "edges": ["0->1", "1->0"]}}
+INFO:testlib:Starting streaming request to agent...
+INFO:testlib:POST http://127.0.0.1:19001/jsonrpc/ payload={
+  "jsonrpc": "2.0",
+  "method": "SendStreamingMessage",
+  "params": {
+    "message": {
+      "role": "ROLE_USER",
+      "messageId": "fb0cac9f-b74c-4518-bf1c-9651e87537aa",
+      "parts": [
+        {
+          "raw": "GtsBCtYBGtMBCiYSJAoiW3B5dGhvbl92MTAgLT4gdHNfdjEwIChodHRwX2pzb24pXQqmAQqjAQoJaHR0cF9qc29uEhZodHRwOi8vMTI3LjAuMC4xOjE5MDAzGnoaeAomEiQKIlt0c192MTAgLT4gcHl0aG9uX3YxMCAoaHR0cF9qc29uKV0KTApKCglodHRwX2pzb24SFmh0dHA6Ly8xMjcuMC4wLjE6MTkwMDEaIRIfCh10cmF2ZXJzYWwtY29tcGxldGVkOmh0dHBfanNvbiABKgAQASABKgAQARAB",
+          "mediaType": "application/x-protobuf",
+          "filename": "instruction.bin"
+        }
+      ]
+    }
+  },
+  "id": "ea9b9ec6-b708-43d5-a299-a6495f56dc0b"
+} headers={'A2A-Version': '1.0'}
+INFO:httpx:HTTP Request: POST http://127.0.0.1:19001/jsonrpc/ "HTTP/1.1 200 OK"
+INFO:testlib:SSE response: status=200, content-type=text/event-stream; charset=utf-8, headers={'date': 'Mon, 05 Oct 2026 18:30:19 GMT', 'server': 'uvicorn', 'cache-control': 'no-store', 'connection': 'keep-alive', 'x-accel-buffering': 'no', 'content-type': 'text/event-stream; charset=utf-8', 'transfer-encoding': 'chunked'}
+INFO:testlib:SSE Event: {"result": {"task": {"id": "493b9686-e3a6-4ae7-a814-88915efb3e54", "contextId": "31e32e63-92f9-4cc2-9e34-fcb57b1ac965", "status": {"state": "TASK_STATE_SUBMITTED"}, "history": [{"messageId": "fb0cac9f-b74c-4518-bf1c-9651e87537aa", "contextId": "31e32e63-92f9-4cc2-9e34-fcb57b1ac965", "taskId": "493b9686-e3a6-4ae7-a814-88915efb3e54", "role": "ROLE_USER", "parts": [{"raw": "GtsBCtYBGtMBCiYSJAoiW3B5dGhvbl92MTAgLT4gdHNfdjEwIChodHRwX2pzb24pXQqmAQqjAQoJaHR0cF9qc29uEhZodHRwOi8vMTI3LjAuMC4xOjE5MDAzGnoaeAomEiQKIlt0c192MTAgLT4gcHl0aG9uX3YxMCAoaHR0cF9qc29uKV0KTApKCglodHRwX2pzb24SFmh0dHA6Ly8xMjcuMC4wLjE6MTkwMDEaIRIfCh10cmF2ZXJzYWwtY29tcGxldGVkOmh0dHBfanNvbiABKgAQASABKgAQARAB", "filename": "instruction.bin", "mediaType": "application/x-protobuf"}]}]}}, "id": "ea9b9ec6-b708-43d5-a299-a6495f56dc0b", "jsonrpc": "2.0"}
+INFO:testlib:SSE Event: {"result": {"statusUpdate": {"taskId": "493b9686-e3a6-4ae7-a814-88915efb3e54", "contextId": "31e32e63-92f9-4cc2-9e34-fcb57b1ac965", "status": {"state": "TASK_STATE_WORKING", "timestamp": "2026-10-05T18:30:20.461213Z"}}}, "id": "ea9b9ec6-b708-43d5-a299-a6495f56dc0b", "jsonrpc": "2.0"}
+INFO:testlib:SSE Event: {"result": {"statusUpdate": {"taskId": "493b9686-e3a6-4ae7-a814-88915efb3e54", "contextId": "31e32e63-92f9-4cc2-9e34-fcb57b1ac965", "status": {"state": "TASK_STATE_COMPLETED", "message": {"messageId": "59f72fae-716c-43ec-a95c-7073f1a2bde1", "contextId": "31e32e63-92f9-4cc2-9e34-fcb57b1ac965", "taskId": "493b9686-e3a6-4ae7-a814-88915efb3e54", "role": "ROLE_AGENT", "parts": [{"text": "[python_v10 -> ts_v10 (http_json)]\n[ts_v10 -> python_v10 (http_json)]\ntraversal-completed:http_json"}]}, "timestamp": "2026-10-05T18:30:21.152811Z"}}}, "id": "ea9b9ec6-b708-43d5-a299-a6495f56dc0b", "jsonrpc": "2.0"}
+INFO:testlib:Found all expected tokens in stream, breaking.
+INFO:testlib:Test Result for ca2a-http_json-streaming-True: [python_v10 -> ts_v10 (http_json)]
+[ts_v10 -> python_v10 (http_json)]
+traversal-completed:http_json
+INFO:testlib:--- INTEGRATION TEST PASSED: ca2a-http_json-streaming-True ---
+{"ca2a-http_json-streaming-True": {"passed": true, "sdks": ["python_v10", "ts_v10"], "edges": ["0->1", "1->0"]}}

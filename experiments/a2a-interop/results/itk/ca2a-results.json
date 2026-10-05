@@ -1,0 +1,68 @@
+{
+  "ca2a-jsonrpc-streaming-False": {
+    "passed": true,
+    "sdks": [
+      "python_v10",
+      "ts_v10"
+    ],
+    "edges": [
+      "0->1",
+      "1->0"
+    ]
+  },
+  "ca2a-jsonrpc-streaming-True": {
+    "passed": true,
+    "sdks": [
+      "python_v10",
+      "ts_v10"
+    ],
+    "edges": [
+      "0->1",
+      "1->0"
+    ]
+  },
+  "ca2a-grpc-streaming-False": {
+    "passed": true,
+    "sdks": [
+      "python_v10",
+      "ts_v10"
+    ],
+    "edges": [
+      "0->1",
+      "1->0"
+    ]
+  },
+  "ca2a-grpc-streaming-True": {
+    "passed": true,
+    "sdks": [
+      "python_v10",
+      "ts_v10"
+    ],
+    "edges": [
+      "0->1",
+      "1->0"
+    ]
+  },
+  "ca2a-http_json-streaming-False": {
+    "passed": true,
+    "sdks": [
+      "python_v10",
+      "ts_v10"
+    ],
+    "edges": [
+      "0->1",
+      "1->0"
+    ]
+  },
+  "ca2a-http_json-streaming-True": {
+    "passed": true,
+    "sdks": [
+      "python_v10",
+      "ts_v10"
+    ],
+    "edges": [
+      "0->1",
+      "1->0"
+    ]
+  }
+}

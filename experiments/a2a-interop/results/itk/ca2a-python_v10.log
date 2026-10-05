@@ -1,0 +1,751 @@
+WARNING:a2a.server.request_handlers.default_request_handler_v2:A queue_manager was passed to DefaultRequestHandlerV2, but it is not used: v2 delegates event streaming to an in-memory ActiveTaskRegistry, so custom or distributed QueueManager implementations are ignored. For multi-replica event streaming, either use LegacyRequestHandler or route subscription requests to the replica holding the task.
+INFO:official_itk_peer:Starting ITK v10 Agent on HTTP port 19001 and gRPC port 19002
+INFO:     Started server process [86336]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:19001 (Press CTRL+C to quit)
+INFO:     127.0.0.1:59659 - "GET /.well-known/agent-card.json HTTP/1.1" 200 OK
+INFO:official_itk_peer:Executing task 07fd81f8-f534-4739-8bae-fdf35b6041b2
+INFO:official_itk_peer:Instruction: steps {
+  instructions {
+    steps {
+      instructions {
+        return_response {
+          response: "[python_v10 -> ts_v10 (jsonrpc)]"
+        }
+      }
+      instructions {
+        call_agent {
+          transport: "jsonrpc"
+          agent_card_uri: "http://127.0.0.1:19003"
+          instruction {
+            steps {
+              instructions {
+                return_response {
+                  response: "[ts_v10 -> python_v10 (jsonrpc)]"
+                }
+              }
+              instructions {
+                call_agent {
+                  transport: "jsonrpc"
+                  agent_card_uri: "http://127.0.0.1:19001"
+                  instruction {
+                    return_response {
+                      response: "traversal-completed:jsonrpc"
+                    }
+                  }
+                  send_message {
+                  }
+                }
+              }
+              response_generator: RESPONSE_GENERATOR_CONCAT
+            }
+          }
+          send_message {
+          }
+        }
+      }
+      response_generator: RESPONSE_GENERATOR_CONCAT
+    }
+  }
+  response_generator: RESPONSE_GENERATOR_CONCAT
+}
+
+INFO:official_itk_peer:Calling agent http://127.0.0.1:19003 via jsonrpc
+INFO:httpx:HTTP Request: GET http://127.0.0.1:19003/.well-known/agent-card.json "HTTP/1.1 200 OK"
+INFO:a2a.client.card_resolver:Successfully fetched agent card data from http://127.0.0.1:19003/.well-known/agent-card.json: {'name': 'ITK TS Agent', 'description': 'TypeScript agent using SDK for ITK tests.', 'version': '1.0.0', 'capabilities': {'streaming': True, 'pushNotifications': True, 'extensions': [], 'extendedAgentCard': True}, 'supportedInterfaces': [{'url': 'http://127.0.0.1:19003/jsonrpc', 'protocolBinding': 'JSONRPC', 'tenant': '', 'protocolVersion': '1.0'}, {'url': 'http://127.0.0.1:19003/jsonrpc', 'protocolBinding': 'JSONRPC', 'tenant': '', 'protocolVersion': '0.3'}, {'url': '127.0.0.1:19004', 'protocolBinding': 'GRPC', 'tenant': '', 'protocolVersion': '1.0'}, {'url': '127.0.0.1:19004', 'protocolBinding': 'GRPC', 'tenant': '', 'protocolVersion': '0.3'}, {'url': 'http://127.0.0.1:19003/rest', 'protocolBinding': 'HTTP+JSON', 'tenant': '', 'protocolVersion': '1.0'}, {'url': 'http://127.0.0.1:19003/rest', 'protocolBinding': 'HTTP+JSON', 'tenant': '', 'protocolVersion': '0.3'}], 'provider': {'organization': 'A2A Samples', 'url': 'https://example.com/a2a-samples'}, 'securitySchemes': {}, 'securityRequirements': [], 'defaultInputModes': ['text/plain', 'application/x-protobuf'], 'defaultOutputModes': ['text/plain'], 'skills': [{'id': 'acts-behaviors', 'name': 'ACTS behaviours', 'description': 'Implements the ACTS §11 tck-* behaviour contract.', 'tags': ['acts', 'conformance'], 'examples': [], 'inputModes': [], 'outputModes': [], 'securityRequirements': []}], 'signatures': []}
+INFO:     127.0.0.1:62209 - "GET /.well-known/agent-card.json HTTP/1.1" 200 OK
+INFO:official_itk_peer:Executing task 3845473e-486c-43c5-9d50-bbd21562f855
+INFO:official_itk_peer:Instruction: return_response {
+  response: "traversal-completed:jsonrpc"
+}
+
+INFO:official_itk_peer:Response: traversal-completed:jsonrpc
+INFO:official_itk_peer:Task 3845473e-486c-43c5-9d50-bbd21562f855 completed
+INFO:     127.0.0.1:62210 - "POST /jsonrpc/ HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://127.0.0.1:19003/jsonrpc "HTTP/1.1 200 OK"
+INFO:official_itk_peer:Event: task {
+  id: "bf68a97d-f581-4ed8-b7de-b71dabe818a6"
+  context_id: "b9f0b36b-4ea3-4b03-9e9f-d4ab4f17d2b3"
+  status {
+    state: TASK_STATE_COMPLETED
+    message {
+      message_id: "done"
+      context_id: "b9f0b36b-4ea3-4b03-9e9f-d4ab4f17d2b3"
+      task_id: "bf68a97d-f581-4ed8-b7de-b71dabe818a6"
+      role: ROLE_AGENT
+      parts {
+        text: "[ts_v10 -> python_v10 (jsonrpc)]\ntraversal-completed:jsonrpc"
+        metadata {
+        }
+        media_type: "text/plain"
+      }
+      metadata {
+      }
+    }
+    timestamp {
+      seconds: 1791225014
+      nanos: 249000000
+    }
+  }
+  history {
+    message_id: "e6e58cd4-50ea-4d40-8416-d0ad51bc4e8f"
+    context_id: "b9f0b36b-4ea3-4b03-9e9f-d4ab4f17d2b3"
+    task_id: "bf68a97d-f581-4ed8-b7de-b71dabe818a6"
+    role: ROLE_USER
+    parts {
+      raw: "\032p\n$\022\"\n [ts_v10 -> python_v10 (jsonrpc)]\nF\nD\n\007jsonrpc\022\026http://127.0.0.1:19001\032\037\022\035\n\033traversal-completed:jsonrpc*\000\020\001"
+      filename: "instruction.bin"
+      media_type: "application/x-protobuf"
+    }
+  }
+  history {
+    message_id: "done"
+    context_id: "b9f0b36b-4ea3-4b03-9e9f-d4ab4f17d2b3"
+    task_id: "bf68a97d-f581-4ed8-b7de-b71dabe818a6"
+    role: ROLE_AGENT
+    parts {
+      text: "[ts_v10 -> python_v10 (jsonrpc)]\ntraversal-completed:jsonrpc"
+      metadata {
+      }
+      media_type: "text/plain"
+    }
+    metadata {
+    }
+  }
+  metadata {
+  }
+}
+
+INFO:official_itk_peer:Response: [python_v10 -> ts_v10 (jsonrpc)]
+[ts_v10 -> python_v10 (jsonrpc)]
+traversal-completed:jsonrpc
+INFO:official_itk_peer:Task 07fd81f8-f534-4739-8bae-fdf35b6041b2 completed
+INFO:     127.0.0.1:59663 - "POST /jsonrpc/ HTTP/1.1" 200 OK
+INFO:official_itk_peer:Executing task cfdd51f0-b5c0-4bbf-8a1f-e0f45eb55568
+INFO:official_itk_peer:Instruction: steps {
+  instructions {
+    steps {
+      instructions {
+        return_response {
+          response: "[python_v10 -> ts_v10 (jsonrpc)]"
+        }
+      }
+      instructions {
+        call_agent {
+          transport: "jsonrpc"
+          agent_card_uri: "http://127.0.0.1:19003"
+          instruction {
+            steps {
+              instructions {
+                return_response {
+                  response: "[ts_v10 -> python_v10 (jsonrpc)]"
+                }
+              }
+              instructions {
+                call_agent {
+                  transport: "jsonrpc"
+                  agent_card_uri: "http://127.0.0.1:19001"
+                  instruction {
+                    return_response {
+                      response: "traversal-completed:jsonrpc"
+                    }
+                  }
+                  streaming: true
+                  send_message {
+                  }
+                }
+              }
+              response_generator: RESPONSE_GENERATOR_CONCAT
+            }
+          }
+          streaming: true
+          send_message {
+          }
+        }
+      }
+      response_generator: RESPONSE_GENERATOR_CONCAT
+    }
+  }
+  response_generator: RESPONSE_GENERATOR_CONCAT
+}
+
+INFO:official_itk_peer:Calling agent http://127.0.0.1:19003 via jsonrpc
+INFO:     127.0.0.1:62211 - "POST /jsonrpc/ HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET http://127.0.0.1:19003/.well-known/agent-card.json "HTTP/1.1 200 OK"
+INFO:a2a.client.card_resolver:Successfully fetched agent card data from http://127.0.0.1:19003/.well-known/agent-card.json: {'name': 'ITK TS Agent', 'description': 'TypeScript agent using SDK for ITK tests.', 'version': '1.0.0', 'capabilities': {'streaming': True, 'pushNotifications': True, 'extensions': [], 'extendedAgentCard': True}, 'supportedInterfaces': [{'url': 'http://127.0.0.1:19003/jsonrpc', 'protocolBinding': 'JSONRPC', 'tenant': '', 'protocolVersion': '1.0'}, {'url': 'http://127.0.0.1:19003/jsonrpc', 'protocolBinding': 'JSONRPC', 'tenant': '', 'protocolVersion': '0.3'}, {'url': '127.0.0.1:19004', 'protocolBinding': 'GRPC', 'tenant': '', 'protocolVersion': '1.0'}, {'url': '127.0.0.1:19004', 'protocolBinding': 'GRPC', 'tenant': '', 'protocolVersion': '0.3'}, {'url': 'http://127.0.0.1:19003/rest', 'protocolBinding': 'HTTP+JSON', 'tenant': '', 'protocolVersion': '1.0'}, {'url': 'http://127.0.0.1:19003/rest', 'protocolBinding': 'HTTP+JSON', 'tenant': '', 'protocolVersion': '0.3'}], 'provider': {'organization': 'A2A Samples', 'url': 'https://example.com/a2a-samples'}, 'securitySchemes': {}, 'securityRequirements': [], 'defaultInputModes': ['text/plain', 'application/x-protobuf'], 'defaultOutputModes': ['text/plain'], 'skills': [{'id': 'acts-behaviors', 'name': 'ACTS behaviours', 'description': 'Implements the ACTS §11 tck-* behaviour contract.', 'tags': ['acts', 'conformance'], 'examples': [], 'inputModes': [], 'outputModes': [], 'securityRequirements': []}], 'signatures': []}
+INFO:httpx:HTTP Request: POST http://127.0.0.1:19003/jsonrpc "HTTP/1.1 200 OK"
+INFO:official_itk_peer:Event: task {
+  id: "a44886ed-241b-4e86-8608-e1170c60f2d5"
+  context_id: "f833e2d0-3792-4be7-83d9-19c967afb870"
+  status {
+    state: TASK_STATE_SUBMITTED
+    timestamp {
+      seconds: 1791225015
+      nanos: 587000000
+    }
+  }
+  history {
+    message_id: "272f6f85-853c-41b6-9b35-74b7c9939d0a"
+    context_id: "f833e2d0-3792-4be7-83d9-19c967afb870"
+    task_id: "a44886ed-241b-4e86-8608-e1170c60f2d5"
+    role: ROLE_USER
+    parts {
+      raw: "\032r\n$\022\"\n [ts_v10 -> python_v10 (jsonrpc)]\nH\nF\n\007jsonrpc\022\026http://127.0.0.1:19001\032\037\022\035\n\033traversal-completed:jsonrpc \001*\000\020\001"
+      filename: "instruction.bin"
+      media_type: "application/x-protobuf"
+    }
+  }
+  metadata {
+  }
+}
+
+INFO:official_itk_peer:Event: status_update {
+  task_id: "a44886ed-241b-4e86-8608-e1170c60f2d5"
+  context_id: "f833e2d0-3792-4be7-83d9-19c967afb870"
+  status {
+    state: TASK_STATE_WORKING
+    timestamp {
+      seconds: 1791225015
+      nanos: 587000000
+    }
+  }
+}
+
+INFO:     127.0.0.1:62209 - "GET /.well-known/agent-card.json HTTP/1.1" 200 OK
+INFO:official_itk_peer:Executing task 86ed78ee-1935-47eb-8979-60c3f2d1cc78
+INFO:official_itk_peer:Instruction: return_response {
+  response: "traversal-completed:jsonrpc"
+}
+
+INFO:official_itk_peer:Response: traversal-completed:jsonrpc
+INFO:official_itk_peer:Task 86ed78ee-1935-47eb-8979-60c3f2d1cc78 completed
+INFO:     127.0.0.1:62210 - "POST /jsonrpc/ HTTP/1.1" 200 OK
+INFO:official_itk_peer:Event: status_update {
+  task_id: "a44886ed-241b-4e86-8608-e1170c60f2d5"
+  context_id: "f833e2d0-3792-4be7-83d9-19c967afb870"
+  status {
+    state: TASK_STATE_COMPLETED
+    message {
+      message_id: "done"
+      context_id: "f833e2d0-3792-4be7-83d9-19c967afb870"
+      task_id: "a44886ed-241b-4e86-8608-e1170c60f2d5"
+      role: ROLE_AGENT
+      parts {
+        text: "[ts_v10 -> python_v10 (jsonrpc)]\ntraversal-completed:jsonrpc"
+        metadata {
+        }
+        media_type: "text/plain"
+      }
+      metadata {
+      }
+    }
+    timestamp {
+      seconds: 1791225015
+      nanos: 617000000
+    }
+  }
+}
+
+INFO:official_itk_peer:Response: [python_v10 -> ts_v10 (jsonrpc)]
+[ts_v10 -> python_v10 (jsonrpc)]
+traversal-completed:jsonrpc
+INFO:official_itk_peer:Task cfdd51f0-b5c0-4bbf-8a1f-e0f45eb55568 completed
+INFO:official_itk_peer:Executing task 2033c139-d627-4dd7-b626-f33874da8721
+INFO:official_itk_peer:Instruction: steps {
+  instructions {
+    steps {
+      instructions {
+        return_response {
+          response: "[python_v10 -> ts_v10 (grpc)]"
+        }
+      }
+      instructions {
+        call_agent {
+          transport: "grpc"
+          agent_card_uri: "http://127.0.0.1:19003"
+          instruction {
+            steps {
+              instructions {
+                return_response {
+                  response: "[ts_v10 -> python_v10 (grpc)]"
+                }
+              }
+              instructions {
+                call_agent {
+                  transport: "grpc"
+                  agent_card_uri: "http://127.0.0.1:19001"
+                  instruction {
+                    return_response {
+                      response: "traversal-completed:grpc"
+                    }
+                  }
+                  send_message {
+                  }
+                }
+              }
+              response_generator: RESPONSE_GENERATOR_CONCAT
+            }
+          }
+          send_message {
+          }
+        }
+      }
+      response_generator: RESPONSE_GENERATOR_CONCAT
+    }
+  }
+  response_generator: RESPONSE_GENERATOR_CONCAT
+}
+
+INFO:official_itk_peer:Calling agent http://127.0.0.1:19003 via grpc
+INFO:httpx:HTTP Request: GET http://127.0.0.1:19003/.well-known/agent-card.json "HTTP/1.1 200 OK"
+INFO:a2a.client.card_resolver:Successfully fetched agent card data from http://127.0.0.1:19003/.well-known/agent-card.json: {'name': 'ITK TS Agent', 'description': 'TypeScript agent using SDK for ITK tests.', 'version': '1.0.0', 'capabilities': {'streaming': True, 'pushNotifications': True, 'extensions': [], 'extendedAgentCard': True}, 'supportedInterfaces': [{'url': 'http://127.0.0.1:19003/jsonrpc', 'protocolBinding': 'JSONRPC', 'tenant': '', 'protocolVersion': '1.0'}, {'url': 'http://127.0.0.1:19003/jsonrpc', 'protocolBinding': 'JSONRPC', 'tenant': '', 'protocolVersion': '0.3'}, {'url': '127.0.0.1:19004', 'protocolBinding': 'GRPC', 'tenant': '', 'protocolVersion': '1.0'}, {'url': '127.0.0.1:19004', 'protocolBinding': 'GRPC', 'tenant': '', 'protocolVersion': '0.3'}, {'url': 'http://127.0.0.1:19003/rest', 'protocolBinding': 'HTTP+JSON', 'tenant': '', 'protocolVersion': '1.0'}, {'url': 'http://127.0.0.1:19003/rest', 'protocolBinding': 'HTTP+JSON', 'tenant': '', 'protocolVersion': '0.3'}], 'provider': {'organization': 'A2A Samples', 'url': 'https://example.com/a2a-samples'}, 'securitySchemes': {}, 'securityRequirements': [], 'defaultInputModes': ['text/plain', 'application/x-protobuf'], 'defaultOutputModes': ['text/plain'], 'skills': [{'id': 'acts-behaviors', 'name': 'ACTS behaviours', 'description': 'Implements the ACTS §11 tck-* behaviour contract.', 'tags': ['acts', 'conformance'], 'examples': [], 'inputModes': [], 'outputModes': [], 'securityRequirements': []}], 'signatures': []}
+INFO:     127.0.0.1:62209 - "GET /.well-known/agent-card.json HTTP/1.1" 200 OK
+INFO:official_itk_peer:Event: task {
+  id: "571f109b-c9d2-4883-aca8-7443e4cf5c87"
+  context_id: "519ddf9d-fcf8-4c71-b92d-ca847032a19f"
+  status {
+    state: TASK_STATE_SUBMITTED
+    timestamp {
+      seconds: 1791225016
+      nanos: 933000000
+    }
+  }
+  history {
+    message_id: "328ddd24-1726-4ed5-85c2-c1ed7ad66b35"
+    context_id: "519ddf9d-fcf8-4c71-b92d-ca847032a19f"
+    task_id: "571f109b-c9d2-4883-aca8-7443e4cf5c87"
+    role: ROLE_USER
+    parts {
+      raw: "\032g\n!\022\037\n\035[ts_v10 -> python_v10 (grpc)]\n@\n>\n\004grpc\022\026http://127.0.0.1:19001\032\034\022\032\n\030traversal-completed:grpc*\000\020\001"
+      filename: "instruction.bin"
+      media_type: "application/x-protobuf"
+    }
+  }
+  metadata {
+  }
+}
+
+INFO:official_itk_peer:Event: status_update {
+  task_id: "571f109b-c9d2-4883-aca8-7443e4cf5c87"
+  context_id: "519ddf9d-fcf8-4c71-b92d-ca847032a19f"
+  status {
+    state: TASK_STATE_WORKING
+    timestamp {
+      seconds: 1791225016
+      nanos: 933000000
+    }
+  }
+}
+
+INFO:official_itk_peer:Executing task 89ca4db9-0837-428a-838e-754dc88c6cc0
+INFO:official_itk_peer:Instruction: return_response {
+  response: "traversal-completed:grpc"
+}
+
+INFO:official_itk_peer:Response: traversal-completed:grpc
+INFO:official_itk_peer:Task 89ca4db9-0837-428a-838e-754dc88c6cc0 completed
+INFO:official_itk_peer:Event: status_update {
+  task_id: "571f109b-c9d2-4883-aca8-7443e4cf5c87"
+  context_id: "519ddf9d-fcf8-4c71-b92d-ca847032a19f"
+  status {
+    state: TASK_STATE_COMPLETED
+    message {
+      message_id: "done"
+      context_id: "519ddf9d-fcf8-4c71-b92d-ca847032a19f"
+      task_id: "571f109b-c9d2-4883-aca8-7443e4cf5c87"
+      role: ROLE_AGENT
+      parts {
+        text: "[ts_v10 -> python_v10 (grpc)]\ntraversal-completed:grpc"
+        metadata {
+        }
+        media_type: "text/plain"
+      }
+      metadata {
+      }
+    }
+    timestamp {
+      seconds: 1791225016
+      nanos: 964000000
+    }
+  }
+}
+
+INFO:official_itk_peer:Response: [python_v10 -> ts_v10 (grpc)]
+[ts_v10 -> python_v10 (grpc)]
+traversal-completed:grpc
+INFO:official_itk_peer:Task 2033c139-d627-4dd7-b626-f33874da8721 completed
+INFO:     127.0.0.1:62213 - "POST /jsonrpc/ HTTP/1.1" 200 OK
+INFO:official_itk_peer:Executing task 16a9c536-3ce1-45fd-bcec-4e9091e6e14b
+INFO:official_itk_peer:Instruction: steps {
+  instructions {
+    steps {
+      instructions {
+        return_response {
+          response: "[python_v10 -> ts_v10 (grpc)]"
+        }
+      }
+      instructions {
+        call_agent {
+          transport: "grpc"
+          agent_card_uri: "http://127.0.0.1:19003"
+          instruction {
+            steps {
+              instructions {
+                return_response {
+                  response: "[ts_v10 -> python_v10 (grpc)]"
+                }
+              }
+              instructions {
+                call_agent {
+                  transport: "grpc"
+                  agent_card_uri: "http://127.0.0.1:19001"
+                  instruction {
+                    return_response {
+                      response: "traversal-completed:grpc"
+                    }
+                  }
+                  streaming: true
+                  send_message {
+                  }
+                }
+              }
+              response_generator: RESPONSE_GENERATOR_CONCAT
+            }
+          }
+          streaming: true
+          send_message {
+          }
+        }
+      }
+      response_generator: RESPONSE_GENERATOR_CONCAT
+    }
+  }
+  response_generator: RESPONSE_GENERATOR_CONCAT
+}
+
+INFO:official_itk_peer:Calling agent http://127.0.0.1:19003 via grpc
+INFO:     127.0.0.1:62219 - "POST /jsonrpc/ HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET http://127.0.0.1:19003/.well-known/agent-card.json "HTTP/1.1 200 OK"
+INFO:a2a.client.card_resolver:Successfully fetched agent card data from http://127.0.0.1:19003/.well-known/agent-card.json: {'name': 'ITK TS Agent', 'description': 'TypeScript agent using SDK for ITK tests.', 'version': '1.0.0', 'capabilities': {'streaming': True, 'pushNotifications': True, 'extensions': [], 'extendedAgentCard': True}, 'supportedInterfaces': [{'url': 'http://127.0.0.1:19003/jsonrpc', 'protocolBinding': 'JSONRPC', 'tenant': '', 'protocolVersion': '1.0'}, {'url': 'http://127.0.0.1:19003/jsonrpc', 'protocolBinding': 'JSONRPC', 'tenant': '', 'protocolVersion': '0.3'}, {'url': '127.0.0.1:19004', 'protocolBinding': 'GRPC', 'tenant': '', 'protocolVersion': '1.0'}, {'url': '127.0.0.1:19004', 'protocolBinding': 'GRPC', 'tenant': '', 'protocolVersion': '0.3'}, {'url': 'http://127.0.0.1:19003/rest', 'protocolBinding': 'HTTP+JSON', 'tenant': '', 'protocolVersion': '1.0'}, {'url': 'http://127.0.0.1:19003/rest', 'protocolBinding': 'HTTP+JSON', 'tenant': '', 'protocolVersion': '0.3'}], 'provider': {'organization': 'A2A Samples', 'url': 'https://example.com/a2a-samples'}, 'securitySchemes': {}, 'securityRequirements': [], 'defaultInputModes': ['text/plain', 'application/x-protobuf'], 'defaultOutputModes': ['text/plain'], 'skills': [{'id': 'acts-behaviors', 'name': 'ACTS behaviours', 'description': 'Implements the ACTS §11 tck-* behaviour contract.', 'tags': ['acts', 'conformance'], 'examples': [], 'inputModes': [], 'outputModes': [], 'securityRequirements': []}], 'signatures': []}
+INFO:     127.0.0.1:62209 - "GET /.well-known/agent-card.json HTTP/1.1" 200 OK
+INFO:official_itk_peer:Event: task {
+  id: "91f4577a-cc3f-4e38-912e-a50d491bb3da"
+  context_id: "51c07481-8066-485b-b194-44a6c1a28729"
+  status {
+    state: TASK_STATE_SUBMITTED
+    timestamp {
+      seconds: 1791225018
+      nanos: 395000000
+    }
+  }
+  history {
+    message_id: "b7b1bc6e-d893-4972-9126-c77ad7fda09f"
+    context_id: "51c07481-8066-485b-b194-44a6c1a28729"
+    task_id: "91f4577a-cc3f-4e38-912e-a50d491bb3da"
+    role: ROLE_USER
+    parts {
+      raw: "\032i\n!\022\037\n\035[ts_v10 -> python_v10 (grpc)]\nB\n@\n\004grpc\022\026http://127.0.0.1:19001\032\034\022\032\n\030traversal-completed:grpc \001*\000\020\001"
+      filename: "instruction.bin"
+      media_type: "application/x-protobuf"
+    }
+  }
+  metadata {
+  }
+}
+
+INFO:official_itk_peer:Event: status_update {
+  task_id: "91f4577a-cc3f-4e38-912e-a50d491bb3da"
+  context_id: "51c07481-8066-485b-b194-44a6c1a28729"
+  status {
+    state: TASK_STATE_WORKING
+    timestamp {
+      seconds: 1791225018
+      nanos: 395000000
+    }
+  }
+}
+
+INFO:official_itk_peer:Executing task eba98b35-9369-449a-b326-a24315f85ac0
+INFO:official_itk_peer:Instruction: return_response {
+  response: "traversal-completed:grpc"
+}
+
+INFO:official_itk_peer:Response: traversal-completed:grpc
+INFO:official_itk_peer:Task eba98b35-9369-449a-b326-a24315f85ac0 completed
+INFO:official_itk_peer:Event: status_update {
+  task_id: "91f4577a-cc3f-4e38-912e-a50d491bb3da"
+  context_id: "51c07481-8066-485b-b194-44a6c1a28729"
+  status {
+    state: TASK_STATE_COMPLETED
+    message {
+      message_id: "done"
+      context_id: "51c07481-8066-485b-b194-44a6c1a28729"
+      task_id: "91f4577a-cc3f-4e38-912e-a50d491bb3da"
+      role: ROLE_AGENT
+      parts {
+        text: "[ts_v10 -> python_v10 (grpc)]\ntraversal-completed:grpc"
+        metadata {
+        }
+        media_type: "text/plain"
+      }
+      metadata {
+      }
+    }
+    timestamp {
+      seconds: 1791225018
+      nanos: 412000000
+    }
+  }
+}
+
+INFO:official_itk_peer:Response: [python_v10 -> ts_v10 (grpc)]
+[ts_v10 -> python_v10 (grpc)]
+traversal-completed:grpc
+INFO:official_itk_peer:Task 16a9c536-3ce1-45fd-bcec-4e9091e6e14b completed
+INFO:official_itk_peer:Executing task f2686913-9218-4b4a-997b-3870ac15417f
+INFO:official_itk_peer:Instruction: steps {
+  instructions {
+    steps {
+      instructions {
+        return_response {
+          response: "[python_v10 -> ts_v10 (http_json)]"
+        }
+      }
+      instructions {
+        call_agent {
+          transport: "http_json"
+          agent_card_uri: "http://127.0.0.1:19003"
+          instruction {
+            steps {
+              instructions {
+                return_response {
+                  response: "[ts_v10 -> python_v10 (http_json)]"
+                }
+              }
+              instructions {
+                call_agent {
+                  transport: "http_json"
+                  agent_card_uri: "http://127.0.0.1:19001"
+                  instruction {
+                    return_response {
+                      response: "traversal-completed:http_json"
+                    }
+                  }
+                  send_message {
+                  }
+                }
+              }
+              response_generator: RESPONSE_GENERATOR_CONCAT
+            }
+          }
+          send_message {
+          }
+        }
+      }
+      response_generator: RESPONSE_GENERATOR_CONCAT
+    }
+  }
+  response_generator: RESPONSE_GENERATOR_CONCAT
+}
+
+INFO:official_itk_peer:Calling agent http://127.0.0.1:19003 via http_json
+INFO:httpx:HTTP Request: GET http://127.0.0.1:19003/.well-known/agent-card.json "HTTP/1.1 200 OK"
+INFO:a2a.client.card_resolver:Successfully fetched agent card data from http://127.0.0.1:19003/.well-known/agent-card.json: {'name': 'ITK TS Agent', 'description': 'TypeScript agent using SDK for ITK tests.', 'version': '1.0.0', 'capabilities': {'streaming': True, 'pushNotifications': True, 'extensions': [], 'extendedAgentCard': True}, 'supportedInterfaces': [{'url': 'http://127.0.0.1:19003/jsonrpc', 'protocolBinding': 'JSONRPC', 'tenant': '', 'protocolVersion': '1.0'}, {'url': 'http://127.0.0.1:19003/jsonrpc', 'protocolBinding': 'JSONRPC', 'tenant': '', 'protocolVersion': '0.3'}, {'url': '127.0.0.1:19004', 'protocolBinding': 'GRPC', 'tenant': '', 'protocolVersion': '1.0'}, {'url': '127.0.0.1:19004', 'protocolBinding': 'GRPC', 'tenant': '', 'protocolVersion': '0.3'}, {'url': 'http://127.0.0.1:19003/rest', 'protocolBinding': 'HTTP+JSON', 'tenant': '', 'protocolVersion': '1.0'}, {'url': 'http://127.0.0.1:19003/rest', 'protocolBinding': 'HTTP+JSON', 'tenant': '', 'protocolVersion': '0.3'}], 'provider': {'organization': 'A2A Samples', 'url': 'https://example.com/a2a-samples'}, 'securitySchemes': {}, 'securityRequirements': [], 'defaultInputModes': ['text/plain', 'application/x-protobuf'], 'defaultOutputModes': ['text/plain'], 'skills': [{'id': 'acts-behaviors', 'name': 'ACTS behaviours', 'description': 'Implements the ACTS §11 tck-* behaviour contract.', 'tags': ['acts', 'conformance'], 'examples': [], 'inputModes': [], 'outputModes': [], 'securityRequirements': []}], 'signatures': []}
+INFO:     127.0.0.1:62209 - "GET /.well-known/agent-card.json HTTP/1.1" 200 OK
+INFO:official_itk_peer:Executing task 5d883235-6afc-4330-8a55-db37f5a6c577
+INFO:official_itk_peer:Instruction: return_response {
+  response: "traversal-completed:http_json"
+}
+
+INFO:official_itk_peer:Response: traversal-completed:http_json
+INFO:official_itk_peer:Task 5d883235-6afc-4330-8a55-db37f5a6c577 completed
+INFO:     127.0.0.1:62225 - "POST /rest/message%3Asend HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: POST http://127.0.0.1:19003/rest/message:send "HTTP/1.1 200 OK"
+INFO:official_itk_peer:Event: task {
+  id: "7c3ec4a1-5c76-46dd-a7a6-cc325d3515ed"
+  context_id: "e01f1efc-4b90-419d-8b0d-c9f583a651ac"
+  status {
+    state: TASK_STATE_COMPLETED
+    message {
+      message_id: "done"
+      context_id: "e01f1efc-4b90-419d-8b0d-c9f583a651ac"
+      task_id: "7c3ec4a1-5c76-46dd-a7a6-cc325d3515ed"
+      role: ROLE_AGENT
+      parts {
+        text: "[ts_v10 -> python_v10 (http_json)]\ntraversal-completed:http_json"
+        metadata {
+        }
+        media_type: "text/plain"
+      }
+      metadata {
+      }
+    }
+    timestamp {
+      seconds: 1791225019
+      nanos: 729000000
+    }
+  }
+  history {
+    message_id: "5522e6b3-0aee-46b0-aebd-a57758536c56"
+    context_id: "e01f1efc-4b90-419d-8b0d-c9f583a651ac"
+    task_id: "7c3ec4a1-5c76-46dd-a7a6-cc325d3515ed"
+    role: ROLE_USER
+    parts {
+      raw: "\032v\n&\022$\n\"[ts_v10 -> python_v10 (http_json)]\nJ\nH\n\thttp_json\022\026http://127.0.0.1:19001\032!\022\037\n\035traversal-completed:http_json*\000\020\001"
+      filename: "instruction.bin"
+      media_type: "application/x-protobuf"
+    }
+  }
+  history {
+    message_id: "done"
+    context_id: "e01f1efc-4b90-419d-8b0d-c9f583a651ac"
+    task_id: "7c3ec4a1-5c76-46dd-a7a6-cc325d3515ed"
+    role: ROLE_AGENT
+    parts {
+      text: "[ts_v10 -> python_v10 (http_json)]\ntraversal-completed:http_json"
+      metadata {
+      }
+      media_type: "text/plain"
+    }
+    metadata {
+    }
+  }
+  metadata {
+  }
+}
+
+INFO:official_itk_peer:Response: [python_v10 -> ts_v10 (http_json)]
+[ts_v10 -> python_v10 (http_json)]
+traversal-completed:http_json
+INFO:official_itk_peer:Task f2686913-9218-4b4a-997b-3870ac15417f completed
+INFO:     127.0.0.1:62223 - "POST /jsonrpc/ HTTP/1.1" 200 OK
+INFO:official_itk_peer:Executing task 493b9686-e3a6-4ae7-a814-88915efb3e54
+INFO:official_itk_peer:Instruction: steps {
+  instructions {
+    steps {
+      instructions {
+        return_response {
+          response: "[python_v10 -> ts_v10 (http_json)]"
+        }
+      }
+      instructions {
+        call_agent {
+          transport: "http_json"
+          agent_card_uri: "http://127.0.0.1:19003"
+          instruction {
+            steps {
+              instructions {
+                return_response {
+                  response: "[ts_v10 -> python_v10 (http_json)]"
+                }
+              }
+              instructions {
+                call_agent {
+                  transport: "http_json"
+                  agent_card_uri: "http://127.0.0.1:19001"
+                  instruction {
+                    return_response {
+                      response: "traversal-completed:http_json"
+                    }
+                  }
+                  streaming: true
+                  send_message {
+                  }
+                }
+              }
+              response_generator: RESPONSE_GENERATOR_CONCAT
+            }
+          }
+          streaming: true
+          send_message {
+          }
+        }
+      }
+      response_generator: RESPONSE_GENERATOR_CONCAT
+    }
+  }
+  response_generator: RESPONSE_GENERATOR_CONCAT
+}
+
+INFO:official_itk_peer:Calling agent http://127.0.0.1:19003 via http_json
+INFO:     127.0.0.1:62228 - "POST /jsonrpc/ HTTP/1.1" 200 OK
+INFO:httpx:HTTP Request: GET http://127.0.0.1:19003/.well-known/agent-card.json "HTTP/1.1 200 OK"
+INFO:a2a.client.card_resolver:Successfully fetched agent card data from http://127.0.0.1:19003/.well-known/agent-card.json: {'name': 'ITK TS Agent', 'description': 'TypeScript agent using SDK for ITK tests.', 'version': '1.0.0', 'capabilities': {'streaming': True, 'pushNotifications': True, 'extensions': [], 'extendedAgentCard': True}, 'supportedInterfaces': [{'url': 'http://127.0.0.1:19003/jsonrpc', 'protocolBinding': 'JSONRPC', 'tenant': '', 'protocolVersion': '1.0'}, {'url': 'http://127.0.0.1:19003/jsonrpc', 'protocolBinding': 'JSONRPC', 'tenant': '', 'protocolVersion': '0.3'}, {'url': '127.0.0.1:19004', 'protocolBinding': 'GRPC', 'tenant': '', 'protocolVersion': '1.0'}, {'url': '127.0.0.1:19004', 'protocolBinding': 'GRPC', 'tenant': '', 'protocolVersion': '0.3'}, {'url': 'http://127.0.0.1:19003/rest', 'protocolBinding': 'HTTP+JSON', 'tenant': '', 'protocolVersion': '1.0'}, {'url': 'http://127.0.0.1:19003/rest', 'protocolBinding': 'HTTP+JSON', 'tenant': '', 'protocolVersion': '0.3'}], 'provider': {'organization': 'A2A Samples', 'url': 'https://example.com/a2a-samples'}, 'securitySchemes': {}, 'securityRequirements': [], 'defaultInputModes': ['text/plain', 'application/x-protobuf'], 'defaultOutputModes': ['text/plain'], 'skills': [{'id': 'acts-behaviors', 'name': 'ACTS behaviours', 'description': 'Implements the ACTS §11 tck-* behaviour contract.', 'tags': ['acts', 'conformance'], 'examples': [], 'inputModes': [], 'outputModes': [], 'securityRequirements': []}], 'signatures': []}
+INFO:httpx:HTTP Request: POST http://127.0.0.1:19003/rest/message:stream "HTTP/1.1 200 OK"
+INFO:     127.0.0.1:62209 - "GET /.well-known/agent-card.json HTTP/1.1" 200 OK
+INFO:official_itk_peer:Event: task {
+  id: "d48f1b05-2ada-4a10-bb18-48f8c79f427a"
+  context_id: "42d1ca1c-8456-4b50-a9dc-567e9c4230f4"
+  status {
+    state: TASK_STATE_SUBMITTED
+    timestamp {
+      seconds: 1791225021
+      nanos: 137000000
+    }
+  }
+  history {
+    message_id: "abc29dd9-5b6a-4985-8521-615cb6ca512f"
+    context_id: "42d1ca1c-8456-4b50-a9dc-567e9c4230f4"
+    task_id: "d48f1b05-2ada-4a10-bb18-48f8c79f427a"
+    role: ROLE_USER
+    parts {
+      raw: "\032x\n&\022$\n\"[ts_v10 -> python_v10 (http_json)]\nL\nJ\n\thttp_json\022\026http://127.0.0.1:19001\032!\022\037\n\035traversal-completed:http_json \001*\000\020\001"
+      filename: "instruction.bin"
+      media_type: "application/x-protobuf"
+    }
+  }
+  metadata {
+  }
+}
+
+INFO:official_itk_peer:Event: status_update {
+  task_id: "d48f1b05-2ada-4a10-bb18-48f8c79f427a"
+  context_id: "42d1ca1c-8456-4b50-a9dc-567e9c4230f4"
+  status {
+    state: TASK_STATE_WORKING
+    timestamp {
+      seconds: 1791225021
+      nanos: 137000000
+    }
+  }
+}
+
+INFO:official_itk_peer:Executing task aad8afcd-a2f4-40ef-8a96-22cb848f66a5
+INFO:official_itk_peer:Instruction: return_response {
+  response: "traversal-completed:http_json"
+}
+
+INFO:official_itk_peer:Response: traversal-completed:http_json
+INFO:official_itk_peer:Task aad8afcd-a2f4-40ef-8a96-22cb848f66a5 completed
+INFO:     127.0.0.1:62225 - "POST /rest/message%3Astream HTTP/1.1" 200 OK
+INFO:official_itk_peer:Event: status_update {
+  task_id: "d48f1b05-2ada-4a10-bb18-48f8c79f427a"
+  context_id: "42d1ca1c-8456-4b50-a9dc-567e9c4230f4"
+  status {
+    state: TASK_STATE_COMPLETED
+    message {
+      message_id: "done"
+      context_id: "42d1ca1c-8456-4b50-a9dc-567e9c4230f4"
+      task_id: "d48f1b05-2ada-4a10-bb18-48f8c79f427a"
+      role: ROLE_AGENT
+      parts {
+        text: "[ts_v10 -> python_v10 (http_json)]\ntraversal-completed:http_json"
+        metadata {
+        }
+        media_type: "text/plain"
+      }
+      metadata {
+      }
+    }
+    timestamp {
+      seconds: 1791225021
+      nanos: 160000000
+    }
+  }
+}
+
+INFO:official_itk_peer:Response: [python_v10 -> ts_v10 (http_json)]
+[ts_v10 -> python_v10 (http_json)]
+traversal-completed:http_json
+INFO:official_itk_peer:Task 493b9686-e3a6-4ae7-a814-88915efb3e54 completed

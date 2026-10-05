@@ -1,0 +1,74 @@
+{
+  "name": "ITK v10 Agent",
+  "description": "Python agent using SDK 1.0.",
+  "supportedInterfaces": [
+    {
+      "url": "127.0.0.1:19002",
+      "protocolBinding": "GRPC",
+      "protocolVersion": "1.0"
+    },
+    {
+      "url": "127.0.0.1:19002",
+      "protocolBinding": "GRPC",
+      "protocolVersion": "0.3"
+    },
+    {
+      "url": "http://127.0.0.1:19001/jsonrpc/",
+      "protocolBinding": "JSONRPC",
+      "protocolVersion": "1.0"
+    },
+    {
+      "url": "http://127.0.0.1:19001/jsonrpc/",
+      "protocolBinding": "JSONRPC",
+      "protocolVersion": "0.3"
+    },
+    {
+      "url": "http://127.0.0.1:19001/rest/",
+      "protocolBinding": "HTTP+JSON",
+      "protocolVersion": "1.0"
+    },
+    {
+      "url": "http://127.0.0.1:19001/rest/",
+      "protocolBinding": "HTTP+JSON",
+      "protocolVersion": "0.3"
+    }
+  ],
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": true,
+    "extendedAgentCard": true
+  },
+  "defaultInputModes": [
+    "text/plain",
+    "application/x-protobuf"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "acts-behaviors",
+      "name": "ACTS behaviours",
+      "description": "Implements the ACTS \u00a711 tck-* behaviour contract.",
+      "tags": [
+        "acts",
+        "conformance"
+      ]
+    }
+  ],
+  "additionalInterfaces": [
+    {
+      "transport": "JSONRPC",
+      "url": "http://127.0.0.1:19001/jsonrpc/"
+    },
+    {
+      "transport": "HTTP+JSON",
+      "url": "http://127.0.0.1:19001/rest/"
+    }
+  ],
+  "preferredTransport": "GRPC",
+  "protocolVersion": "0.3",
+  "supportsAuthenticatedExtendedCard": true,
+  "url": "127.0.0.1:19002"
+}

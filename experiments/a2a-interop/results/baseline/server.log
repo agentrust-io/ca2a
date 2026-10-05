@@ -1,0 +1,1133 @@
+INFO:TckSutAgent:Starting HTTP server on port 18991 and gRPC on port 18992...
+INFO:     Started server process [92600]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:18991 (Press CTRL+C to quit)
+INFO:     127.0.0.1:49762 - "GET /.well-known/agent-card.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63266 - "GET /.well-known/agent-card.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63268 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63269 - "POST /a2a/rest/message%3Asend HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63268 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63269 - "POST /a2a/rest/message%3Asend HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63268 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63269 - "POST /a2a/rest/message%3Asend HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63268 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63269 - "POST /a2a/rest/message%3Asend HTTP/1.1" 200 OK
+ERROR:a2a.server.agent_execution.active_task:Consumer[f06cd668-026c-4708-92da-f26bf7199f36]: Failed
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\server\agent_execution\active_task.py", line 132, in run
+    await self._process_event(event)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\server\agent_execution\active_task.py", line 179, in _process_event
+    self._handle_message_event(event)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\server\agent_execution\active_task.py", line 198, in _handle_message_event
+    raise InvalidAgentResponseError(
+a2a.utils.errors.InvalidAgentResponseError: Received Message object in task mode. Use TaskStatusUpdateEvent or TaskArtifactUpdateEvent instead.
+WARNING:a2a.server.events.event_queue_v2:Dispatcher task was cancelled or finished. Events may be lost.
+ERROR:a2a.server.agent_execution.active_task:Consumer[7f8c5259-f19d-490b-b06e-bc7ab6026d90]: Failed
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\server\agent_execution\active_task.py", line 132, in run
+    await self._process_event(event)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\server\agent_execution\active_task.py", line 179, in _process_event
+    self._handle_message_event(event)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\server\agent_execution\active_task.py", line 198, in _handle_message_event
+    raise InvalidAgentResponseError(
+a2a.utils.errors.InvalidAgentResponseError: Received Message object in task mode. Use TaskStatusUpdateEvent or TaskArtifactUpdateEvent instead.
+WARNING:a2a.server.events.event_queue_v2:Dispatcher task was cancelled or finished. Events may be lost.
+ERROR:a2a.server.agent_execution.active_task:Consumer[3b034181-75cc-45a0-9de1-64c71d407c87]: Failed
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\server\agent_execution\active_task.py", line 132, in run
+    await self._process_event(event)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\server\agent_execution\active_task.py", line 179, in _process_event
+    self._handle_message_event(event)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\server\agent_execution\active_task.py", line 198, in _handle_message_event
+    raise InvalidAgentResponseError(
+a2a.utils.errors.InvalidAgentResponseError: Received Message object in task mode. Use TaskStatusUpdateEvent or TaskArtifactUpdateEvent instead.
+INFO:     127.0.0.1:63268 - "POST / HTTP/1.1" 200 OK
+WARNING:a2a.server.events.event_queue_v2:Dispatcher task was cancelled or finished. Events may be lost.
+ERROR:a2a.server.agent_execution.active_task:Consumer[2d506f82-0580-4d99-9c3e-ea947e2b8d4b]: Failed
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\server\agent_execution\active_task.py", line 132, in run
+    await self._process_event(event)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\server\agent_execution\active_task.py", line 179, in _process_event
+    self._handle_message_event(event)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\server\agent_execution\active_task.py", line 198, in _handle_message_event
+    raise InvalidAgentResponseError(
+a2a.utils.errors.InvalidAgentResponseError: Received Message object in task mode. Use TaskStatusUpdateEvent or TaskArtifactUpdateEvent instead.
+WARNING:a2a.utils.error_handlers:Request error: Code=N/A, Message='Received Message object in task mode. Use TaskStatusUpdateEvent or TaskArtifactUpdateEvent instead.'
+INFO:     127.0.0.1:63269 - "POST /a2a/rest/message%3Asend HTTP/1.1" 500 Internal Server Error
+WARNING:a2a.server.events.event_queue_v2:Dispatcher task was cancelled or finished. Events may be lost.
+INFO:     127.0.0.1:63268 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63269 - "POST /a2a/rest/message%3Asend HTTP/1.1" 200 OK
+WARNING:a2a.server.routes.jsonrpc_dispatcher:Request Error (ID: 1): Code=-32601, Message='Method not found'
+INFO:     127.0.0.1:63272 - "POST / HTTP/1.1" 200 OK
+WARNING:a2a.utils.error_handlers:Request error: Code=N/A, Message='Task not found'
+INFO:     127.0.0.1:63269 - "GET /a2a/rest/tasks/tck-nonexistent-error-test-be7e8b5e HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:63273 - "POST / HTTP/1.1" 200 OK
+WARNING:a2a.utils.error_handlers:Request error: Code=N/A, Message='Validation failed', Data={'errors': [{'field': 'message', 'message': 'Field is required.'}]}
+INFO:     127.0.0.1:63275 - "POST /a2a/rest/message%3Asend HTTP/1.1" 400 Bad Request
+ERROR:a2a.server.request_handlers.request_handler:Validation failure: Push notifications are not supported by the agent
+INFO:     127.0.0.1:63268 - "POST / HTTP/1.1" 200 OK
+ERROR:a2a.server.request_handlers.request_handler:Validation failure: Push notifications are not supported by the agent
+WARNING:a2a.utils.error_handlers:Request error: Code=N/A, Message='Push notifications are not supported by the agent'
+INFO:     127.0.0.1:63269 - "POST /a2a/rest/tasks/t/pushNotificationConfigs HTTP/1.1" 400 Bad Request
+ERROR:a2a.server.request_handlers.request_handler:Validation failure: The agent does not support authenticated extended cards
+INFO:     127.0.0.1:63268 - "POST / HTTP/1.1" 200 OK
+WARNING:a2a.utils.version_validator:Version mismatch: actual='99.0', expected='1.0'
+INFO:     127.0.0.1:63277 - "POST / HTTP/1.1" 200 OK
+WARNING:a2a.utils.version_validator:Version mismatch: actual='99.0', expected='1.0'
+WARNING:a2a.utils.error_handlers:Request error: Code=N/A, Message='A2A version '99.0' is not supported by this handler. Expected version '1.0'.'
+INFO:     127.0.0.1:63278 - "POST /a2a/rest/message%3Asend HTTP/1.1" 400 Bad Request
+WARNING:a2a.utils.version_validator:Version mismatch: actual='0.3', expected='1.0'
+INFO:     127.0.0.1:63279 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63268 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63268 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63268 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63268 - "POST / HTTP/1.1" 200 OK
+WARNING:a2a.utils.error_handlers:Request error: Code=N/A, Message='Task not found'
+INFO:     127.0.0.1:63269 - "GET /a2a/rest/tasks/tck-nonexistent-pd-test-be7e8b5e HTTP/1.1" 404 Not Found
+WARNING:a2a.utils.error_handlers:Request error: Code=N/A, Message='Task not found'
+INFO:     127.0.0.1:63269 - "GET /a2a/rest/tasks/tck-nonexistent-uri-test-be7e8b5e HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:51327 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51327 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51328 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61799 - "POST /a2a/rest/message%3Asend HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61799 - "POST /a2a/rest/tasks/6e347a1d-8136-4c2a-a79e-7ef4d4630258%3Asubscribe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61800 - "POST /a2a/rest/tasks/6e347a1d-8136-4c2a-a79e-7ef4d4630258%3Asubscribe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54714 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54714 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54715 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59786 - "POST /a2a/rest/message%3Asend HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59786 - "POST /a2a/rest/tasks/4f2fb4d5-a5b1-4197-8c96-486d5465e52b%3Asubscribe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59787 - "POST /a2a/rest/tasks/4f2fb4d5-a5b1-4197-8c96-486d5465e52b%3Asubscribe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50844 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50844 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50845 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50846 - "POST /a2a/rest/message%3Asend HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50846 - "POST /a2a/rest/tasks/c560a312-fc9b-4134-8850-ea55bcf760ba%3Asubscribe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50847 - "POST /a2a/rest/tasks/c560a312-fc9b-4134-8850-ea55bcf760ba%3Asubscribe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50850 - "POST /a2a/rest/message%3Asend HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50850 - "POST /a2a/rest/message%3Asend HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50850 - "POST /a2a/rest/message%3Astream HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50850 - "POST /a2a/rest/message%3Astream HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50850 - "POST /a2a/rest/message%3Astream HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+WARNING:a2a.utils.error_handlers:Request error: Code=N/A, Message='Task not found'
+INFO:     127.0.0.1:50850 - "GET /a2a/rest/tasks/tck-nonexistent-get-002-be7e8b5e HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50850 - "GET /a2a/rest/tasks?contextId=tck-test-context-be7e8b5e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50850 - "GET /a2a/rest/tasks?contextId=tck-test-context-be7e8b5e&pageSize=2 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50850 - "GET /a2a/rest/tasks?contextId=tck-test-context-be7e8b5e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50850 - "GET /a2a/rest/tasks?contextId=tck-test-context-be7e8b5e&pageSize=100 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50850 - "GET /a2a/rest/tasks?contextId=tck-test-context-be7e8b5e&includeArtifacts=false HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+ERROR:opentelemetry.context:Failed to detach context
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 602, in use_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 504, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 441, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py", line 242, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+GeneratorExit
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\__init__.py", line 127, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\contextvars_context.py", line 40, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x000002BEF25E5FD0> at 0x000002BEF7C89A80> was created in a different Context
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-856' coro=<EventQueueSource._dispatch_loop() done, defined at C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py:225> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:opentelemetry.context:Failed to detach context
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 602, in use_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 504, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 441, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py", line 242, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+GeneratorExit
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\__init__.py", line 127, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\contextvars_context.py", line 40, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x000002BEF25E5FD0> at 0x000002BEF7C8A640> was created in a different Context
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-857' coro=<EventQueueSource._dispatch_loop() done, defined at C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py:225> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+WARNING:a2a.utils.error_handlers:Request error: Code=N/A, Message='Task not found'
+INFO:     127.0.0.1:50850 - "POST /a2a/rest/tasks/tck-nonexistent-cancel-003-be7e8b5e%3Acancel HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50850 - "POST /a2a/rest/message%3Asend HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50850 - "POST /a2a/rest/message%3Asend HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50850 - "POST /a2a/rest/message%3Asend HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-860' coro=<EventQueueSource._dispatch_loop() running at C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py:242> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:opentelemetry.context:Failed to detach context
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 602, in use_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 504, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 441, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py", line 242, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+GeneratorExit
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\__init__.py", line 127, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\contextvars_context.py", line 40, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x000002BEF25E5FD0> at 0x000002BEF7C6FC40> was created in a different Context
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-861' coro=<EventQueueSource._dispatch_loop() running at C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py:242> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:opentelemetry.context:Failed to detach context
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 602, in use_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 504, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 441, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py", line 242, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+GeneratorExit
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\__init__.py", line 127, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\contextvars_context.py", line 40, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x000002BEF25E5FD0> at 0x000002BEF7C6FCC0> was created in a different Context
+INFO:     127.0.0.1:50850 - "POST /a2a/rest/message%3Asend HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50850 - "POST /a2a/rest/message%3Asend HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+WARNING:a2a.utils.error_handlers:Request error: Code=N/A, Message='Task tck-nonexistent-multi-004-be7e8b5e-http_json not found'
+INFO:     127.0.0.1:50850 - "POST /a2a/rest/message%3Asend HTTP/1.1" 404 Not Found
+WARNING:a2a.server.routes.jsonrpc_dispatcher:Request Error (ID: 40): Code=-32001, Message='Task not found', Data=[{'@type': 'type.googleapis.com/google.rpc.ErrorInfo', 'reason': 'TASK_NOT_FOUND', 'domain': 'a2a-protocol.org', 'metadata': {}}]
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+WARNING:a2a.utils.error_handlers:Request error: Code=N/A, Message='Task not found'
+INFO:     127.0.0.1:50850 - "POST /a2a/rest/tasks/tck-nonexistent-sub-004-be7e8b5e%3Asubscribe HTTP/1.1" 404 Not Found
+ERROR:opentelemetry.context:Failed to detach context
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 602, in use_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 504, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 441, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py", line 242, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+GeneratorExit
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\__init__.py", line 127, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\contextvars_context.py", line 40, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x000002BEF25E5FD0> at 0x000002BEF7C6FEC0> was created in a different Context
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-1142' coro=<EventQueueSource._dispatch_loop() done, defined at C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py:225> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:opentelemetry.context:Failed to detach context
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 602, in use_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 504, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 441, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py", line 242, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+GeneratorExit
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\__init__.py", line 127, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\contextvars_context.py", line 40, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x000002BEF25E5FD0> at 0x000002BEF7C6CE00> was created in a different Context
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-1143' coro=<EventQueueSource._dispatch_loop() done, defined at C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py:225> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50850 - "POST /a2a/rest/message%3Astream HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50850 - "POST /a2a/rest/message%3Asend HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50850 - "POST /a2a/rest/message%3Asend HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50850 - "GET /a2a/rest/tasks/587776b1-a336-49d3-a2dd-e227cae35bff?historyLength=1 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50850 - "POST /a2a/rest/message%3Asend HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50850 - "GET /a2a/rest/tasks/29129c65-a027-4a1d-895d-7f6213ca28b0 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50850 - "POST /a2a/rest/message%3Asend HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50850 - "POST /a2a/rest/tasks/49f6d739-1450-4f3d-bfa8-231c43cd9a76%3Acancel HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+ERROR:opentelemetry.context:Failed to detach context
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 602, in use_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 504, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 441, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py", line 242, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+GeneratorExit
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\__init__.py", line 127, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\contextvars_context.py", line 40, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x000002BEF25E5FD0> at 0x000002BEF7C38D80> was created in a different Context
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-1449' coro=<EventQueueSource._dispatch_loop() done, defined at C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py:225> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:opentelemetry.context:Failed to detach context
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 602, in use_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 504, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 441, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py", line 242, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+GeneratorExit
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\__init__.py", line 127, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\contextvars_context.py", line 40, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x000002BEF25E5FD0> at 0x000002BEF7C39AC0> was created in a different Context
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-1450' coro=<EventQueueSource._dispatch_loop() done, defined at C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py:225> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+INFO:     127.0.0.1:50850 - "POST /a2a/rest/message%3Asend HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50850 - "GET /a2a/rest/tasks/6a541d2b-cbc7-4867-b763-b42a6f93eba0 HTTP/1.1" 200 OK
+WARNING:a2a.utils.error_handlers:Request error: Code=N/A, Message='Task cannot be canceled'
+INFO:     127.0.0.1:50850 - "POST /a2a/rest/tasks/6a541d2b-cbc7-4867-b763-b42a6f93eba0%3Acancel HTTP/1.1" 400 Bad Request
+ERROR:opentelemetry.context:Failed to detach context
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 602, in use_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 504, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 441, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py", line 242, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+GeneratorExit
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\__init__.py", line 127, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\contextvars_context.py", line 40, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x000002BEF25E5FD0> at 0x000002BEF7C3B840> was created in a different Context
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-1472' coro=<EventQueueSource._dispatch_loop() done, defined at C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py:225> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:opentelemetry.context:Failed to detach context
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 602, in use_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 504, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 441, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py", line 242, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+GeneratorExit
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\__init__.py", line 127, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\contextvars_context.py", line 40, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x000002BEF25E5FD0> at 0x000002BEF7C3A680> was created in a different Context
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-1473' coro=<EventQueueSource._dispatch_loop() done, defined at C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py:225> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+ERROR:opentelemetry.context:Failed to detach context
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 602, in use_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 504, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 441, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py", line 242, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+GeneratorExit
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\__init__.py", line 127, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\contextvars_context.py", line 40, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x000002BEF25E5FD0> at 0x000002BEF7C2B340> was created in a different Context
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-1518' coro=<EventQueueSource._dispatch_loop() done, defined at C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py:225> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:opentelemetry.context:Failed to detach context
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 602, in use_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 504, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 441, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py", line 242, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+GeneratorExit
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\__init__.py", line 127, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\contextvars_context.py", line 40, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x000002BEF25E5FD0> at 0x000002BEF7C23880> was created in a different Context
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-1519' coro=<EventQueueSource._dispatch_loop() done, defined at C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py:225> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+INFO:     127.0.0.1:50850 - "POST /a2a/rest/message%3Asend HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50850 - "GET /a2a/rest/tasks/73991107-5a4e-49da-93a6-e447f21f6726 HTTP/1.1" 200 OK
+WARNING:a2a.utils.error_handlers:Request error: Code=N/A, Message='Task 73991107-5a4e-49da-93a6-e447f21f6726 is in terminal state: 3'
+INFO:     127.0.0.1:50850 - "POST /a2a/rest/message%3Asend HTTP/1.1" 400 Bad Request
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-1138' coro=<EventQueueSource._dispatch_loop() running at C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py:242> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:opentelemetry.context:Failed to detach context
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 602, in use_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 504, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 441, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py", line 242, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+GeneratorExit
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\__init__.py", line 127, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\contextvars_context.py", line 40, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x000002BEF25E5FD0> at 0x000002BEF7C7EF80> was created in a different Context
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-1139' coro=<EventQueueSource._dispatch_loop() running at C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py:242> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:opentelemetry.context:Failed to detach context
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 602, in use_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 504, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 441, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py", line 242, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+GeneratorExit
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\__init__.py", line 127, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\contextvars_context.py", line 40, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x000002BEF25E5FD0> at 0x000002BEF7C7D480> was created in a different Context
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-1426' coro=<EventQueueSource._dispatch_loop() running at C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py:242> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-1427' coro=<EventQueueSource._dispatch_loop() running at C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py:242> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:opentelemetry.context:Failed to detach context
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 602, in use_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 504, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 441, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py", line 242, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+GeneratorExit
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\__init__.py", line 127, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\contextvars_context.py", line 40, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x000002BEF25E5FD0> at 0x000002BEF7C2A6C0> was created in a different Context
+ERROR:opentelemetry.context:Failed to detach context
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 602, in use_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 504, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 441, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py", line 242, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+GeneratorExit
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\__init__.py", line 127, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\contextvars_context.py", line 40, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x000002BEF25E5FD0> at 0x000002BEF7C2AB80> was created in a different Context
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-1495' coro=<EventQueueSource._dispatch_loop() running at C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py:242> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-1496' coro=<EventQueueSource._dispatch_loop() running at C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py:242> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:opentelemetry.context:Failed to detach context
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 602, in use_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 504, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 441, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py", line 242, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+GeneratorExit
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\__init__.py", line 127, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\contextvars_context.py", line 40, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x000002BEF25E5FD0> at 0x000002BEF7C22980> was created in a different Context
+ERROR:opentelemetry.context:Failed to detach context
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 602, in use_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 504, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 441, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py", line 242, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+GeneratorExit
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\__init__.py", line 127, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\contextvars_context.py", line 40, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x000002BEF25E5FD0> at 0x000002BEF7C22840> was created in a different Context
+ERROR:opentelemetry.context:Failed to detach context
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 602, in use_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 504, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 441, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py", line 242, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+GeneratorExit
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\__init__.py", line 127, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\contextvars_context.py", line 40, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x000002BEF25E5FD0> at 0x000002BEF7C205C0> was created in a different Context
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-1541' coro=<EventQueueSource._dispatch_loop() done, defined at C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py:225> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:opentelemetry.context:Failed to detach context
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 602, in use_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 504, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 441, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py", line 242, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+GeneratorExit
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\__init__.py", line 127, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\contextvars_context.py", line 40, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x000002BEF25E5FD0> at 0x000002BEF7C23100> was created in a different Context
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-1542' coro=<EventQueueSource._dispatch_loop() done, defined at C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py:225> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50850 - "POST /a2a/rest/message%3Asend HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50850 - "POST /a2a/rest/message%3Asend HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+ERROR:opentelemetry.context:Failed to detach context
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 602, in use_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 504, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 441, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py", line 242, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+GeneratorExit
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\__init__.py", line 127, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\contextvars_context.py", line 40, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x000002BEF25E5FD0> at 0x000002BEF7C29500> was created in a different Context
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-1663' coro=<EventQueueSource._dispatch_loop() done, defined at C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py:225> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:opentelemetry.context:Failed to detach context
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 602, in use_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 504, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 441, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py", line 242, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+GeneratorExit
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\__init__.py", line 127, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\contextvars_context.py", line 40, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x000002BEF25E5FD0> at 0x000002BEF7C29840> was created in a different Context
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-1664' coro=<EventQueueSource._dispatch_loop() done, defined at C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py:225> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+INFO:     127.0.0.1:50850 - "POST /a2a/rest/message%3Asend HTTP/1.1" 200 OK
+WARNING:a2a.utils.error_handlers:Request error: Code=N/A, Message='Task 05a788ea-3b8e-4c3e-81e2-71a00b421c85 is in terminal state: 3'
+INFO:     127.0.0.1:50850 - "POST /a2a/rest/message%3Asend HTTP/1.1" 400 Bad Request
+ERROR:opentelemetry.context:Failed to detach context
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 602, in use_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 504, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 441, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py", line 242, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+GeneratorExit
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\__init__.py", line 127, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\contextvars_context.py", line 40, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x000002BEF25E5FD0> at 0x000002BEF7C29300> was created in a different Context
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-1685' coro=<EventQueueSource._dispatch_loop() done, defined at C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py:225> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:opentelemetry.context:Failed to detach context
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 602, in use_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 504, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 441, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py", line 242, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+GeneratorExit
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\__init__.py", line 127, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\contextvars_context.py", line 40, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x000002BEF25E5FD0> at 0x000002BEF7C29B80> was created in a different Context
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-1686' coro=<EventQueueSource._dispatch_loop() done, defined at C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py:225> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50851 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50850 - "POST /a2a/rest/message%3Asend HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50850 - "POST /a2a/rest/tasks/92c506ee-653b-4a6d-b960-3dd831e40274%3Asubscribe HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50852 - "POST /a2a/rest/message%3Asend HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+WARNING:a2a.server.routes.jsonrpc_dispatcher:Request Error (ID: 64): Code=-32602, Message='Task e5bbcf46-3dea-4a76-b81a-7b99edff9224 is in terminal state: 3', Data=[{'@type': 'type.googleapis.com/google.rpc.ErrorInfo', 'reason': 'INVALID_PARAMS', 'domain': 'a2a-protocol.org', 'metadata': {}}]
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+ERROR:opentelemetry.context:Failed to detach context
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 602, in use_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 504, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 441, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py", line 242, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+GeneratorExit
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\__init__.py", line 127, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\contextvars_context.py", line 40, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x000002BEF25E5FD0> at 0x000002BEF7C0C540> was created in a different Context
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-1823' coro=<EventQueueSource._dispatch_loop() done, defined at C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py:225> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:opentelemetry.context:Failed to detach context
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 602, in use_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 504, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 441, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py", line 242, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+GeneratorExit
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\__init__.py", line 127, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\contextvars_context.py", line 40, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x000002BEF25E5FD0> at 0x000002BEF7C0C400> was created in a different Context
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-1824' coro=<EventQueueSource._dispatch_loop() done, defined at C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py:225> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+INFO:     127.0.0.1:50850 - "POST /a2a/rest/message%3Asend HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50850 - "GET /a2a/rest/tasks/7235331a-018e-4d23-b582-37869b2e598b HTTP/1.1" 200 OK
+WARNING:a2a.utils.error_handlers:Request error: Code=N/A, Message='Task 7235331a-018e-4d23-b582-37869b2e598b is in terminal state: 3'
+INFO:     127.0.0.1:50850 - "POST /a2a/rest/tasks/7235331a-018e-4d23-b582-37869b2e598b%3Asubscribe HTTP/1.1" 400 Bad Request
+ERROR:opentelemetry.context:Failed to detach context
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 602, in use_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 504, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 441, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py", line 242, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+GeneratorExit
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\__init__.py", line 127, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\contextvars_context.py", line 40, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x000002BEF25E5FD0> at 0x000002BEF7C0C700> was created in a different Context
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-1846' coro=<EventQueueSource._dispatch_loop() done, defined at C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py:225> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:opentelemetry.context:Failed to detach context
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 602, in use_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 504, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 441, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py", line 242, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+GeneratorExit
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\__init__.py", line 127, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\contextvars_context.py", line 40, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x000002BEF25E5FD0> at 0x000002BEF7C0C780> was created in a different Context
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-1847' coro=<EventQueueSource._dispatch_loop() done, defined at C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py:225> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50853 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50849 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50850 - "POST /a2a/rest/message%3Asend HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50850 - "POST /a2a/rest/message%3Asend HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50854 - "POST /a2a/rest/message%3Asend HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50850 - "POST /a2a/rest/message%3Astream HTTP/1.1" 200 OK
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-1641' coro=<EventQueueSource._dispatch_loop() running at C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py:242> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-1642' coro=<EventQueueSource._dispatch_loop() running at C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py:242> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:opentelemetry.context:Failed to detach context
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 602, in use_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 504, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 441, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py", line 242, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+GeneratorExit
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\__init__.py", line 127, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\contextvars_context.py", line 40, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x000002BEF25E5FD0> at 0x000002BEF7C8AE00> was created in a different Context
+ERROR:opentelemetry.context:Failed to detach context
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 602, in use_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 504, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 441, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py", line 242, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+GeneratorExit
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\__init__.py", line 127, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\contextvars_context.py", line 40, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x000002BEF25E5FD0> at 0x000002BEF7C6F000> was created in a different Context
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-1800' coro=<EventQueueSource._dispatch_loop() running at C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py:242> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-1801' coro=<EventQueueSource._dispatch_loop() running at C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py:242> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:opentelemetry.context:Failed to detach context
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 602, in use_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 504, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 441, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py", line 242, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+GeneratorExit
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\__init__.py", line 127, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\contextvars_context.py", line 40, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x000002BEF25E5FD0> at 0x000002BEF7C0E880> was created in a different Context
+ERROR:opentelemetry.context:Failed to detach context
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 602, in use_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 504, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 441, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py", line 242, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+GeneratorExit
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\__init__.py", line 127, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\contextvars_context.py", line 40, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x000002BEF25E5FD0> at 0x000002BEF7C0E400> was created in a different Context
+ERROR:a2a.server.request_handlers.request_handler:Validation failure: Push notifications are not supported by the agent
+WARNING:a2a.utils.error_handlers:Request error: Code=N/A, Message='Task not found'
+INFO:     127.0.0.1:61858 - "GET /a2a/rest/tasks/tck-nonexistent-status-001-be7e8b5e HTTP/1.1" 404 Not Found
+WARNING:a2a.utils.error_handlers:Request error: Code=N/A, Message='Task not found'
+INFO:     127.0.0.1:61858 - "POST /a2a/rest/tasks/tck-nonexistent-status-002-be7e8b5e%3Acancel HTTP/1.1" 404 Not Found
+ERROR:opentelemetry.context:Failed to detach context
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 602, in use_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 504, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 441, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py", line 242, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+GeneratorExit
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\__init__.py", line 127, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\contextvars_context.py", line 40, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x000002BEF25E5FD0> at 0x000002BEF7BF1440> was created in a different Context
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-2172' coro=<EventQueueSource._dispatch_loop() done, defined at C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py:225> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:opentelemetry.context:Failed to detach context
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 602, in use_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 504, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 441, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py", line 242, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+GeneratorExit
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\__init__.py", line 127, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\contextvars_context.py", line 40, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x000002BEF25E5FD0> at 0x000002BEF7BF1180> was created in a different Context
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-2173' coro=<EventQueueSource._dispatch_loop() done, defined at C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py:225> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+INFO:     127.0.0.1:61859 - "POST /a2a/rest/message%3Asend HTTP/1.1" 200 OK
+ERROR:a2a.server.request_handlers.request_handler:Validation failure: Push notifications are not supported by the agent
+WARNING:a2a.utils.error_handlers:Request error: Code=N/A, Message='Push notifications are not supported by the agent'
+INFO:     127.0.0.1:61858 - "POST /a2a/rest/tasks/tck-status-push-005-be7e8b5e/pushNotificationConfigs HTTP/1.1" 400 Bad Request
+WARNING:a2a.utils.version_validator:Version mismatch: actual='99.0', expected='1.0'
+WARNING:a2a.utils.error_handlers:Request error: Code=N/A, Message='A2A version '99.0' is not supported by this handler. Expected version '1.0'.'
+INFO:     127.0.0.1:61860 - "POST /a2a/rest/message%3Asend HTTP/1.1" 400 Bad Request
+INFO:     127.0.0.1:61858 - "POST /a2a/rest/message%3Asend HTTP/1.1" 200 OK
+WARNING:a2a.utils.error_handlers:Request error: Code=N/A, Message='Task not found'
+INFO:     127.0.0.1:61858 - "GET /a2a/rest/tasks/tck-nonexistent-pd-001-be7e8b5e HTTP/1.1" 404 Not Found
+WARNING:a2a.utils.error_handlers:Request error: Code=N/A, Message='Task not found'
+INFO:     127.0.0.1:61858 - "GET /a2a/rest/tasks/tck-nonexistent-pd-001-be7e8b5e HTTP/1.1" 404 Not Found
+WARNING:a2a.utils.error_handlers:Request error: Code=N/A, Message='Task not found'
+INFO:     127.0.0.1:61858 - "GET /a2a/rest/tasks/tck-nonexistent-pd-001-be7e8b5e HTTP/1.1" 404 Not Found
+WARNING:a2a.utils.error_handlers:Request error: Code=N/A, Message='Task not found'
+INFO:     127.0.0.1:61858 - "GET /a2a/rest/tasks/tck-nonexistent-pd-001-be7e8b5e HTTP/1.1" 404 Not Found
+WARNING:a2a.utils.error_handlers:Request error: Code=N/A, Message='Task not found'
+INFO:     127.0.0.1:61858 - "GET /a2a/rest/tasks/tck-nonexistent-pd-001-be7e8b5e HTTP/1.1" 404 Not Found
+WARNING:a2a.utils.error_handlers:Request error: Code=N/A, Message='Task not found'
+INFO:     127.0.0.1:61858 - "GET /a2a/rest/tasks/tck-nonexistent-pd-001-be7e8b5e HTTP/1.1" 404 Not Found
+WARNING:a2a.utils.error_handlers:Request error: Code=N/A, Message='Task not found'
+INFO:     127.0.0.1:61858 - "GET /a2a/rest/tasks/tck-nonexistent-pd-001-be7e8b5e HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:61861 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61861 - "POST / HTTP/1.1" 200 OK
+ERROR:a2a.server.request_handlers.request_handler:Validation failure: Push notifications are not supported by the agent
+INFO:     127.0.0.1:61861 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61862 - "POST / HTTP/1.1" 200 OK
+WARNING:a2a.utils.version_validator:Version mismatch: actual='99.0', expected='1.0'
+INFO:     127.0.0.1:61864 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61861 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61861 - "POST / HTTP/1.1" 200 OK
+WARNING:a2a.utils.version_validator:Version mismatch: actual='99.0', expected='1.0'
+INFO:     127.0.0.1:61865 - "POST / HTTP/1.1" 200 OK
+ERROR:opentelemetry.context:Failed to detach context
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 602, in use_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 504, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 441, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py", line 242, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+GeneratorExit
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\__init__.py", line 127, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\contextvars_context.py", line 40, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x000002BEF25E5FD0> at 0x000002BEF7BD7B40> was created in a different Context
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-2252' coro=<EventQueueSource._dispatch_loop() done, defined at C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py:225> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:opentelemetry.context:Failed to detach context
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 602, in use_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 504, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 441, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py", line 242, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+GeneratorExit
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\__init__.py", line 127, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\contextvars_context.py", line 40, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x000002BEF25E5FD0> at 0x000002BEF7BD7D80> was created in a different Context
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-2253' coro=<EventQueueSource._dispatch_loop() done, defined at C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py:225> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+INFO:     127.0.0.1:61861 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61861 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61861 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61861 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61861 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61861 - "POST / HTTP/1.1" 200 OK
+WARNING:a2a.server.routes.jsonrpc_dispatcher:Request Error (ID: 79): Code=-32001, Message='Task not found', Data=[{'@type': 'type.googleapis.com/google.rpc.ErrorInfo', 'reason': 'TASK_NOT_FOUND', 'domain': 'a2a-protocol.org', 'metadata': {}}]
+INFO:     127.0.0.1:61861 - "POST / HTTP/1.1" 200 OK
+ERROR:opentelemetry.context:Failed to detach context
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 602, in use_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 504, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 441, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py", line 242, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+GeneratorExit
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\__init__.py", line 127, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\contextvars_context.py", line 40, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x000002BEF25E5FD0> at 0x000002BEF7BD4DC0> was created in a different Context
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-2296' coro=<EventQueueSource._dispatch_loop() done, defined at C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py:225> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+ERROR:opentelemetry.context:Failed to detach context
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 602, in use_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 504, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\trace\__init__.py", line 441, in start_as_current_span
+    yield span
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py", line 242, in async_wrapper
+    result = await func(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+GeneratorExit
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\__init__.py", line 127, in detach
+    _RUNTIME_CONTEXT.detach(token)
+  File "C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\opentelemetry\context\contextvars_context.py", line 40, in detach
+    self._current_context.reset(token)
+ValueError: <Token var=<ContextVar name='current_context' default={} at 0x000002BEF25E5FD0> at 0x000002BEF7BD8C40> was created in a different Context
+ERROR:asyncio:Task was destroyed but it is pending!
+task: <Task pending name='Task-2297' coro=<EventQueueSource._dispatch_loop() done, defined at C:\Users\imran\OneDrive\.aaif-work\ca2a-env\Lib\site-packages\a2a\utils\telemetry.py:225> wait_for=<Future pending cb=[Task.task_wakeup()]>>
+INFO:     127.0.0.1:61861 - "POST / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:61861 - "POST / HTTP/1.1" 200 OK

@@ -1,0 +1,45 @@
+{
+  "transport": "JSONRPC",
+  "direction": "TypeScript SDK client to Python SDK 1.1.5 server",
+  "credentials_issued_by": "Python cA2A",
+  "callee_assurance": "none",
+  "protected_handler_invocations": 3,
+  "results": {
+    "ordinary": {
+      "passed": true,
+      "mode": "ordinary"
+    },
+    "signed_read": {
+      "passed": true,
+      "canonical_credentials_preserved": true,
+      "hops": 2,
+      "caller_attestation": "not_offered"
+    },
+    "duplicate_message_observation": {
+      "accepted": true,
+      "error": null,
+      "protected_handler_invocations": 2
+    },
+    "replay_observation": {
+      "accepted": true,
+      "protected_handler_invocations": 3,
+      "limit": "Stateless challenge permits reuse before expiry, even with a new A2A message ID."
+    },
+    "policy_denial": {
+      "passed": true,
+      "error": "SCOPE_NOT_PERMITTED"
+    },
+    "missing_header": {
+      "passed": true,
+      "error": "CA2A_OPT_IN_REQUIRED"
+    },
+    "fractional_depth": {
+      "passed": true,
+      "error": "TRANSPORT_ERROR"
+    },
+    "tampered_signature": {
+      "passed": true,
+      "error": "INVALID_CREDENTIAL"
+    }
+  }
+}

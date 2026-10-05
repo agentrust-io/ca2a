@@ -1,0 +1,73 @@
+..................sss..........sss.ssssss...................ssssssssssss [ 30%]
+ssssssssssssssssss...................................................... [ 61%]
+.................F............FF...................sFF........ss........ [ 91%]
+.....ss............                                                      [100%]
+═══════════════════════════════════════════════════════
+             A2A TCK Compatibility Report              
+═══════════════════════════════════════════════════════
+SUT: http://127.0.0.1:18991
+Timestamp: 2026-10-05T18:22:20.192672+00:00
+
+OVERALL COMPATIBILITY: 66.1%
+
+┌─────────────┬────────┬────────┬─────────┬───────┐
+│ Level       │ Passed │ Failed │ Skipped │ Total │
+├─────────────┼────────┼────────┼─────────┼───────┤
+│ MUST        │     76 │     24 │      14 │   114 │
+│ SHOULD      │      0 │     11 │       0 │    11 │
+│ MAY         │      0 │      4 │       0 │     4 │
+└─────────────┴────────┴────────┴─────────┴───────┘
+
+BY TRANSPORT:
+  agent_card:    6/6 ✓
+  grpc:          48/64 (13 skipped) ⚠
+  jsonrpc:       76/92 (15 skipped) ⚠
+  http_json:     71/86 (14 skipped) ⚠
+
+FAILED REQUIREMENTS:
+  ✗ CORE-CANCEL-002 (http_json): Expected error code 409 (TaskNotCancelableError), got 400
+  ✗ STREAM-SUB-003 (grpc, jsonrpc): Expected error code UNIMPLEMENTED (UnsupportedOperationError), got INVALID_ARGUMENT
+  ✗ GRPC-ERR-002 (grpc): gRPC status mismatch: expected PushNotificationNotSupportedError (UNIMPLEMENTED), got FAILED_PRECONDITION (could be: TaskNotCancelableError, ExtendedAgentCardNotConfiguredError, ExtensionSupportRequiredError)
+═══════════════════════════════════════════════════════
+
+
+================================== FAILURES ===================================
+______ TestCancelTask.test_cancel_terminal_task_returns_error[http_json] ______
+tests\compatibility\core_operations\test_task_lifecycle.py:238: in test_cancel_terminal_task_returns_error
+    assert_and_record(compatibility_collector, req, transport, errors)
+tests\compatibility\_test_helpers.py:71: in assert_and_record
+    assert passed, fail_msg(req, transport, "; ".join(errors))
+           ^^^^^^
+E   AssertionError: CORE-CANCEL-002 [CancelTask returns TaskNotCancelableError for terminal tasks] failed on http_json: Expected error code 409 (TaskNotCancelableError), got 400 (see specification/specification.md#315-cancel-task)
+______ TestSubscribeLifecycle.test_subscribe_rejects_terminal_task[grpc] ______
+tests\compatibility\core_operations\test_task_lifecycle.py:449: in test_subscribe_rejects_terminal_task
+    assert_and_record(compatibility_collector, req, transport, errors)
+tests\compatibility\_test_helpers.py:71: in assert_and_record
+    assert passed, fail_msg(req, transport, "; ".join(errors))
+           ^^^^^^
+E   AssertionError: STREAM-SUB-003 [SubscribeToTask rejects terminal tasks] failed on grpc: Expected error code UNIMPLEMENTED (UnsupportedOperationError), got INVALID_ARGUMENT (see specification/specification.md#316-subscribe-to-task)
+____ TestSubscribeLifecycle.test_subscribe_rejects_terminal_task[jsonrpc] _____
+tests\compatibility\core_operations\test_task_lifecycle.py:449: in test_subscribe_rejects_terminal_task
+    assert_and_record(compatibility_collector, req, transport, errors)
+tests\compatibility\_test_helpers.py:71: in assert_and_record
+    assert passed, fail_msg(req, transport, "; ".join(errors))
+           ^^^^^^
+E   AssertionError: STREAM-SUB-003 [SubscribeToTask rejects terminal tasks] failed on jsonrpc: Expected error code -32004 (UnsupportedOperationError), got -32602 (see specification/specification.md#316-subscribe-to-task)
+______ TestGrpcStatusCodes.test_push_not_supported_returns_unimplemented ______
+tests\compatibility\grpc\test_status_codes.py:181: in test_push_not_supported_returns_unimplemented
+    assert_and_record(compatibility_collector, req, TRANSPORT, errors)
+tests\compatibility\_test_helpers.py:71: in assert_and_record
+    assert passed, fail_msg(req, transport, "; ".join(errors))
+           ^^^^^^
+E   AssertionError: GRPC-ERR-002 [A2A error types mapped to correct gRPC status codes] failed on grpc: gRPC status mismatch: expected PushNotificationNotSupportedError (UNIMPLEMENTED), got FAILED_PRECONDITION (could be: TaskNotCancelableError, ExtendedAgentCardNotConfiguredError, ExtensionSupportRequiredError) (see specification/specification.md#54-error-code-mappings)
+____ TestGrpcStatusCodes.test_version_not_supported_returns_unimplemented _____
+tests\compatibility\grpc\test_status_codes.py:223: in test_version_not_supported_returns_unimplemented
+    pytest.fail(fail_msg(req, TRANSPORT, detail))
+E   Failed: GRPC-ERR-002 [A2A error types mapped to correct gRPC status codes] failed on grpc: Server MUST return VersionNotSupportedError (UNIMPLEMENTED) for unsupported A2A-Version, but processed the request normally (see specification/specification.md#54-error-code-mappings)
+=========================== short test summary info ===========================
+FAILED tests/compatibility/core_operations/test_task_lifecycle.py::TestCancelTask::test_cancel_terminal_task_returns_error[http_json]
+FAILED tests/compatibility/core_operations/test_task_lifecycle.py::TestSubscribeLifecycle::test_subscribe_rejects_terminal_task[grpc]
+FAILED tests/compatibility/core_operations/test_task_lifecycle.py::TestSubscribeLifecycle::test_subscribe_rejects_terminal_task[jsonrpc]
+FAILED tests/compatibility/grpc/test_status_codes.py::TestGrpcStatusCodes::test_push_not_supported_returns_unimplemented
+FAILED tests/compatibility/grpc/test_status_codes.py::TestGrpcStatusCodes::test_version_not_supported_returns_unimplemented
+5 failed, 183 passed, 47 skipped, 30 deselected in 134.76s (0:02:14)

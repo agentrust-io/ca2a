@@ -1,0 +1,22 @@
+{
+  "command": [
+    "C:\\Users\\imran\\AppData\\Roaming\\Python\\Python312\\Scripts\\uv.exe",
+    "run",
+    "--no-project",
+    "--python",
+    "C:\\Users\\imran\\OneDrive\\.aaif-work\\ca2a-env\\Scripts\\python.exe",
+    "python",
+    "-m",
+    "pytest",
+    "tests/compatibility/",
+    "--sut-host=http://127.0.0.1:18991",
+    "-m",
+    "must",
+    "-q",
+    "--tb=short",
+    "--timeout=45",
+    "--compatibility-report=C:\\Users\\imran\\OneDrive\\.aaif-work\\ca2a-interop\\experiments\\a2a-interop\\results\\ca2a\\compatibility",
+    "--junitxml=C:\\Users\\imran\\OneDrive\\.aaif-work\\ca2a-interop\\experiments\\a2a-interop\\results\\ca2a\\junit.xml"
+  ],
+  "exit": 1
+}

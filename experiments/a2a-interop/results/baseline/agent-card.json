@@ -1,0 +1,46 @@
+{
+  "name": "A2A Python SDK System Under Test (SUT)",
+  "description": "Auto-generated System Under Test for A2A TCK conformance",
+  "supportedInterfaces": [
+    {
+      "url": "http://127.0.0.1:18991",
+      "protocolBinding": "JSONRPC",
+      "protocolVersion": "1.0"
+    },
+    {
+      "url": "http://127.0.0.1:18991/a2a/rest",
+      "protocolBinding": "HTTP+JSON",
+      "protocolVersion": "1.0"
+    },
+    {
+      "url": "127.0.0.1:18992",
+      "protocolBinding": "GRPC",
+      "protocolVersion": "1.0"
+    }
+  ],
+  "provider": {
+    "url": "https://github.com/a2aproject",
+    "organization": "A2A Project"
+  },
+  "version": "1.0.0",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": false
+  },
+  "defaultInputModes": [
+    "text"
+  ],
+  "defaultOutputModes": [
+    "text"
+  ],
+  "skills": [
+    {
+      "id": "tck",
+      "name": "TCK Conformance",
+      "description": "Handles TCK conformance test messages",
+      "tags": [
+        "tck"
+      ]
+    }
+  ]
+}

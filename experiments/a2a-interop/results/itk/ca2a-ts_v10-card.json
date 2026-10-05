@@ -1,0 +1,83 @@
+{
+  "name": "ITK TS Agent",
+  "description": "TypeScript agent using SDK for ITK tests.",
+  "version": "1.0.0",
+  "url": "http://127.0.0.1:19003/jsonrpc",
+  "preferredTransport": "JSONRPC",
+  "protocolVersion": "0.3",
+  "capabilities": {
+    "streaming": true,
+    "pushNotifications": true
+  },
+  "defaultInputModes": [
+    "text/plain",
+    "application/x-protobuf"
+  ],
+  "defaultOutputModes": [
+    "text/plain"
+  ],
+  "skills": [
+    {
+      "id": "acts-behaviors",
+      "name": "ACTS behaviours",
+      "description": "Implements the ACTS \u00a711 tck-* behaviour contract.",
+      "tags": [
+        "acts",
+        "conformance"
+      ]
+    }
+  ],
+  "additionalInterfaces": [
+    {
+      "url": "127.0.0.1:19004",
+      "transport": "GRPC"
+    },
+    {
+      "url": "http://127.0.0.1:19003/rest",
+      "transport": "HTTP+JSON"
+    }
+  ],
+  "provider": {
+    "url": "https://example.com/a2a-samples",
+    "organization": "A2A Samples"
+  },
+  "supportsAuthenticatedExtendedCard": true,
+  "supportedInterfaces": [
+    {
+      "url": "http://127.0.0.1:19003/jsonrpc",
+      "protocolBinding": "JSONRPC",
+      "tenant": "",
+      "protocolVersion": "1.0"
+    },
+    {
+      "url": "http://127.0.0.1:19003/jsonrpc",
+      "protocolBinding": "JSONRPC",
+      "tenant": "",
+      "protocolVersion": "0.3"
+    },
+    {
+      "url": "127.0.0.1:19004",
+      "protocolBinding": "GRPC",
+      "tenant": "",
+      "protocolVersion": "1.0"
+    },
+    {
+      "url": "127.0.0.1:19004",
+      "protocolBinding": "GRPC",
+      "tenant": "",
+      "protocolVersion": "0.3"
+    },
+    {
+      "url": "http://127.0.0.1:19003/rest",
+      "protocolBinding": "HTTP+JSON",
+      "tenant": "",
+      "protocolVersion": "1.0"
+    },
+    {
+      "url": "http://127.0.0.1:19003/rest",
+      "protocolBinding": "HTTP+JSON",
+      "tenant": "",
+      "protocolVersion": "0.3"
+    }
+  ]
+}
