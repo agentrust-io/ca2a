@@ -1,5 +1,7 @@
 # Scope-Policy Intersection (Cedar)
 
+A permission handed down a chain is only usable if the receiving agent's own rules also allow it. This page explains how cA2A combines the two, either with a simple list of allowed actions or with Cedar, an open-source policy language. It is for operators writing those rules.
+
 A delegated capability is usable only when the callee's local policy also allows it. The runtime implements this intersection with either `LocalPolicy`, a capability allow set, or `CedarPolicy`, backed by `cedarpy`. Both implement the `Policy` protocol and run in the live peer path.
 
 ```text

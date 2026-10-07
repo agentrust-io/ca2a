@@ -1,5 +1,7 @@
 # Provenance DAG
 
+Provenance is the record of who decided what, under which permission. This page explains the records cA2A leaves at each handoff, how they link back to the one before, and why only the signed form proves who produced them. It is for developers building or auditing those records.
+
 A delegation credential describes authority. A provenance record describes a decision made under that authority. cA2A provides both unsigned `DelegationRecord` helpers and a signed TRACE binding. Choose the signed form when a recipient needs to authenticate who produced the evidence.
 
 ## DelegationRecord

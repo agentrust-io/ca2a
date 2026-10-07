@@ -1,5 +1,30 @@
 # Limitations
 
+This page says what cA2A proves today, what it does not, and what is still being
+built, so you can decide how much to rely on it. Read it before you rely on any
+hardware claim.
+
+cA2A 0.4.0 (published as `ca2a-runtime`) is a developer preview with a runnable,
+tested profile and runtime. This document states plainly what is built, what
+remains before 1.0, and what is out of scope, so no claim in the documentation runs
+ahead of the code. This is a deliberate discipline: proof, not promises.
+
+In short:
+
+- **Works offline today, no hardware needed:** checking that a chain of permissions
+  starts at an authority you trust and only narrows at each handoff, refusing
+  revoked grants when you supply a revocation list, encrypting a task to one agent,
+  and checking signed records of each handoff.
+- **Checked on real hardware, with limits:** AMD SEV-SNP and Intel TDX reports from
+  real Azure and GCP machines; an Azure agent calling a GCP agent in one direction;
+  two GCP machines run by one operator checking each other in both directions.
+  Two machines run by different operators checking each other has not yet been shown.
+- **Off unless you turn it on:** checking the platform settings inside a hardware
+  report (such as whether SMT is on), and authenticating the answer that comes back
+  from a call.
+- **Not done at all:** publishing or fetching revocation data. A checker knows only
+  about the revocations in the snapshot you hand it.
+
 ## Opt-in response authentication
 
 `send_task(require_authenticated_response=True)` authenticates readable
@@ -10,8 +35,6 @@ signed receipts or confidential output encryption. Both session parties know the
 MAC key. Hardware assurance still requires explicit hardware appraisal; the new
 profile has software/HTTP tests and no new live-hardware validation. See the
 [profile and deployment limits](docs/spec/response-authentication.md).
-
-cA2A 0.2 is a Developer Preview with a runnable, tested profile and runtime. This document states plainly what is built, what remains before 1.0, and what is out of scope, so no claim in the documentation runs ahead of the code. This is a deliberate discipline: proof, not promises.
 
 ## What is built
 

@@ -1,5 +1,7 @@
 # Component Model
 
+This page maps each part of cA2A to the code module that implements it. It is for developers who want to read or extend the reference implementation.
+
 cA2A composes delegation verification, local policy, caller authentication, attestation, encrypted payloads, and evidence records. The reference runtime and HTTP transport implement this path; hardware assurance depends on the provider and evidence available in the deployment.
 
 ## Components

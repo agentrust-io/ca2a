@@ -1,6 +1,8 @@
 # Verify your first delegation chain
 
-Build a two-hop grant: a root gives an intermediary `read` and `write`, and the intermediary gives the leaf only `read`. Verify it, then reject an untrusted root and a correctly signed grant that exceeds its parent's authority. After installation, this example needs no network, hardware, or running peer.
+This page is for anyone who wants to see cA2A's core check working on their own computer. You build a chain of two handoffs: a starting authority (the root) gives a middle agent permission to `read` and `write`, and the middle agent passes only `read` on to a final agent (the leaf). You then check the chain, and watch it refuse two bad cases: a root you never agreed to trust, and a correctly signed grant that asks for more than its parent had.
+
+After installation, this example needs no network, no special hardware, and no running agents.
 
 ## Install
 
@@ -83,7 +85,7 @@ Saved demo-chain.json and trusted-root.txt; private keys were not saved
 
 ## Verify it
 
-Use the separately retained issuer key:
+Check the saved chain with the command-line tool. You pass in the root key you kept separately, which is how the checker knows which starting authority you trust:
 
 ```bash
 ca2a verify-chain --chain demo-chain.json --trusted-root-issuer "$(cat trusted-root.txt)"
@@ -95,21 +97,21 @@ Expected exit code: `0`.
 {"verified": true, "hops": 2, "leaf_scope": ["cap:read"], "revocation": "not_checked"}
 ```
 
-In production, the relying party obtains trusted roots through its own approval process. Copying the issuer from an arbitrary incoming chain into the trust list would let that chain choose its own authority.
+In real use, the agent receiving the work (the relying party) decides which roots to trust through its own approval process. Copying the root out of an incoming chain and trusting it would let that chain choose its own authority.
 
 ## Try to break it
 
-The script signs an overbroad child credential and expects `SCOPE_ESCALATION`. Editing a signed JSON field instead should fail the signature check first. These are different checks; an invalid signature does not demonstrate scope attenuation.
+The script signs a child grant that asks for more than its parent had, and expects `SCOPE_ESCALATION` (scope is the list of permissions in a grant). If you instead edit a field in the saved JSON by hand, the signature check fails first. These are two different checks: a broken signature shows the file was changed, while the scope check shows a correctly signed grant still cannot widen its own permissions.
 
-The verifier also checks issuer-to-subject continuity, parent links, unique credential IDs, depth, and validity windows. These offline checks do not keep a global ledger of previously accepted requests. Live request replay handling is a separate runtime concern.
+The checker also confirms that each grant was issued by the agent the previous grant was given to, that parent links and credential IDs line up, that the chain is not too long, and that each grant is inside its valid time window. It does not keep a list of every request it has seen before; stopping a live request from being replayed is a separate job for the running service.
 
 ## Build a chain in code
 
-The complete script above uses the same `DelegationCredential` and `verify_chain` APIs as the runtime. `trusted_root_issuers` is required for a successful verification. Keep the root grant and each child grant bounded by your own authorization policy.
+The script above uses the same `DelegationCredential` and `verify_chain` functions the running service uses. `trusted_root_issuers` is required: with no trusted root, nothing verifies. Keep the root grant and each child grant within your own authorization rules.
 
 ## What is not in this walkthrough
 
-This example verifies signed grants. It does not execute tasks, appraise hardware, seal a network payload, or verify a TRACE provenance DAG. Follow [How It Works](concepts.md) for the live peer path and [Limitations](../LIMITATIONS.md) for the evidence that has been demonstrated.
+This example checks signed grants only. It does not run a task, check hardware, encrypt a task for another agent, or check the signed records each handoff leaves (the TRACE provenance chain). Read [How It Works](concepts.md) for what happens on a live call between agents, and [Limitations](../LIMITATIONS.md) for what has been shown on real hardware.
 
 ## Troubleshooting
 

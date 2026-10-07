@@ -1,5 +1,7 @@
 # Conformance
 
+Conformance means passing the test suite that shows an implementation follows the cA2A rules. This page explains what the suite covers, how to run it, and what an implementation must pass before calling itself cA2A-compatible.
+
 An implementation may claim cA2A-compatible for a given version when it passes all MUST-level tests in the cA2A conformance suite for that version. This ties directly to the trademark language in [CHARTER.md](../../CHARTER.md): the mark asserts that a deployment satisfies the attestation, attenuation, sealing, and provenance requirements defined here.
 
 ## The normative suite

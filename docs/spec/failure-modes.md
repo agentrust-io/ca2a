@@ -1,5 +1,7 @@
 # Failure Modes
 
+This page lists what happens when each check on an incoming call fails: which error is raised, how far the call gets, and whether a signed refusal record is produced. It is for operators and reviewers who need to know how cA2A behaves when something is wrong.
+
 The full peer handler raises a `CA2AError` subtype when a required check fails and returns no payload. The configured caller-attestation requirement determines whether an absent offer is acceptable. The default permits absence and records `not_offered`; it never accepts a present but invalid offer.
 
 ## Inbound failures

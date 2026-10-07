@@ -6,6 +6,8 @@ Written: 2026-08-09
 Stability: Unstable
 ---
 
+Mutual attestation means both agents prove what they are running to each other, rather than only the caller checking the agent it calls. This page records how cA2A lets the receiving agent check the caller's hardware report too, and what that still does not cover. It is for implementers and security reviewers.
+
 > **State of this document.** The design below is built. The callee issues a
 > challenge on the handshake endpoint, the caller binds its own channel key into a
 > report under it, and the callee appraises that before it opens the sealed
@@ -167,7 +169,7 @@ A challenge is worth nothing unless it is single-use and expiring, and the
 reference server currently keeps no state at all.
 
 **Option A: a challenge store.** Issue random challenges, remember them, delete on
-use, expire on a timer. Straightforward, and it makes the server stateful — which
+use, expire on a timer. Straightforward, and it makes the server stateful, which
 matters for anyone running more than one instance, because a challenge issued by
 one is unknown to the next.
 

@@ -1,5 +1,7 @@
 # Authenticated response requirements
 
+This page sets out the requirements any method must meet to prove an answer came back from the checked agent and matches the request sent. It is the agreed basis for that work and is for implementers and reviewers; the [live response authentication](response-authentication.md) page describes what is built today.
+
 Status: proposed requirements and acceptance matrix for [#188](https://github.com/agentrust-io/ca2a/issues/188).
 The [live response authentication profile](response-authentication.md) now
 implements a session-MAC verifier and reference adapter against this contract.

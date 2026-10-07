@@ -1,5 +1,10 @@
 # Mutual hardware acceptance run
 
+This page records a test where two confidential-computing machines each checked the
+other's hardware report before exchanging a task, and explains how to repeat it. It
+is for engineers reproducing the run and for reviewers who want to know exactly what
+it did and did not prove.
+
 Status: a same-project live diagnostic completed on two GCP SNP guests on
 September 17, 2026. Calls succeeded in both directions, with separately collected
 receiver logs and matching nonsecret payload digests. A paced run passed one
