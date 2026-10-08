@@ -6,6 +6,7 @@ import tomllib
 from importlib.metadata import version
 from pathlib import Path
 
+import pytest
 import yaml
 
 import ca2a_runtime
@@ -50,3 +51,44 @@ def test_publish_waits_for_both_artifact_install_smoke_tests() -> None:
     assert "Install and smoke-test wheel" in names
     assert "Install and smoke-test source distribution" in names
     assert workflow["jobs"]["publish"]["needs"] == "build"
+
+
+def test_release_reuses_complete_ci_validation() -> None:
+    jobs = _release_workflow()["jobs"]
+    assert jobs["validate"]["uses"] == "./.github/workflows/ci.yml"
+    ci = yaml.safe_load(Path(".github/workflows/ci.yml").read_text(encoding="utf-8"))
+    assert "workflow_call" in ci[True]
+    matrix = ci["jobs"]["test"]["strategy"]["matrix"]
+    assert matrix["python-version"] == ["3.11", "3.12", "3.13"]
+    assert matrix["os"] == ["ubuntu-latest", "windows-latest"]
+    assert any(
+        "pytest tests/unit/ tests/conformance/" in step.get("run", "")
+        for step in ci["jobs"]["test"]["steps"]
+    )
+    assert jobs["validate"]["permissions"]["id-token"] == "write"
+    assert "environment" not in jobs["validate"]
+
+
+@pytest.mark.parametrize("validation_result", ["success", "failure", "cancelled", "skipped"])
+def test_release_dependency_graph_blocks_unsuccessful_validation(validation_result: str) -> None:
+    jobs = _release_workflow()["jobs"]
+    results = {"validate": validation_result}
+    for name in ("build", "publish", "governance-release"):
+        job = jobs[name]
+        # Jobs without an explicit status function retain GitHub's implicit
+        # success() guard. A future custom guard needs its own execution model.
+        assert "if" not in job
+        needs = job.get("needs", [])
+        needs = [needs] if isinstance(needs, str) else needs
+        assert all(dependency in results for dependency in needs)
+        results[name] = (
+            "success"
+            if all(results[dependency] == "success" for dependency in needs)
+            else "skipped"
+        )
+    expected = "success" if validation_result == "success" else "skipped"
+    assert results["build"] == expected
+    assert results["publish"] == expected
+    assert results["governance-release"] == expected
+    assert jobs["build"]["needs"] == "validate"
+    assert jobs["governance-release"]["needs"] == "publish"

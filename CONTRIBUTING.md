@@ -53,6 +53,14 @@ pytest tests/unit/ -v                        # unit tests
 
 All four must pass before a PR is mergeable.
 
+### Release validation
+
+Release builds depend on the reusable CI workflow, including its Python 3.11,
+3.12 and 3.13 matrix on Linux and Windows. Failed, cancelled or skipped validation
+blocks the build and therefore publication. The existing wheel and source
+distribution installation checks still run before their artifacts are uploaded.
+`governance-release` remains a post-publication attestation attached to the release.
+
 ## Commit format
 
 Follow [Conventional Commits](https://www.conventionalcommits.org/):
