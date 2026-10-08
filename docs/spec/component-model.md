@@ -14,7 +14,7 @@ cA2A composes delegation verification, local policy, caller authentication, atte
 | Inbound handler | `ca2a_runtime.peer` | Verify, authenticate, appraise, authorize, and open the payload |
 | Channel | `ca2a_runtime.channel` | X25519 key agreement and authenticated encryption; reject wrong keys and altered ciphertext |
 | Attestation | `ca2a_runtime.attestation` | Challenge-bound channel offers and peer appraisal |
-| Providers | `ca2a_runtime.tee` | Software evidence or hardware collection for TPM, SEV-SNP, and TDX; OPAQUE has no collector |
+| Providers | `ca2a_runtime.tee` | Software evidence or hardware collection for TPM, SEV-SNP, and TDX |
 | Provenance | `ca2a_runtime.provenance` | Hash-linked decision records and consistency checks |
 | TRACE binding | `ca2a_runtime.trace_binding` | Signed TRACE records carrying delegation links |
 | Offline verification | `ca2a_verify.verify`, `ca2a_verify.dag` | Verify credentials and signed TRACE record paths against caller-supplied trust anchors |

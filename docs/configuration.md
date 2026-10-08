@@ -14,7 +14,7 @@ the reference HTTP transport.
 
 ```yaml
 attestation:
-  provider: auto            # auto | tpm | sev-snp | tdx | opaque | software-only
+  provider: auto            # auto | tpm | sev-snp | tdx | software-only
   enforcement_mode: enforcing  # enforcing | advisory | silent
   require_caller_attestation: none   # none | any | hardware
   # caller_verifier:                 # required for `hardware`, optional for `any`
@@ -46,7 +46,7 @@ proof).
 
 | Field | Default | Description |
 |---|---|---|
-| `attestation.provider` | `auto` | TEE provider for peer attestation. `auto` selects a detected hardware provider and fails if there is none; it never falls back to `software-only`, which has to be named explicitly. `opaque` is not implemented. |
+| `attestation.provider` | `auto` | TEE provider for peer attestation. `auto` selects a detected hardware provider and fails if there is none; it never falls back to `software-only`, which has to be named explicitly. Any other value is rejected as an unknown provider. |
 | `attestation.enforcement_mode` | `enforcing` | Intended mode. The peer path always fails closed on cA2A denials today; advisory and silent are accepted in config but not applied on the wire. |
 | `attestation.require_caller_attestation` | `none` | What the callee demands of a caller's own attestation, per [mutual-attestation.md](spec/mutual-attestation.md). `none` records the outcome and demands nothing; `any` requires an offer that appraises, software assurance included; `hardware` requires hardware assurance. At every rung an offer that is present and does not appraise is refused. |
 | `attestation.caller_verifier` | none | How to appraise a hardware report a caller offers. `platform` plus `trusted_roots_path` (a PEM bundle, resolved relative to the config file). Required when the rung is `hardware`; without it, a hardware offer at `none` or `any` is refused as unappraisable rather than accepted. Only `tpm` can be built today, via `ca2a_verify.tpm.tpm_verifier`. `sev-snp` and `tdx` are accepted by the vocabulary and refused at startup with the reason: their verifiers take raw evidence and a certificate chain, and no report-level wrapper exists yet. |

@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- The `opaque` attestation provider value. It had no collector and was never
+  selectable at runtime; a config naming `provider: opaque` now fails at load
+  with `unknown attestation provider`, like any other unknown provider. Docs,
+  example configs and the issue template no longer list it.
+
 ## [0.4.0] - 2026-09-30
 
 ### Security

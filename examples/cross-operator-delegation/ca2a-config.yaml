@@ -5,7 +5,7 @@
 # validates with `ca2a validate-config`. See README.md for what is real vs
 # software-asserted in this example.
 attestation:
-  provider: software-only     # auto | tpm | sev-snp | tdx | opaque | software-only
+  provider: software-only     # auto | tpm | sev-snp | tdx | software-only
   enforcement_mode: advisory  # enforcing | advisory | silent
 
 max_delegation_depth: 8

@@ -90,7 +90,12 @@ def test_auto_selects_a_detected_hardware_provider(monkeypatch: pytest.MonkeyPat
 
 def test_unimplemented_provider_rejected() -> None:
     with pytest.raises(ConfigError, match="not implemented"):
-        select_provider(Ca2aConfig(provider="opaque"))
+        select_provider(Ca2aConfig(provider="example-unknown"))
+
+
+def test_opaque_provider_rejected_as_unknown() -> None:
+    with pytest.raises(ConfigError, match="unknown attestation provider"):
+        Ca2aConfig.from_dict({"attestation": {"provider": "opaque"}})
 
 
 def test_no_caller_verifier_unless_configured() -> None:

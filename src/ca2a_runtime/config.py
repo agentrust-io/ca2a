@@ -16,7 +16,7 @@ from ca2a_runtime.challenge import DEFAULT_TTL_SECONDS
 from ca2a_runtime.errors import ConfigError
 from ca2a_runtime.peer import REQUIRE_HARDWARE, REQUIRE_NONE, REQUIREMENT_VALUES
 
-VALID_PROVIDERS = frozenset({"auto", "tpm", "sev-snp", "tdx", "opaque", "software-only"})
+VALID_PROVIDERS = frozenset({"auto", "tpm", "sev-snp", "tdx", "software-only"})
 VALID_ENFORCEMENT = frozenset({"enforcing", "advisory", "silent"})
 
 # Platforms a config can name under ``attestation.caller_verifier.platform``. This
