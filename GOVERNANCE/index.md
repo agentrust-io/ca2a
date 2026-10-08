@@ -6,7 +6,7 @@ ______________________________________________________________________
 
 ## Upstream governance body
 
-AAIF hosting for cA2A is **proposed, not accepted**. [CHARTER.md](https://ca2a.agentrust-io.com/CHARTER/index.md) is the authoritative record: it is a pre-acceptance draft, the AAIF project proposal is targeted for Q4 2026, and the "cA2A" and "cA2A-compatible" marks are currently held by OPAQUE Systems, Inc.
+AAIF hosting for cA2A is **proposed, not accepted**. [CHARTER.md](https://ca2a.agentrust-io.com/CHARTER/index.md) is the authoritative record: it is a pre-acceptance draft, the AAIF project proposal is targeted for Q4 2026, and the "cA2A" and "cA2A-compatible" marks are currently held by the founding maintainer.
 
 On acceptance the Foundation would set overall direction for the agentrust-io ecosystem, hold the project's trademarks, and provide a neutral venue for resolving disputes that cannot be resolved within the project itself, and Foundation policies would supersede this document where they conflict. Until acceptance, this document governs and nothing here should be read as a binding foundation commitment.
 
