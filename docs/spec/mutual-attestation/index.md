@@ -6,6 +6,8 @@ Status: Implemented in the reference transport Written: 2026-08-09 Stability: Un
 
 ______________________________________________________________________
 
+Mutual attestation means both agents prove what they are running to each other, rather than only the caller checking the agent it calls. This page records how cA2A lets the receiving agent check the caller's hardware report too, and what that still does not cover. It is for implementers and security reviewers.
+
 > **State of this document.** The design below is built. The callee issues a challenge on the handshake endpoint, the caller binds its own channel key into a report under it, and the callee appraises that before it opens the sealed payload. What is *not* done is a hardware run in both directions: see [What this still does not give you](#what-this-still-does-not-give-you), which has not moved.
 
 ## What is one-directional, and what is not
@@ -77,7 +79,7 @@ Authentication of the returned provenance is a separate extension. See the [prop
 
 A challenge is worth nothing unless it is single-use and expiring, and the reference server currently keeps no state at all.
 
-**Option A: a challenge store.** Issue random challenges, remember them, delete on use, expire on a timer. Straightforward, and it makes the server stateful — which matters for anyone running more than one instance, because a challenge issued by one is unknown to the next.
+**Option A: a challenge store.** Issue random challenges, remember them, delete on use, expire on a timer. Straightforward, and it makes the server stateful, which matters for anyone running more than one instance, because a challenge issued by one is unknown to the next.
 
 **Option B: a stateless challenge.** `HMAC(server_secret, timestamp || random)`, verified by recomputation. No storage, works across instances, and single-use is *not* achievable without state: the same challenge replays until it expires. The window is a parameter rather than zero.
 

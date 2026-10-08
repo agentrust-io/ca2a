@@ -10,19 +10,19 @@ cA2A adds signed delegation, peer appraisal, sealed channels, and linked provena
 
 # Verify who delegated what to each agent
 
-cA2A is a profile on A2A that adds signed attenuated delegation, peer appraisal, a sealed peer channel and a TRACE provenance record per hop, checkable offline against a root you trust.
+When one AI agent hands work to another, cA2A records who gave which permission to whom, and lets anyone check that no agent quietly gave itself more. It sits on top of A2A, the common protocol agents use to talk to each other (see [the terms, in plain English](https://agentrust-io.com/#plain-terms)). Each handoff carries a signed permission slip that can only shrink, each agent can be asked for hardware proof of what it is running, the task can be encrypted so only the checked agent can read it, and each step leaves a signed record you can check offline against a starting authority you chose to trust.
 
 [Verify your first delegation chain](https://ca2a.agentrust-io.com/docs/quickstart/index.md) [What this proves, and what it does not](https://ca2a.agentrust-io.com/LIMITATIONS/index.md)
 
 TL;DR
 
-[ca2a-runtime](https://pypi.org/project/ca2a-runtime/) 0.4.0 (MIT developer preview; the PyPI name `ca2a` belongs to an unrelated project) rejects scope escalation offline with no hardware or running peer. SEV-SNP and TDX appraisal ran on real Azure and GCP evidence, including an Azure SEV-SNP peer calling a GCP TDX peer on 2026-07-27, but peer appraisal is one-directional so far and binding the seal to a verified measurement on a live call is on the roadmap.
+[ca2a-runtime](https://pypi.org/project/ca2a-runtime/) 0.4.0 (MIT developer preview; the PyPI name `ca2a` belongs to an unrelated project) catches an agent that tries to pass on more permission than it was given, offline, with no special hardware and no running agents. Checks of AMD SEV-SNP and Intel TDX hardware reports ran on real Azure and GCP machines, including an Azure agent calling a GCP agent on 2026-07-27, but across clouds the check has only run in one direction so far, and tying the encrypted task to a checked hardware measurement on a live call is on the roadmap.
 
 - **Run it**
 
   ______________________________________________________________________
 
-  Verify a narrowed grant and reject both an untrusted issuer and signed scope escalation, then stand up the live peer runtime.
+  Check a two-step handoff where the permission narrows, then watch it refuse a starting authority you never trusted and a correctly signed grant that asks for too much. No hardware needed.
 
   [Quick Start](https://ca2a.agentrust-io.com/docs/quickstart/index.md)
 
@@ -30,7 +30,7 @@ TL;DR
 
   ______________________________________________________________________
 
-  What has run against real silicon, what is one-directional, and what is not appraised at all.
+  What has been checked on real hardware, what has only been checked in one direction, and what is not checked at all.
 
   [Limitations](https://ca2a.agentrust-io.com/LIMITATIONS/index.md)
 
@@ -38,7 +38,7 @@ TL;DR
 
   ______________________________________________________________________
 
-  SEV-SNP on Azure and Intel TDX on GCP C3, validated 2026-07-27, with the collectors run on real silicon on 2026-08-24.
+  Real AMD SEV-SNP reports from Azure and Intel TDX reports from GCP C3 machines, checked on 2026-07-27. The code that requests those reports ran on real chips on 2026-08-24.
 
   [Hardware validation](https://ca2a.agentrust-io.com/docs/hardware-validation/index.md)
 
@@ -46,32 +46,34 @@ TL;DR
 
   ______________________________________________________________________
 
-  Before it: [Agent Manifest](https://manifest.agentrust-io.com) issues the attenuated delegation credential. Alongside: [cMCP](https://cmcp.agentrust-io.com) covers tool calls. Each hop's record is written in [TRACE](https://trace.agentrust-io.com). Check a real TDX quote at [agentrust-io.com/verify](https://agentrust-io.com/verify/).
+  Before it: [Agent Manifest](https://manifest.agentrust-io.com) describes the agent and issues the narrowed permission. Alongside: [cMCP](https://cmcp.agentrust-io.com) covers an agent's tool calls. Each handoff's record is written in [TRACE](https://trace.agentrust-io.com). Check a real Intel TDX hardware report yourself at [agentrust-io.com/verify](https://agentrust-io.com/verify/).
 
   [See the chain](https://agentrust-io.com/#chain)
 
 ## The gap it closes
 
-An agent identity does not by itself establish delegation authority. When A delegates to B and B delegates to C, the relying party needs to authenticate the root and check each grant. Live calls also need caller authentication, local policy, and any required runtime appraisal.
+Knowing an agent's name does not tell you what it is allowed to do. When agent A hands a task to B, and B hands part of it to C, the agent receiving the work (the relying party) needs to confirm where the permission started and check every handoff along the way. On a live call it also needs to confirm the caller is who the permission names, apply its own rules, and, if it asks for one, check hardware proof of what the caller is running.
 
 ## The four primitives
 
-| Mechanism              | What to check                                                 | Start here                                                                              |
-| ---------------------- | ------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| Delegation credentials | Trusted root, signatures, continuity, bounded scope and depth | [Offline quickstart](https://ca2a.agentrust-io.com/docs/quickstart/index.md)            |
-| Runtime appraisal      | Evidence and measurements required by the relying party       | [Attestation](https://ca2a.agentrust-io.com/docs/spec/attestation/index.md)             |
-| Sealed peer channel    | Payload encryption to the appraised peer key                  | [Sealed channel](https://ca2a.agentrust-io.com/docs/spec/sealed-channel/index.md)       |
-| Linked provenance      | Record signatures and parent links                            | [TRACE A2A profile](https://ca2a.agentrust-io.com/docs/spec/trace-a2a-profile/index.md) |
+| Mechanism              | In plain terms                                               | What to check                                                 | Start here                                                                              |
+| ---------------------- | ------------------------------------------------------------ | ------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Delegation credentials | A signed permission slip per handoff that can only narrow    | Trusted root, signatures, continuity, bounded scope and depth | [Offline quickstart](https://ca2a.agentrust-io.com/docs/quickstart/index.md)            |
+| Runtime appraisal      | Hardware proof of what the other agent is running            | Evidence and measurements required by the relying party       | [Attestation](https://ca2a.agentrust-io.com/docs/spec/attestation/index.md)             |
+| Sealed peer channel    | The task encrypted so only the checked agent can read it     | Payload encryption to the appraised peer key                  | [Sealed channel](https://ca2a.agentrust-io.com/docs/spec/sealed-channel/index.md)       |
+| Linked provenance      | A signed record per handoff, each pointing at the one before | Record signatures and parent links                            | [TRACE A2A profile](https://ca2a.agentrust-io.com/docs/spec/trace-a2a-profile/index.md) |
 
-Software and hardware modes provide different assurance. Peer appraisal has been demonstrated one-directionally; mutual simultaneous hardware attestation remains outstanding. Read [Limitations](https://ca2a.agentrust-io.com/LIMITATIONS/index.md) before relying on a hardware claim.
+Running without special hardware (software mode) gives weaker guarantees than running on confidential-computing hardware. Hardware checks have run in one direction across two clouds, and in both directions between two machines run by one operator on 2026-09-17; both agents proving themselves to each other at the same moment is still open. Read [Limitations](https://ca2a.agentrust-io.com/LIMITATIONS/index.md) before relying on a hardware claim.
 
-For the architecture and trust boundaries, read [How It Works](https://ca2a.agentrust-io.com/docs/concepts/index.md). The normative profile, with the delegation chain, sealed channel, and conformance rules, is in [Profile](https://ca2a.agentrust-io.com/docs/spec/profile/index.md).
+For how the pieces fit together, read [How It Works](https://ca2a.agentrust-io.com/docs/concepts/index.md). The formal rules, with the delegation chain, sealed channel, and conformance requirements, are in [Profile](https://ca2a.agentrust-io.com/docs/spec/profile/index.md).
 
 **Status:** ca2a-runtime 0.4.0 developer preview · MIT · hosting at the Agentic AI Foundation proposed, not accepted · Sponsored by OPAQUE, which funds the engineering, infrastructure and confidential-computing work behind these projects.
 
 # Verify your first delegation chain
 
-Build a two-hop grant: a root gives an intermediary `read` and `write`, and the intermediary gives the leaf only `read`. Verify it, then reject an untrusted root and a correctly signed grant that exceeds its parent's authority. After installation, this example needs no network, hardware, or running peer.
+This page is for anyone who wants to see cA2A's core check working on their own computer. You build a chain of two handoffs: a starting authority (the root) gives a middle agent permission to `read` and `write`, and the middle agent passes only `read` on to a final agent (the leaf). You then check the chain, and watch it refuse two bad cases: a root you never agreed to trust, and a correctly signed grant that asks for more than its parent had.
+
+After installation, this example needs no network, no special hardware, and no running agents.
 
 ## Install
 
@@ -154,7 +156,7 @@ Saved demo-chain.json and trusted-root.txt; private keys were not saved
 
 ## Verify it
 
-Use the separately retained issuer key:
+Check the saved chain with the command-line tool. You pass in the root key you kept separately, which is how the checker knows which starting authority you trust:
 
 ```
 ca2a verify-chain --chain demo-chain.json --trusted-root-issuer "$(cat trusted-root.txt)"
@@ -166,21 +168,21 @@ Expected exit code: `0`.
 {"verified": true, "hops": 2, "leaf_scope": ["cap:read"], "revocation": "not_checked"}
 ```
 
-In production, the relying party obtains trusted roots through its own approval process. Copying the issuer from an arbitrary incoming chain into the trust list would let that chain choose its own authority.
+In real use, the agent receiving the work (the relying party) decides which roots to trust through its own approval process. Copying the root out of an incoming chain and trusting it would let that chain choose its own authority.
 
 ## Try to break it
 
-The script signs an overbroad child credential and expects `SCOPE_ESCALATION`. Editing a signed JSON field instead should fail the signature check first. These are different checks; an invalid signature does not demonstrate scope attenuation.
+The script signs a child grant that asks for more than its parent had, and expects `SCOPE_ESCALATION` (scope is the list of permissions in a grant). If you instead edit a field in the saved JSON by hand, the signature check fails first. These are two different checks: a broken signature shows the file was changed, while the scope check shows a correctly signed grant still cannot widen its own permissions.
 
-The verifier also checks issuer-to-subject continuity, parent links, unique credential IDs, depth, and validity windows. These offline checks do not keep a global ledger of previously accepted requests. Live request replay handling is a separate runtime concern.
+The checker also confirms that each grant was issued by the agent the previous grant was given to, that parent links and credential IDs line up, that the chain is not too long, and that each grant is inside its valid time window. It does not keep a list of every request it has seen before; stopping a live request from being replayed is a separate job for the running service.
 
 ## Build a chain in code
 
-The complete script above uses the same `DelegationCredential` and `verify_chain` APIs as the runtime. `trusted_root_issuers` is required for a successful verification. Keep the root grant and each child grant bounded by your own authorization policy.
+The script above uses the same `DelegationCredential` and `verify_chain` functions the running service uses. `trusted_root_issuers` is required: with no trusted root, nothing verifies. Keep the root grant and each child grant within your own authorization rules.
 
 ## What is not in this walkthrough
 
-This example verifies signed grants. It does not execute tasks, appraise hardware, seal a network payload, or verify a TRACE provenance DAG. Follow [How It Works](https://ca2a.agentrust-io.com/docs/concepts/index.md) for the live peer path and [Limitations](https://ca2a.agentrust-io.com/LIMITATIONS/index.md) for the evidence that has been demonstrated.
+This example checks signed grants only. It does not run a task, check hardware, encrypt a task for another agent, or check the signed records each handoff leaves (the TRACE provenance chain). Read [How It Works](https://ca2a.agentrust-io.com/docs/concepts/index.md) for what happens on a live call between agents, and [Limitations](https://ca2a.agentrust-io.com/LIMITATIONS/index.md) for what has been shown on real hardware.
 
 ## Troubleshooting
 
@@ -197,33 +199,35 @@ This example verifies signed grants. It does not execute tasks, appraise hardwar
 
 # How It Works
 
-cA2A layers delegation and peer trust checks onto A2A communication. Start with the [offline chain example](https://ca2a.agentrust-io.com/docs/quickstart/index.md) to see grant validation; the live runtime adds caller authentication, local policy, optional appraisal, and payload handling.
+This page explains, in order, what cA2A checks when one agent hands work to another, and where each check's protection stops. Read it after the [offline chain example](https://ca2a.agentrust-io.com/docs/quickstart/index.md), which shows the first check on its own. A live call between agents adds more: confirming who the caller is, applying the receiving agent's own rules, optionally checking hardware proof, and handling the encrypted task.
 
 ## The gap cA2A closes
 
-A signed identity document does not establish every authority or runtime property needed for a delegated task. The relying party must decide which root issuers, capabilities, measurements, and evidence it accepts. See the [threat model](https://ca2a.agentrust-io.com/docs/spec/threat-model/index.md).
+A signed identity document says who an agent is. It does not say what that agent may do on someone else's behalf, or what software it is actually running. The agent receiving the work (the relying party) has to decide for itself which starting authorities, permissions, hardware measurements and evidence it accepts. The [threat model](https://ca2a.agentrust-io.com/docs/spec/threat-model/index.md) lists the attacks this guards against.
 
 ## The four primitives
 
 ### 1. Attenuated delegation
 
-Each child grant is signed by the parent subject and must narrow or preserve the parent's scope. Verification checks trusted roots, signatures, parent links, credential IDs, depth, and validity windows. A valid chain establishes a grant; it does not authenticate the caller currently presenting it. The live path separately checks proof of possession of the leaf key. See [delegation chains](https://ca2a.agentrust-io.com/docs/spec/delegation-chain/index.md).
+"Attenuated" means the permission can only stay the same or get smaller at each handoff. Each child grant is signed by the agent that received the parent grant, and its scope (its list of permissions) must fit inside the parent's. The checker confirms the chain starts at a trusted root and that signatures, parent links, credential IDs, chain length and time windows are all valid.
+
+A valid chain proves a grant was made. It does not prove that whoever is presenting it right now is the agent it was given to, so on a live call cA2A also asks the caller to prove it holds the final agent's private key. See [delegation chains](https://ca2a.agentrust-io.com/docs/spec/delegation-chain/index.md).
 
 ### 2. Runtime attestation
 
-A provider produces evidence intended to bind a key to a measured runtime. The relying party must verify that evidence and apply its own measurement and assurance requirements. Software evidence does not establish hardware provenance. See [attestation](https://ca2a.agentrust-io.com/docs/spec/attestation/index.md) and [limitations](https://ca2a.agentrust-io.com/LIMITATIONS/index.md).
+Attestation is a report, signed by the processor, that says what software is running and ties the agent's encryption key to it. A provider (the part of cA2A that talks to TPM, AMD SEV-SNP or Intel TDX hardware) produces that report. The relying party checks it and applies its own rules about which measurements and how much assurance it requires. A report produced in software mode proves nothing about hardware. See [attestation](https://ca2a.agentrust-io.com/docs/spec/attestation/index.md) and [limitations](https://ca2a.agentrust-io.com/LIMITATIONS/index.md).
 
 ### 3. Sealed peer channel
 
-The caller encrypts a payload to the callee's appraised channel key. Hardware isolation depends on the verified provider and key binding. In software mode, this does not protect the key or plaintext from a privileged host. See [sealed channels](https://ca2a.agentrust-io.com/docs/spec/sealed-channel/index.md).
+The caller encrypts the task to a key the receiving agent (the callee) published and the caller checked, so only the holder of the matching private key can read it. Whether that key is protected by hardware depends on the hardware report that vouched for it. In software mode, an administrator of the machine could still read the key and the task. See [sealed channels](https://ca2a.agentrust-io.com/docs/spec/sealed-channel/index.md).
 
 ### 4. Provenance record
 
-Linked TRACE records carry the decision and parent references. Verifiers check signatures and links separately from credential-chain validation. The offline grant example does not execute a task or establish a provenance DAG. See [the TRACE A2A profile](https://ca2a.agentrust-io.com/docs/spec/trace-a2a-profile/index.md).
+Each handoff leaves a signed TRACE record of the decision, pointing back to the record before it, so the records together show the path the work took. Checking those records is separate from checking the permission chain. The offline grant example does not run a task or produce these records. See [the TRACE A2A profile](https://ca2a.agentrust-io.com/docs/spec/trace-a2a-profile/index.md).
 
 ## How they compose on a peer call
 
-The diagram follows the callee's inbound runtime checks. It shows the accepted path; a failed required check stops processing before payload opening.
+The diagram follows the checks the receiving agent runs on an incoming call, in order. It shows the path when everything passes; a failed required check stops the call before the task is decrypted.
 
 Scroll the diagram horizontally on smaller screens. The text below explains the same boundaries.
 
@@ -245,19 +249,25 @@ flowchart TB
     payload --> result
 ```
 
-Before sending a sealed payload, the caller must obtain and appraise the callee's channel offer. That outbound step and the callee's appraisal of the caller are distinct directions. The runtime box is a process boundary in software mode; verified confidential-computing deployments can add hardware isolation. The surrounding agents and their tools do not automatically move inside it.
+Before sending an encrypted task, the caller first fetches and checks the callee's key offer. That check (the caller checking the callee) is separate from the callee checking the caller. In software mode the runtime box in the diagram is just a separate process; on verified confidential-computing hardware it can also be hardware-isolated. The agents and tools around it do not move inside it automatically.
 
-The effective authority is the intersection of the delegated scope and local policy. Delegation cannot grant a capability that local policy refuses. Invalid chains or holder proofs are rejected before policy decisions and do not receive signed denial records; authenticated policy and appraisal denials have their own evidence behavior. See the [peer implementation](https://github.com/agentrust-io/ca2a/blob/main/src/ca2a_runtime/peer.py) for the exact ordering and failure paths.
+What the caller may actually do is the overlap of what it was delegated and what the callee's own rules allow. A delegation cannot grant something the callee's rules refuse.
+
+Technical detail: denial records and ordering
+
+Invalid chains or holder proofs are rejected before policy decisions and do not receive signed denial records; authenticated policy and appraisal denials have their own evidence behavior. See the [peer implementation](https://github.com/agentrust-io/ca2a/blob/main/src/ca2a_runtime/peer.py) for the exact ordering and failure paths.
 
 ## Profile, not protocol
 
-The profile defines trust fields and checks. The reference HTTP transport makes the peer path runnable, and an A2A SDK bridge is also available. Transport choice does not establish hardware assurance or replace the relying party's trust policy.
+cA2A is a profile: a set of extra fields and checks added to A2A messages. It does not replace A2A's way of sending messages. A small reference web server ships so you can run the whole path, and a bridge to the official A2A software development kit is also available. Which transport you use does not add hardware assurance or replace the relying party's own trust rules.
 
 Continue with [configuration](https://ca2a.agentrust-io.com/docs/configuration/index.md), the [profile](https://ca2a.agentrust-io.com/docs/spec/profile/index.md), or the [limitations](https://ca2a.agentrust-io.com/LIMITATIONS/index.md).
 
 # Configuration
 
-The cA2A runtime reads a YAML config. Offline commands validate it with `ca2a validate-config`. `ca2a start` consumes the same file to build a [`PeerNode`](https://ca2a.agentrust-io.com/docs/spec/component-model/index.md) and serve it over the reference HTTP transport.
+This page is for operators who run a cA2A agent and need to set it up. One settings file decides which starting authorities the agent trusts, what it will allow callers to do, whether it asks callers for hardware proof, and where it listens. Every setting is listed below with its default.
+
+The file is YAML. `ca2a validate-config` checks it without starting anything. `ca2a start` reads the same file to build a [`PeerNode`](https://ca2a.agentrust-io.com/docs/spec/component-model/index.md) (one running cA2A agent) and serve it over the reference HTTP transport.
 
 ## Reference
 
@@ -287,6 +297,8 @@ local_policy: ["read", "write"]   # allow-set for scope intersection (or use Ced
 ```
 
 ## Fields
+
+The settings most people change first are `trusted_root_issuers` (whose permission chains this agent accepts), `local_policy` (what this agent allows, whatever the chain says) and `require_caller_attestation` (whether a caller must send hardware proof).
 
 | Field                                    | Default          | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -331,6 +343,8 @@ When `agent_manifest` is configured, startup verifies the signature, supported v
 
 # cA2A Profile Specification
 
+This is the front page of the cA2A specification: the rules an implementation follows so that one AI agent can hand work to another with a checkable permission, hardware proof, an encrypted task and a signed record of each handoff. Implementers and reviewers start here; it lists the design principles and links to each part of the rules.
+
 Status: draft, v0.1. This document describes the cA2A profile: a binding on A2A that makes agent-to-agent delegation attested, attenuated, confidential, and provable.
 
 ## Scope of this document
@@ -365,6 +379,8 @@ An implementation may claim "cA2A-compatible" for a given version when it enforc
 cA2A reuses the delegation semantics of [agent-manifest](https://github.com/agentrust-io/agent-manifest), the TEE and policy primitives of [cmcp](https://github.com/agentrust-io/cmcp), and the record format of [trace-spec](https://github.com/agentrust-io/trace-spec). The delegation-link fields are added to TRACE under the A2A profile.
 
 # A2A Profile Binding
+
+This page is the formal statement of what cA2A adds to A2A, the protocol agents use to talk to each other, and where each addition attaches. It is written for implementers and standards reviewers, in the precise MUST and SHOULD language that specifications use.
 
 cA2A binds to A2A v1.x as an overlay. This page states normatively what the profile adds and where it attaches, without modifying A2A itself.
 
@@ -425,9 +441,9 @@ The rule behind that list: **every field of the request that reaches the emitted
 
 Holder binding MUST be evaluated after chain verification, so the subject is a key someone was genuinely delegated rather than one the caller asserted, and before the effective scope is computed under P-5, so a caller that has proved nothing never reaches policy evaluation and never elicits a signed denial record.
 
-**This is not P-6.** Appraising a caller establishes what it is *running*; holder binding establishes *whose authority it holds*. The two are independent and neither implies the other: a caller can present a flawless `caller_offer`, appraise at hardware assurance, and still be exercising a chain issued to somebody else, because an attested runtime is not a claim to anyone's delegated authority. Without P-4a a chain is a bearer credential, and chains are published deliberately — handed to auditors for offline verification under P-8, embedded in provenance DAGs, and shipped as fixtures.
+**This is not P-6.** Appraising a caller establishes what it is *running*; holder binding establishes *whose authority it holds*. The two are independent and neither implies the other: a caller can present a flawless `caller_offer`, appraise at hardware assurance, and still be exercising a chain issued to somebody else, because an attested runtime is not a claim to anyone's delegated authority. Without P-4a a chain is a bearer credential, and chains are published deliberately: handed to auditors for offline verification under P-8, embedded in provenance DAGs, and shipped as fixtures.
 
-The binding key is already in the credential and needs no new trust root: `subject` is an Ed25519 public key whose private half the delegate must hold in order to issue child credentials, and before this it was only ever compared as a string for continuity. The proof commits to the caller's offered channel key so that, when both mechanisms are in play, the attested runtime and the delegated principal are provably the same party — which neither mechanism establishes alone. This is the RFC 7800 `cnf` pattern, matching what the TRACE layer already applies to provenance records.
+The binding key is already in the credential and needs no new trust root: `subject` is an Ed25519 public key whose private half the delegate must hold in order to issue child credentials, and before this it was only ever compared as a string for continuity. The proof commits to the caller's offered channel key so that, when both mechanisms are in play, the attested runtime and the delegated principal are provably the same party, which neither mechanism establishes alone. This is the RFC 7800 `cnf` pattern, matching what the TRACE layer already applies to provenance records.
 
 A callee MAY accept a chain without a proof only for offline replay of recorded evidence, where no live caller exists to answer a challenge. It MUST NOT do so on a live peer path.
 
@@ -443,7 +459,7 @@ Before accepting a delegated task across a trust boundary, a peer SHOULD be requ
 
 > Met one-directionally as of 2026-07-27. Driven off a live SEV-SNP quote on a running confidential VM, `verify_offer` returned `assurance="hardware"` and a payload was sealed to a channel key that a hardware-verified measurement vouches for. A cross-operator, cross-TEE run followed: an Azure SEV-SNP peer calling a GCP Intel TDX peer.
 >
-> Two limits remain, and P-6 is not fully met until both close. **On hardware the appraisal is still one-directional**: in the recorded runs the caller appraised the callee and not the reverse, so neither side has yet proven itself to a peer that is simultaneously proving itself back. The protocol no longer is: as of 2026-08-09 a callee issues a challenge and appraises the caller's offer before opening the sealed payload, off by default and in software mode only ([mutual-attestation](https://ca2a.agentrust-io.com/docs/spec/mutual-attestation/index.md)). Making the protocol mutual does not make the recorded hardware run mutual, and it does not make the exchange simultaneous — the caller still commits a sealed payload before the callee has appraised it. And the committed harness in `examples/` still runs software-attested against synthetic vectors, because genuine evidence embeds per-CPU identifiers and is not shippable as a fixture. See [attestation](https://ca2a.agentrust-io.com/docs/spec/attestation/index.md) and [hardware-validation](https://ca2a.agentrust-io.com/docs/hardware-validation/index.md).
+> Two limits remain, and P-6 is not fully met until both close. **On hardware the appraisal is still one-directional**: in the recorded runs the caller appraised the callee and not the reverse, so neither side has yet proven itself to a peer that is simultaneously proving itself back. The protocol no longer is: as of 2026-08-09 a callee issues a challenge and appraises the caller's offer before opening the sealed payload, off by default and in software mode only ([mutual-attestation](https://ca2a.agentrust-io.com/docs/spec/mutual-attestation/index.md)). Making the protocol mutual does not make the recorded hardware run mutual, and it does not make the exchange simultaneous: the caller still commits a sealed payload before the callee has appraised it. And the committed harness in `examples/` still runs software-attested against synthetic vectors, because genuine evidence embeds per-CPU identifiers and is not shippable as a fixture. See [attestation](https://ca2a.agentrust-io.com/docs/spec/attestation/index.md) and [hardware-validation](https://ca2a.agentrust-io.com/docs/hardware-validation/index.md).
 
 ### P-7 Sealed payload
 
@@ -470,6 +486,8 @@ An implementation claiming conformance MUST satisfy every MUST in this document.
 This binding targets A2A v1.x extension points. Confirming that those extension points are stable enough to bind to is a precondition on the roadmap; see [ROADMAP.md](https://ca2a.agentrust-io.com/ROADMAP/index.md).
 
 # Delegation Chain
+
+A delegation chain is the list of signed permission slips that shows who handed which permissions to whom, starting from an authority you trust. This page gives the exact format of each slip and every rule a checker applies. It is for implementers; the [quick start](https://ca2a.agentrust-io.com/docs/quickstart/index.md) shows the same checks running.
 
 A delegation chain is a root-to-leaf list of signed credentials. It is the primitive that lets Agent A hand a bounded slice of its authority to B, and B a still-smaller slice to C, with each grant provably within the one above it.
 
@@ -577,6 +595,8 @@ Sharing RFC 8785 canonicalization therefore does not make the two credential for
 
 # Sealed Peer Channel
 
+The sealed channel encrypts a task so that only the agent it is meant for can read it. This page explains the encryption used, lets you try it in a few lines of Python, and says what hardware it takes before the protection covers the machine's own administrators. It is for implementers and security reviewers.
+
 The sealed channel encrypts a task to a peer's X25519 public key. Only the matching private key can open it. The reference runtime connects this encryption to channel-offer appraisal; software mode exercises the same encryption without proving hardware isolation.
 
 ## Scheme
@@ -616,6 +636,8 @@ Encryption to a key does not by itself prove where the private key lives. Protec
 The encrypted payload does not hide all transport metadata, offers, or evidence records. See [attestation](https://ca2a.agentrust-io.com/docs/spec/attestation/index.md), [hardware validation](https://ca2a.agentrust-io.com/docs/hardware-validation/index.md), and [limitations](https://ca2a.agentrust-io.com/LIMITATIONS/index.md) for the deployment-specific assurance boundary.
 
 # Peer Attestation
+
+Attestation is a report signed by the processor that says what software a machine is running. This page specifies how a cA2A agent produces such a report for TPM, AMD SEV-SNP and Intel TDX hardware, ties its encryption key to it, and how the other side checks it. It is for implementers and security reviewers; for a plain overview read [How It Works](https://ca2a.agentrust-io.com/docs/concepts/index.md).
 
 Before a peer is trusted with a delegated task, it proves it is running attested, measured code. cA2A reuses the pluggable TEE provider abstraction from [cmcp](https://github.com/agentrust-io/cmcp).
 
@@ -751,6 +773,8 @@ Status: Implemented in the reference transport Written: 2026-08-09 Stability: Un
 
 ______________________________________________________________________
 
+Mutual attestation means both agents prove what they are running to each other, rather than only the caller checking the agent it calls. This page records how cA2A lets the receiving agent check the caller's hardware report too, and what that still does not cover. It is for implementers and security reviewers.
+
 > **State of this document.** The design below is built. The callee issues a challenge on the handshake endpoint, the caller binds its own channel key into a report under it, and the callee appraises that before it opens the sealed payload. What is *not* done is a hardware run in both directions: see [What this still does not give you](#what-this-still-does-not-give-you), which has not moved.
 
 ## What is one-directional, and what is not
@@ -822,7 +846,7 @@ Authentication of the returned provenance is a separate extension. See the [prop
 
 A challenge is worth nothing unless it is single-use and expiring, and the reference server currently keeps no state at all.
 
-**Option A: a challenge store.** Issue random challenges, remember them, delete on use, expire on a timer. Straightforward, and it makes the server stateful — which matters for anyone running more than one instance, because a challenge issued by one is unknown to the next.
+**Option A: a challenge store.** Issue random challenges, remember them, delete on use, expire on a timer. Straightforward, and it makes the server stateful, which matters for anyone running more than one instance, because a challenge issued by one is unknown to the next.
 
 **Option B: a stateless challenge.** `HMAC(server_secret, timestamp || random)`, verified by recomputation. No storage, works across instances, and single-use is *not* achievable without state: the same challenge replays until it expires. The window is a parameter rather than zero.
 
@@ -883,6 +907,8 @@ Two consequences worth stating plainly, because neither is free:
 
 # Conformance
 
+Conformance means passing the test suite that shows an implementation follows the cA2A rules. This page explains what the suite covers, how to run it, and what an implementation must pass before calling itself cA2A-compatible.
+
 An implementation may claim cA2A-compatible for a given version when it passes all MUST-level tests in the cA2A conformance suite for that version. This ties directly to the trademark language in [CHARTER.md](https://ca2a.agentrust-io.com/CHARTER/index.md): the mark asserts that a deployment satisfies the attestation, attenuation, sealing, and provenance requirements defined here.
 
 ## The normative suite
@@ -917,6 +943,8 @@ Test IDs are stable: once assigned, an ID is never reused even if the test is re
 The attestation requirements are validated against synthetic report and quote vectors plus the genuine AMD and Intel roots, since producing a real report requires confidential-computing hardware. A production conformance run on hardware, and end-to-end validation against a real quote, are the remaining step before a hardware-attested cA2A-compatible claim; see [LIMITATIONS.md](https://ca2a.agentrust-io.com/LIMITATIONS/index.md).
 
 # Error Codes
+
+Every refusal in cA2A has a stable code, such as `SCOPE_ESCALATION` when a grant asks for more than its parent had. This page lists every code, the HTTP status it maps to, and when it is raised. Developers use it to handle failures in code and tests.
 
 Every failure the cA2A runtime and verifier raise is a subclass of `CA2AError`. Each subclass carries a stable `code` string and an `http_status`. The code is what you match on in tests and callers. The HTTP status is what a service should return when the error crosses an A2A boundary. Both are defined in `ca2a_runtime/errors.py` and are the authoritative values below.
 
@@ -987,6 +1015,8 @@ The opt-in [response authentication profile](https://ca2a.agentrust-io.com/docs/
 
 # Threat Model
 
+A threat model lists who might attack a system, what they could try, and what stops them. This page does that for agents handing work to each other, and says plainly which attacks are out of scope. It is for security reviewers and anyone deciding whether cA2A fits their risk.
+
 cA2A defends the delegation path between agents. This page states the adversary, the assets, and what is and is not in scope.
 
 ## Adversary
@@ -997,7 +1027,7 @@ A capable adversary who may:
 - Present a valid A2A Signed Agent Card while running tampered or unmeasured code.
 - Sit on the network between two agents, or operate the host a peer runs on.
 - Attempt to widen a delegated grant, replay a credential into another chain, or reparent a provenance record.
-- Obtain a copy of a delegation chain issued to somebody else — from an audit bundle, a log, a published provenance DAG, or the wire — and present it as its own, including while honestly attesting its own runtime.
+- Obtain a copy of a delegation chain issued to somebody else (from an audit bundle, a log, a published provenance DAG, or the wire) and present it as its own, including while honestly attesting its own runtime.
 
 Out of adversary scope: breaking the underlying cryptographic primitives (Ed25519, the hash function), or compromising TEE firmware or hardware microcode. Those are the trust anchors.
 
@@ -1038,7 +1068,7 @@ P-4 still requires verification to work offline, so a verifier that has no snaps
 
 # Verify a Saved Delegation Chain
 
-Save a locally generated chain, verify it using a separately retained root key, then detect an edited signature. This walkthrough builds on [authoring a delegation credential](https://ca2a.agentrust-io.com/docs/tutorials/authoring-a-delegation-credential/index.md): install that checkout and run its Python blocks first, in the same session. They define `chain`, `a_pub`, and `trusted_roots`, and already test a correctly signed scope escalation.
+This tutorial shows how to save a permission chain to a file and check it later, as an auditor or a receiving agent would. You save the chain, check it against the root key you kept separately (the starting authority you trust), then change one signed field and watch the check fail. This walkthrough builds on [authoring a delegation credential](https://ca2a.agentrust-io.com/docs/tutorials/authoring-a-delegation-credential/index.md): install that checkout and run its Python blocks first, in the same session. They define `chain`, `a_pub`, and `trusted_roots`, and already test a correctly signed scope escalation.
 
 ## Save and verify
 
@@ -1101,7 +1131,9 @@ You checked signed grants against a trusted issuer and rejected an edited creden
 
 # Authoring a Delegation Credential
 
-The [verify-a-delegation-chain](https://ca2a.agentrust-io.com/docs/tutorials/verify-a-delegation-chain/index.md) tutorial takes an existing chain apart. This one builds one from scratch: generate keys, construct a `DelegationCredential`, sign it, extend it into a narrowing multi-hop chain, and verify the result. Then we make a child over-scope and watch `verify_chain` reject it with `SCOPE_ESCALATION`. No hardware needed.
+This tutorial is for developers who want to issue permissions to agents in code. A delegation credential is a signed permission slip: one agent (the issuer) grants another (the subject) a list of permissions (the scope). You will create keys, write and sign a first slip, pass narrower slips down a chain of three agents, and check the result. Then you will make one agent try to grant more than it was given and watch `verify_chain` refuse it with `SCOPE_ESCALATION`. No special hardware is needed.
+
+The [verify a saved chain](https://ca2a.agentrust-io.com/docs/tutorials/verify-a-delegation-chain/index.md) tutorial picks up where this one ends.
 
 Everything here uses `ca2a_runtime.delegation`. For the field semantics and the full invariant table, see [the delegation chain spec](https://ca2a.agentrust-io.com/docs/spec/delegation-chain/index.md).
 
@@ -1113,7 +1145,7 @@ The example credentials omit validity bounds to keep the field walkthrough short
 
 ## 1. Generate keypairs
 
-Each hop is signed by its issuer and names a subject. Both are Ed25519 public keys, encoded as raw hex. `new_keypair()` returns the private key object and its public key hex.
+Each agent needs a key pair: a private key it keeps secret and signs with, and a public key others use to check its signature. Each handoff (hop) is signed by its issuer and names a subject, and both are identified by their public keys (Ed25519 keys, written as hex). `new_keypair()` returns the private key object and its public key hex.
 
 ```
 from ca2a_runtime.delegation import new_keypair
@@ -1163,7 +1195,7 @@ else:
 
 ## 3. Extend the chain with narrowing scope
 
-Each subsequent hop is issued by the previous hop's subject. Continuity is the rule that a hop's `issuer` equals the previous hop's `subject`, its `parent_id` equals the previous hop's `credential_id`, and its `depth` is the previous depth plus one. B, holding `read+write+admin`, delegates a narrower `read+write` slice to C:
+Each later handoff is issued by the agent that received the one before it. Continuity is the rule that a hop's `issuer` equals the previous hop's `subject`, its `parent_id` equals the previous hop's `credential_id`, and its `depth` is the previous depth plus one. B, holding `read+write+admin`, delegates a narrower `read+write` slice to C:
 
 ```
 mid = DelegationCredential(
@@ -1187,7 +1219,7 @@ leaf = DelegationCredential(
 ).sign(c_priv)                  # signed by C
 ```
 
-Scope narrows at every hop: `{read, write, admin}` to `{read, write}` to `{read}`. Attenuation requires each hop's `scope` to be a subset of its parent's; it may stay the same or shrink, never grow.
+Scope narrows at every hop: `{read, write, admin}` to `{read, write}` to `{read}`. This rule is called attenuation: each hop's `scope` must fit inside its parent's. It may stay the same or shrink, never grow.
 
 ## 4. Verify the chain
 
@@ -1239,7 +1271,7 @@ else:
     raise AssertionError("scope escalation accepted")
 ```
 
-The signature on `over` is valid; C really did sign it. That is the point. A well-formed signature proves only that C authored the grant, not that C was entitled to make it. The subset check on `scope` is what forecloses the confused-deputy move where a delegate quietly widens its own authority. See [the delegation chain spec](https://ca2a.agentrust-io.com/docs/spec/delegation-chain/#attenuation-is-the-whole-point).
+The signature on `over` is valid; C really did sign it. That is the point. A valid signature proves only that C wrote the grant, not that C was entitled to make it. The scope check is what stops a delegate from quietly widening its own authority (security people call this the confused-deputy problem). See [the delegation chain spec](https://ca2a.agentrust-io.com/docs/spec/delegation-chain/#attenuation-is-the-whole-point).
 
 ## 6. Serialize for the wire
 
@@ -1265,7 +1297,7 @@ The runtime uses the same verifier before holder proof and local-policy enforcem
 
 # Emit and Verify Provenance
 
-Build an unsigned record path, detect a broken link, and see why consistent hashes alone do not authenticate evidence. First run the Python blocks in [authoring a delegation credential](https://ca2a.agentrust-io.com/docs/tutorials/authoring-a-delegation-credential/index.md), which install the package and define a verified `chain` and independently retained `trusted_roots`. Continue in the same script or session.
+This tutorial is for developers who need a trail of records showing each handoff in a task. You build a chain of records where each one holds a fingerprint (hash) of the one before, catch a broken link, and then see why those fingerprints alone cannot prove who wrote the records, which is what the signed TRACE form is for. First run the Python blocks in [authoring a delegation credential](https://ca2a.agentrust-io.com/docs/tutorials/authoring-a-delegation-credential/index.md), which install the package and define a verified `chain` and independently retained `trusted_roots`. Continue in the same script or session.
 
 ## Emit one record per credential
 
@@ -1332,7 +1364,7 @@ This does not change the signed delegation or grant additional runtime authority
 
 ## Use signed evidence for authenticity
 
-The CLI now separates authenticated lineage from structural diagnostics:
+Signed TRACE records fix the gap above: each record is signed by the agent that made it, so a rewrite is caught unless the attacker also holds that agent's key. The command-line tool reports a signed, checked path separately from a path that only looks consistent:
 
 ```
 ca2a verify-lineage --dag signed-trace-records.json --chain chain.json \
@@ -1340,6 +1372,8 @@ ca2a verify-lineage --dag signed-trace-records.json --chain chain.json \
 ```
 
 The DAG file contains a list of signed TRACE records or `{"records": [...]}`. Generate it with `ca2a_runtime.trace_binding.emit_dag`; see `examples/trace-dag/`. This command verifies the credential chain first, uses its delegates as trusted record signers, verifies signatures and signed parent links, then cross-checks hop credential IDs and signer keys. Only success on all checks returns `verified: true`, `verification: authenticated_lineage` and exit 0. Revocation is reported separately; absent revocation evidence is `not_checked`. `--at-time` applies to credential validity and revocation; TRACE freshness uses the current clock, optionally bounded by `--max-age-seconds`.
+
+Technical detail: migrating from the unsigned format
 
 Migration: `ca2a verify-dag` still reads the original unsigned format, but valid structure now returns `verified: false`, `structural_verified: true`, `code: UNAUTHENTICATED_LINEAGE` and exit 1. Add `--structural-only` to obtain exit 0 for a successful diagnostic; it never changes `verified` to true. Structural failures still return exit 1. This is an intentional CLI compatibility change. Existing native records cannot be upgraded by relabeling them: their producers must emit and sign TRACE records. The native Python helpers retain their return types and perform structural checks only.
 
@@ -1351,7 +1385,7 @@ Both path verifiers accept one ordered root-to-leaf sequence, not an arbitrary b
 
 # Reproducing the Claims
 
-Run six software experiments from the source checkout. They exercise delegation, policy intersection, encrypted payloads, hash links, and synthetic attestation. None requires a TEE. Their results establish the specific cases below, not hardware protection or complete profile conformance.
+This page is for anyone who wants to check cA2A's six claims for themselves instead of taking them on trust. Each claim has a small script you run from the source code: permissions that can only narrow, refusing a grant copied from another chain, combining a grant with local rules, encrypting a task, linked records, and hardware-style checks using made-up reports. None needs a TEE (a trusted execution environment, the protected hardware area used for confidential computing). The results prove the specific cases below, not hardware protection or full conformance to the specification.
 
 ## Install and run
 
@@ -1408,7 +1442,9 @@ Continue to [hardware validation](https://ca2a.agentrust-io.com/docs/hardware-va
 
 # Integrating with A2A
 
-This example connects the official Python A2A SDK's client and HTTP server to cA2A's existing Agent Card and peer-verification APIs. It exercises an actual loopback connection with `a2a-sdk==1.1.2`. The operator owns the card, server, application routing, and tool handler; cA2A supplies the extension metadata and checks the delegated request before the application acts.
+This guide is for developers who already run an A2A agent and want to add cA2A checks to it. You run a small example where an ordinary A2A server and client, built with the official Python A2A software development kit (SDK), talk over a real local connection, and cA2A checks each protected request before the application acts on it.
+
+In technical terms, this example connects the official Python A2A SDK's client and HTTP server to cA2A's existing Agent Card and peer-verification APIs. It exercises an actual loopback connection with `a2a-sdk==1.1.2`. The operator owns the card, server, application routing, and tool handler; cA2A supplies the extension metadata and checks the delegated request before the application acts.
 
 The runnable implementation is [`examples/a2a-sdk/loopback.py`](https://github.com/agentrust-io/ca2a/blob/main/examples/a2a-sdk/loopback.py), with its released SDK dependencies in [`requirements.txt`](https://github.com/agentrust-io/ca2a/blob/main/examples/a2a-sdk/requirements.txt). This is a software-only integration example. It needs no model service, external credentials, TPM, or confidential-computing host.
 
@@ -1468,7 +1504,9 @@ This establishes the exercised Python SDK integration path and its local authori
 
 # Hardware validation
 
-What `ca2a_verify` has been run against real confidential-computing hardware, what it has not, and how to reproduce each run. [LIMITATIONS.md](https://ca2a.agentrust-io.com/LIMITATIONS/index.md) and [ROADMAP.md](https://ca2a.agentrust-io.com/ROADMAP/index.md) link here rather than restating it.
+Confidential-computing processors from AMD (SEV-SNP), Intel (TDX) and TPM security chips can sign a report saying what software a machine is running. This page is the record of which of those real reports cA2A has checked, on which cloud machines and on which dates, and what is still unproven. It is for anyone deciding how far to trust cA2A's hardware claims, and for engineers who want to repeat a run.
+
+In detail: what `ca2a_verify` has been run against real confidential-computing hardware, what it has not, and how to reproduce each run. [LIMITATIONS.md](https://ca2a.agentrust-io.com/LIMITATIONS/index.md) and [ROADMAP.md](https://ca2a.agentrust-io.com/ROADMAP/index.md) link here rather than restating it.
 
 The rule: no document describes cA2A as attested for a platform until a genuine quote from that platform has been verified end to end by the committed verifier, and the run is recorded below.
 
@@ -1480,7 +1518,7 @@ The rule: no document describes cA2A as attested for a platform until a genuine 
 | Intel TDX (GCP C3, non-paravisor)    | Yes     | Yes, to the real Intel SGX Root CA    | Yes              | **Yes**, 2026-07-27, capture of 2026-07-21                                                    |
 | TPM 2.0 (Azure vTPM, Trusted Launch) | Yes     | Yes, to a caller-supplied vendor root | Yes              | **Partly**, 2026-07-27. Parse, bindings and AK signature yes; certificate chain no, see below |
 
-That table is about *appraisal*. Collection is a separate axis, and a verifier validated on real evidence says nothing about whether this codebase can produce that evidence:
+That table is about *appraisal*: checking a report someone hands you. Collection, getting the machine to produce the report in the first place, is a separate axis, and a verifier validated on real evidence says nothing about whether this codebase can produce that evidence:
 
 | Platform                      | Collector                                                                                               | Run on real silicon                                   |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
@@ -1603,7 +1641,7 @@ CA2A_TDX_QUOTE=<dir>/tdx_quote.bin pytest tests/unit/test_tdx.py
 CA2A_SNP_FIXTURE_DIR=<dir> pytest tests/unit/test_sev_snp.py
 ```
 
-where the SNP directory holds `snp_report.bin`, `vcek.der`, and a `cert_chain.pem` carrying **ASK then ARK only** — the test prepends the VCEK itself, so including it in the PEM duplicates the leaf and the chain fails to verify.
+where the SNP directory holds `snp_report.bin`, `vcek.der`, and a `cert_chain.pem` carrying **ASK then ARK only**: the test prepends the VCEK itself, so including it in the PEM duplicates the leaf and the chain fails to verify.
 
 The captures are not committed. A SEV-SNP report's 64-byte `CHIP_ID` is a per-CPU hardware identifier.
 
@@ -1636,11 +1674,20 @@ Two entries previously listed here, the live attested peer binding and the cross
 
 # Limitations
 
+This page says what cA2A proves today, what it does not, and what is still being built, so you can decide how much to rely on it. Read it before you rely on any hardware claim.
+
+cA2A 0.4.0 (published as `ca2a-runtime`) is a developer preview with a runnable, tested profile and runtime. This document states plainly what is built, what remains before 1.0, and what is out of scope, so no claim in the documentation runs ahead of the code. This is a deliberate discipline: proof, not promises.
+
+In short:
+
+- **Works offline today, no hardware needed:** checking that a chain of permissions starts at an authority you trust and only narrows at each handoff, refusing revoked grants when you supply a revocation list, encrypting a task to one agent, and checking signed records of each handoff.
+- **Checked on real hardware, with limits:** AMD SEV-SNP and Intel TDX reports from real Azure and GCP machines; an Azure agent calling a GCP agent in one direction; two GCP machines run by one operator checking each other in both directions. Two machines run by different operators checking each other has not yet been shown.
+- **Off unless you turn it on:** checking the platform settings inside a hardware report (such as whether SMT is on), and authenticating the answer that comes back from a call.
+- **Not done at all:** publishing or fetching revocation data. A checker knows only about the revocations in the snapshot you hand it.
+
 ## Opt-in response authentication
 
 `send_task(require_authenticated_response=True)` authenticates readable provenance or denial to the live caller using a request-bound session MAC. The default legacy path remains unauthenticated. The profile supplies one-use, expiring client verification, not request-execution deduplication, portable signed receipts or confidential output encryption. Both session parties know the MAC key. Hardware assurance still requires explicit hardware appraisal; the new profile has software/HTTP tests and no new live-hardware validation. See the [profile and deployment limits](https://ca2a.agentrust-io.com/docs/spec/response-authentication/index.md).
-
-cA2A 0.2 is a Developer Preview with a runnable, tested profile and runtime. This document states plainly what is built, what remains before 1.0, and what is out of scope, so no claim in the documentation runs ahead of the code. This is a deliberate discipline: proof, not promises.
 
 ## What is built
 
@@ -1691,6 +1738,8 @@ cA2A composes primitives from [agent-manifest](https://github.com/agentrust-io/a
 
 # cA2A Roadmap
 
+This page lists what cA2A has delivered, release by release, and what is left before a stable 1.0. It is for anyone planning to adopt cA2A or contribute to it. For what the current release does and does not prove, read [LIMITATIONS.md](https://ca2a.agentrust-io.com/LIMITATIONS/index.md).
+
 cA2A is an extension of the agentrust-io stack, not a rewrite. The build tiers below track how much each piece leans on primitives that already exist in [agent-manifest](https://github.com/agentrust-io/agent-manifest), [cmcp](https://github.com/agentrust-io/cmcp), and [trace-spec](https://github.com/agentrust-io/trace-spec).
 
 ## Reused as-is (Tier 0)
@@ -1721,13 +1770,14 @@ Already implemented and tested elsewhere; cA2A depends on it rather than reimple
 
 Real hardware attestation verification (SEV-SNP VCEK chain, Intel TDX quote via QVL/PCS, TPM AK cert + checkquote) is shared with cMCP. Appraisal against genuine SEV-SNP and TDX evidence has landed; the work below tracks what remains before broadly claiming mutual, cross-operator hardware assurance.
 
-- **SEV-SNP verifier: landed and validated on real evidence.** Report parsing, VCEK chain verification, ECDSA-P384 report-signature verification, and measurement/report-data binding, all fail-closed, run against a genuine Azure CVM report (see [docs/hardware-validation.md](https://ca2a.agentrust-io.com/docs/hardware-validation/index.md)). Report generation is implemented via configfs-TSM but is not yet hardware-validated, and Azure's paravisor shape is out of scope for it. See `ca2a_verify.sev_snp` and [docs/spec/attestation.md](https://ca2a.agentrust-io.com/docs/spec/attestation/index.md).
-- **TDX verifier: landed and validated on real evidence.** DCAP Quote v4 parsing (including the nested type-6 QE certification data), PCK chain to the genuine Intel SGX Root CA, QE report signature, attestation-key binding, quote signature, and MRTD binding, all fail-closed, run against a genuine GCP C3 quote. Quote generation is implemented via configfs-TSM but is not yet hardware-validated. See `ca2a_verify.tdx`.
+- **SEV-SNP verifier: landed and validated on real evidence.** Report parsing, VCEK chain verification, ECDSA-P384 report-signature verification, and measurement/report-data binding, all fail-closed, run against a genuine Azure CVM report (see [docs/hardware-validation.md](https://ca2a.agentrust-io.com/docs/hardware-validation/index.md)). Report generation is implemented via configfs-TSM and was run on real silicon on 2026-08-24 (GCP `n2d-standard-4`, AMD Milan); Azure's paravisor shape is out of scope for it. See `ca2a_verify.sev_snp` and [docs/spec/attestation.md](https://ca2a.agentrust-io.com/docs/spec/attestation/index.md).
+- **TDX verifier: landed and validated on real evidence.** DCAP Quote v4 parsing (including the nested type-6 QE certification data), PCK chain to the genuine Intel SGX Root CA, QE report signature, attestation-key binding, quote signature, and MRTD binding, all fail-closed, run against a genuine GCP C3 quote. Quote generation is implemented via configfs-TSM and was run on real silicon on 2026-08-24 (GCP `c3-standard-4`). See `ca2a_verify.tdx`.
 - **TPM 2.0 verifier: landed.** TPMS_ATTEST parsing, AK chain to a caller-supplied vendor root, AK signature (ECDSA or RSA), magic/type checks, and qualifying-data/PCR-digest binding, all fail-closed. Quote generation requires a real TPM. See `ca2a_verify.tpm`.
 - **Cross-operator attestation (C6): validated in software.** A two-operator harness (SEV-SNP verifier + measurement pinning + sealed channel) shows independent keys, mutual attestation, confidential cross-operator delegation, and binary-swap detection. All six claims (C1-C6) are now validated experiments.
 - **Live attested peer: landed.** The `verifier` seam has been driven off a real SEV-SNP quote on an Azure confidential VM, so `verify_offer` returned `assurance="hardware"` and a payload was sealed to a hardware-vouched channel key; measurement mismatch and stale nonce both rejected. See [docs/hardware-validation.md](https://ca2a.agentrust-io.com/docs/hardware-validation/index.md).
 - **Cross-operator, cross-TEE run: landed.** An Azure SEV-SNP peer appraised a GCP Intel TDX peer's real quote, sealed a delegated task to the attested key, and the TDX enclave opened it, enforced the attenuated scope, allowed `tool:search` and refused `tool:purchase` with a denial record returned across the boundary. See [docs/hardware-validation.md](https://ca2a.agentrust-io.com/docs/hardware-validation/index.md).
-- **Pending:** a hardware run of the SEV-SNP and TDX collectors (both implemented against configfs-TSM, neither yet exercised on silicon), mutual attestation on real silicon in both directions (the protocol now supports it in software mode and is off by default; that hardware run was one-directional), simultaneous attestation (which needs a commitment step neither peer can back out of, a larger protocol than what landed), and the TPM certificate-chain path. TPM parsing, bindings and the AK signature are validated against a real Azure vTPM quote; SEV-SNP and TDX appraisal of real evidence is done. The transport that parses A2A messages into a `PeerRequest` has **landed** (`ca2a_runtime.transport.a2a_adapter`), running in software mode; the hardware seam is the `verifier` callable in `ca2a_runtime.attestation`.
+- **Collectors on silicon: landed 2026-08-24.** Both the SEV-SNP and TDX collectors produced real evidence on GCP that this codebase's own verifiers appraised to the vendor roots. See [docs/hardware-validation.md](https://ca2a.agentrust-io.com/docs/hardware-validation/index.md).
+- **Pending:** mutual attestation on real silicon across operators (on 2026-09-17 two GCP SEV-SNP guests in one project under one operator appraised each other in both directions; see [the mutual hardware procedure](https://ca2a.agentrust-io.com/docs/mutual-hardware-acceptance/index.md); the protocol is off by default), simultaneous attestation (which needs a commitment step neither peer can back out of, a larger protocol than what landed), and the TPM certificate-chain path. TPM parsing, bindings and the AK signature are validated against a real Azure vTPM quote; SEV-SNP and TDX appraisal of real evidence is done. The transport that parses A2A messages into a `PeerRequest` has **landed** (`ca2a_runtime.transport.a2a_adapter`), running in software mode; the hardware seam is the `verifier` callable in `ca2a_runtime.attestation`.
 
 ## v1.0 exit criteria: Stable profile
 

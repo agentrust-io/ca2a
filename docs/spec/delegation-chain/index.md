@@ -1,5 +1,7 @@
 # Delegation Chain
 
+A delegation chain is the list of signed permission slips that shows who handed which permissions to whom, starting from an authority you trust. This page gives the exact format of each slip and every rule a checker applies. It is for implementers; the [quick start](https://ca2a.agentrust-io.com/docs/quickstart/index.md) shows the same checks running.
+
 A delegation chain is a root-to-leaf list of signed credentials. It is the primitive that lets Agent A hand a bounded slice of its authority to B, and B a still-smaller slice to C, with each grant provably within the one above it.
 
 ## Credential

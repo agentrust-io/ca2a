@@ -1,5 +1,7 @@
 # Peer Attestation
 
+Attestation is a report signed by the processor that says what software a machine is running. This page specifies how a cA2A agent produces such a report for TPM, AMD SEV-SNP and Intel TDX hardware, ties its encryption key to it, and how the other side checks it. It is for implementers and security reviewers; for a plain overview read [How It Works](https://ca2a.agentrust-io.com/docs/concepts/index.md).
+
 Before a peer is trusted with a delegated task, it proves it is running attested, measured code. cA2A reuses the pluggable TEE provider abstraction from [cmcp](https://github.com/agentrust-io/cmcp).
 
 ## Provider interface

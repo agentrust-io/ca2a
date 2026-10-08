@@ -1,6 +1,6 @@
 # Reproducing the Claims
 
-Run six software experiments from the source checkout. They exercise delegation, policy intersection, encrypted payloads, hash links, and synthetic attestation. None requires a TEE. Their results establish the specific cases below, not hardware protection or complete profile conformance.
+This page is for anyone who wants to check cA2A's six claims for themselves instead of taking them on trust. Each claim has a small script you run from the source code: permissions that can only narrow, refusing a grant copied from another chain, combining a grant with local rules, encrypting a task, linked records, and hardware-style checks using made-up reports. None needs a TEE (a trusted execution environment, the protected hardware area used for confidential computing). The results prove the specific cases below, not hardware protection or full conformance to the specification.
 
 ## Install and run
 

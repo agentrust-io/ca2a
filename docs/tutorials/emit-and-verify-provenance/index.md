@@ -1,6 +1,6 @@
 # Emit and Verify Provenance
 
-Build an unsigned record path, detect a broken link, and see why consistent hashes alone do not authenticate evidence. First run the Python blocks in [authoring a delegation credential](https://ca2a.agentrust-io.com/docs/tutorials/authoring-a-delegation-credential/index.md), which install the package and define a verified `chain` and independently retained `trusted_roots`. Continue in the same script or session.
+This tutorial is for developers who need a trail of records showing each handoff in a task. You build a chain of records where each one holds a fingerprint (hash) of the one before, catch a broken link, and then see why those fingerprints alone cannot prove who wrote the records, which is what the signed TRACE form is for. First run the Python blocks in [authoring a delegation credential](https://ca2a.agentrust-io.com/docs/tutorials/authoring-a-delegation-credential/index.md), which install the package and define a verified `chain` and independently retained `trusted_roots`. Continue in the same script or session.
 
 ## Emit one record per credential
 
@@ -67,7 +67,7 @@ This does not change the signed delegation or grant additional runtime authority
 
 ## Use signed evidence for authenticity
 
-The CLI now separates authenticated lineage from structural diagnostics:
+Signed TRACE records fix the gap above: each record is signed by the agent that made it, so a rewrite is caught unless the attacker also holds that agent's key. The command-line tool reports a signed, checked path separately from a path that only looks consistent:
 
 ```
 ca2a verify-lineage --dag signed-trace-records.json --chain chain.json \
@@ -75,6 +75,8 @@ ca2a verify-lineage --dag signed-trace-records.json --chain chain.json \
 ```
 
 The DAG file contains a list of signed TRACE records or `{"records": [...]}`. Generate it with `ca2a_runtime.trace_binding.emit_dag`; see `examples/trace-dag/`. This command verifies the credential chain first, uses its delegates as trusted record signers, verifies signatures and signed parent links, then cross-checks hop credential IDs and signer keys. Only success on all checks returns `verified: true`, `verification: authenticated_lineage` and exit 0. Revocation is reported separately; absent revocation evidence is `not_checked`. `--at-time` applies to credential validity and revocation; TRACE freshness uses the current clock, optionally bounded by `--max-age-seconds`.
+
+Technical detail: migrating from the unsigned format
 
 Migration: `ca2a verify-dag` still reads the original unsigned format, but valid structure now returns `verified: false`, `structural_verified: true`, `code: UNAUTHENTICATED_LINEAGE` and exit 1. Add `--structural-only` to obtain exit 0 for a successful diagnostic; it never changes `verified` to true. Structural failures still return exit 1. This is an intentional CLI compatibility change. Existing native records cannot be upgraded by relabeling them: their producers must emit and sign TRACE records. The native Python helpers retain their return types and perform structural checks only.
 

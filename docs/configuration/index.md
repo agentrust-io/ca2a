@@ -1,6 +1,8 @@
 # Configuration
 
-The cA2A runtime reads a YAML config. Offline commands validate it with `ca2a validate-config`. `ca2a start` consumes the same file to build a [`PeerNode`](https://ca2a.agentrust-io.com/docs/spec/component-model/index.md) and serve it over the reference HTTP transport.
+This page is for operators who run a cA2A agent and need to set it up. One settings file decides which starting authorities the agent trusts, what it will allow callers to do, whether it asks callers for hardware proof, and where it listens. Every setting is listed below with its default.
+
+The file is YAML. `ca2a validate-config` checks it without starting anything. `ca2a start` reads the same file to build a [`PeerNode`](https://ca2a.agentrust-io.com/docs/spec/component-model/index.md) (one running cA2A agent) and serve it over the reference HTTP transport.
 
 ## Reference
 
@@ -30,6 +32,8 @@ local_policy: ["read", "write"]   # allow-set for scope intersection (or use Ced
 ```
 
 ## Fields
+
+The settings most people change first are `trusted_root_issuers` (whose permission chains this agent accepts), `local_policy` (what this agent allows, whatever the chain says) and `require_caller_attestation` (whether a caller must send hardware proof).
 
 | Field                                    | Default          | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

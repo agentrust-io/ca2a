@@ -1,5 +1,7 @@
 # cA2A Profile Specification
 
+This is the front page of the cA2A specification: the rules an implementation follows so that one AI agent can hand work to another with a checkable permission, hardware proof, an encrypted task and a signed record of each handoff. Implementers and reviewers start here; it lists the design principles and links to each part of the rules.
+
 Status: draft, v0.1. This document describes the cA2A profile: a binding on A2A that makes agent-to-agent delegation attested, attenuated, confidential, and provable.
 
 ## Scope of this document

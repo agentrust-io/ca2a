@@ -1,5 +1,7 @@
 # Threat Model
 
+A threat model lists who might attack a system, what they could try, and what stops them. This page does that for agents handing work to each other, and says plainly which attacks are out of scope. It is for security reviewers and anyone deciding whether cA2A fits their risk.
+
 cA2A defends the delegation path between agents. This page states the adversary, the assets, and what is and is not in scope.
 
 ## Adversary
@@ -10,7 +12,7 @@ A capable adversary who may:
 - Present a valid A2A Signed Agent Card while running tampered or unmeasured code.
 - Sit on the network between two agents, or operate the host a peer runs on.
 - Attempt to widen a delegated grant, replay a credential into another chain, or reparent a provenance record.
-- Obtain a copy of a delegation chain issued to somebody else — from an audit bundle, a log, a published provenance DAG, or the wire — and present it as its own, including while honestly attesting its own runtime.
+- Obtain a copy of a delegation chain issued to somebody else (from an audit bundle, a log, a published provenance DAG, or the wire) and present it as its own, including while honestly attesting its own runtime.
 
 Out of adversary scope: breaking the underlying cryptographic primitives (Ed25519, the hash function), or compromising TEE firmware or hardware microcode. Those are the trust anchors.
 

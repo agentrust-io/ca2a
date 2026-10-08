@@ -1,6 +1,8 @@
 # Hardware validation
 
-What `ca2a_verify` has been run against real confidential-computing hardware, what it has not, and how to reproduce each run. [LIMITATIONS.md](https://ca2a.agentrust-io.com/LIMITATIONS/index.md) and [ROADMAP.md](https://ca2a.agentrust-io.com/ROADMAP/index.md) link here rather than restating it.
+Confidential-computing processors from AMD (SEV-SNP), Intel (TDX) and TPM security chips can sign a report saying what software a machine is running. This page is the record of which of those real reports cA2A has checked, on which cloud machines and on which dates, and what is still unproven. It is for anyone deciding how far to trust cA2A's hardware claims, and for engineers who want to repeat a run.
+
+In detail: what `ca2a_verify` has been run against real confidential-computing hardware, what it has not, and how to reproduce each run. [LIMITATIONS.md](https://ca2a.agentrust-io.com/LIMITATIONS/index.md) and [ROADMAP.md](https://ca2a.agentrust-io.com/ROADMAP/index.md) link here rather than restating it.
 
 The rule: no document describes cA2A as attested for a platform until a genuine quote from that platform has been verified end to end by the committed verifier, and the run is recorded below.
 
@@ -12,7 +14,7 @@ The rule: no document describes cA2A as attested for a platform until a genuine 
 | Intel TDX (GCP C3, non-paravisor)    | Yes     | Yes, to the real Intel SGX Root CA    | Yes              | **Yes**, 2026-07-27, capture of 2026-07-21                                                    |
 | TPM 2.0 (Azure vTPM, Trusted Launch) | Yes     | Yes, to a caller-supplied vendor root | Yes              | **Partly**, 2026-07-27. Parse, bindings and AK signature yes; certificate chain no, see below |
 
-That table is about *appraisal*. Collection is a separate axis, and a verifier validated on real evidence says nothing about whether this codebase can produce that evidence:
+That table is about *appraisal*: checking a report someone hands you. Collection, getting the machine to produce the report in the first place, is a separate axis, and a verifier validated on real evidence says nothing about whether this codebase can produce that evidence:
 
 | Platform                      | Collector                                                                                               | Run on real silicon                                   |
 | ----------------------------- | ------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
@@ -135,7 +137,7 @@ CA2A_TDX_QUOTE=<dir>/tdx_quote.bin pytest tests/unit/test_tdx.py
 CA2A_SNP_FIXTURE_DIR=<dir> pytest tests/unit/test_sev_snp.py
 ```
 
-where the SNP directory holds `snp_report.bin`, `vcek.der`, and a `cert_chain.pem` carrying **ASK then ARK only** — the test prepends the VCEK itself, so including it in the PEM duplicates the leaf and the chain fails to verify.
+where the SNP directory holds `snp_report.bin`, `vcek.der`, and a `cert_chain.pem` carrying **ASK then ARK only**: the test prepends the VCEK itself, so including it in the PEM duplicates the leaf and the chain fails to verify.
 
 The captures are not committed. A SEV-SNP report's 64-byte `CHIP_ID` is a per-CPU hardware identifier.
 

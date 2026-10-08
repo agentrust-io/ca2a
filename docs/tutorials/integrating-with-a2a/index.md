@@ -1,6 +1,8 @@
 # Integrating with A2A
 
-This example connects the official Python A2A SDK's client and HTTP server to cA2A's existing Agent Card and peer-verification APIs. It exercises an actual loopback connection with `a2a-sdk==1.1.2`. The operator owns the card, server, application routing, and tool handler; cA2A supplies the extension metadata and checks the delegated request before the application acts.
+This guide is for developers who already run an A2A agent and want to add cA2A checks to it. You run a small example where an ordinary A2A server and client, built with the official Python A2A software development kit (SDK), talk over a real local connection, and cA2A checks each protected request before the application acts on it.
+
+In technical terms, this example connects the official Python A2A SDK's client and HTTP server to cA2A's existing Agent Card and peer-verification APIs. It exercises an actual loopback connection with `a2a-sdk==1.1.2`. The operator owns the card, server, application routing, and tool handler; cA2A supplies the extension metadata and checks the delegated request before the application acts.
 
 The runnable implementation is [`examples/a2a-sdk/loopback.py`](https://github.com/agentrust-io/ca2a/blob/main/examples/a2a-sdk/loopback.py), with its released SDK dependencies in [`requirements.txt`](https://github.com/agentrust-io/ca2a/blob/main/examples/a2a-sdk/requirements.txt). This is a software-only integration example. It needs no model service, external credentials, TPM, or confidential-computing host.
 

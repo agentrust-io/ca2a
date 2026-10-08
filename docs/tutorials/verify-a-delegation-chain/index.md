@@ -1,6 +1,6 @@
 # Verify a Saved Delegation Chain
 
-Save a locally generated chain, verify it using a separately retained root key, then detect an edited signature. This walkthrough builds on [authoring a delegation credential](https://ca2a.agentrust-io.com/docs/tutorials/authoring-a-delegation-credential/index.md): install that checkout and run its Python blocks first, in the same session. They define `chain`, `a_pub`, and `trusted_roots`, and already test a correctly signed scope escalation.
+This tutorial shows how to save a permission chain to a file and check it later, as an auditor or a receiving agent would. You save the chain, check it against the root key you kept separately (the starting authority you trust), then change one signed field and watch the check fail. This walkthrough builds on [authoring a delegation credential](https://ca2a.agentrust-io.com/docs/tutorials/authoring-a-delegation-credential/index.md): install that checkout and run its Python blocks first, in the same session. They define `chain`, `a_pub`, and `trusted_roots`, and already test a correctly signed scope escalation.
 
 ## Save and verify
 
