@@ -1,5 +1,7 @@
 # Live response authentication
 
+When an agent sends a task and gets an answer back, it needs to know the answer came from the agent it checked and belongs to the request it sent. This page describes the opt-in setting that gives the live caller that assurance, and its limits. It is for developers using the reference client and server.
+
 `ca2a-response-mac-v1` implements the live-caller branch of
 [the response requirements](response-binding-requirements.md), tracked in
 [#188](https://github.com/agentrust-io/ca2a/issues/188). This is an opt-in

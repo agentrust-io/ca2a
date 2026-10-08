@@ -1,5 +1,7 @@
 # TRACE A2A Profile
 
+TRACE is the AgenTrust format for signed records of what an AI system did. This page describes the small addition cA2A makes to TRACE so each handoff's record points to the one before it, letting anyone rebuild and check the full path of a task offline.
+
 cA2A emits a TRACE record per delegation hop. The A2A profile adds a delegation-link block to the TRACE record so a chain of records forms a verifiable delegation DAG.
 
 ## The delegation-link block

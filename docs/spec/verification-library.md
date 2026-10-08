@@ -1,5 +1,7 @@
 # Verification Library
 
+`ca2a-verify` is the library and command-line tool that checks permission chains and signed handoff records offline, with no network access. This page lists its functions and options. It is for developers and auditors who need to check evidence after the fact.
+
 `ca2a-verify` checks delegation credentials and signed TRACE record paths offline. The caller supplies trusted credential issuers and record-signing keys; cryptographic consistency alone does not establish authorization.
 
 ## API

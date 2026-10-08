@@ -1,5 +1,7 @@
 # Inbound Peer-Call Decision
 
+When a call arrives from another agent, cA2A runs a fixed series of checks before the application sees the task. This page lists those steps in order, what each needs, and where a failure stops the call. It is for implementers and anyone auditing what a cA2A agent accepts.
+
 The inbound handler checks a caller's authority and identity before returning a task payload to the application. The reference HTTP transport and `PeerNode` use this handler; the profile does not mandate that transport.
 
 ## Decision flow

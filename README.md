@@ -27,9 +27,11 @@ Community updates and contributor highlights: [AgenTrust on LinkedIn](https://ww
 
 [![PyPI](https://img.shields.io/pypi/v/ca2a-runtime)](https://pypi.org/project/ca2a-runtime/)
 
-> **Developer Preview.** cA2A 0.2 ships the profile, offline verifier, enforced peer runtime, sealed channel, signed TRACE provenance, and fail-closed SEV-SNP, TDX, and TPM appraisal. It may still introduce breaking changes before 1.0. See [ROADMAP.md](ROADMAP.md) and [LIMITATIONS.md](LIMITATIONS.md) for the remaining hardware and interoperability work.
+> **Developer Preview.** cA2A 0.4.0 ([`ca2a-runtime`](https://pypi.org/project/ca2a-runtime/) on PyPI) ships the profile, offline verifier, enforced peer runtime, sealed channel, signed TRACE provenance, and fail-closed SEV-SNP, TDX, and TPM appraisal. It may still introduce breaking changes before 1.0. See [ROADMAP.md](ROADMAP.md) and [LIMITATIONS.md](LIMITATIONS.md) for the remaining hardware and interoperability work.
 
-**cA2A (Confidential A2A) is the secure, confidential way to do agent-to-agent delegation on the [Agent2Agent (A2A)](https://a2a-protocol.org/) protocol.** It layers attested, attenuated delegation, a sealed peer channel, and an offline-verifiable provenance record on top of A2A, without replacing the transport. If you are looking for a secure version of A2A for multi-agent systems, this is the AgenTrust profile for it.
+**cA2A (Confidential A2A) lets one AI agent hand work to another on the [Agent2Agent (A2A)](https://a2a-protocol.org/) protocol and leaves proof of who allowed what.** Each handoff carries a signed permission slip that can only narrow, the receiving agent can be asked for a hardware-signed report of what software it runs (attestation), the task can be encrypted so only that agent can read it, and each step leaves a signed record anyone can check offline. It adds these to A2A without replacing how A2A sends messages. New to these terms? See [the plain-English glossary](https://agentrust-io.com/#plain-terms).
+
+In technical terms: cA2A layers attested, attenuated delegation, a sealed peer channel, and an offline-verifiable provenance record on top of A2A, without replacing the transport. If you are looking for a secure version of A2A for multi-agent systems, this is the AgenTrust profile for it.
 
 Agent A delegates a task to Agent B. B delegates part of it to C. Who authorized what? Did B stay inside the authority A actually held? Was the task payload readable by anyone between them? If a regulator asks, can you prove the answer for every hop?
 

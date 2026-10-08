@@ -1,5 +1,7 @@
 # Error Codes
 
+Every refusal in cA2A has a stable code, such as `SCOPE_ESCALATION` when a grant asks for more than its parent had. This page lists every code, the HTTP status it maps to, and when it is raised. Developers use it to handle failures in code and tests.
+
 Every failure the cA2A runtime and verifier raise is a subclass of `CA2AError`. Each subclass carries a stable `code` string and an `http_status`. The code is what you match on in tests and callers. The HTTP status is what a service should return when the error crosses an A2A boundary. Both are defined in `ca2a_runtime/errors.py` and are the authoritative values below.
 
 An error also carries a human-readable message and an optional `detail`. The message and detail are not stable and are for diagnostics only. Match on `code`, never on message text.

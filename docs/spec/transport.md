@@ -1,5 +1,7 @@
 # Transport Binding
 
+This page explains how cA2A's extra fields travel inside ordinary A2A messages without changing A2A itself, and lists which parts of that are built today. It is for developers connecting cA2A to an A2A server or client.
+
 cA2A is a profile on A2A, not a competing transport. A2A moves tasks and context between agents and authenticates a peer's domain with the Signed Agent Card. cA2A adds a trust envelope around a delegated task and leaves the wire protocol untouched. This page states how the profile attaches to the transport and what a peer does with the attached data. For the higher-level statement of what the profile adds and where, see [the A2A profile binding](profile.md).
 
 ## What ships today versus what does not

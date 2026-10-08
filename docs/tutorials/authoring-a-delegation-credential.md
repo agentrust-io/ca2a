@@ -1,6 +1,8 @@
 # Authoring a Delegation Credential
 
-The [verify-a-delegation-chain](verify-a-delegation-chain.md) tutorial takes an existing chain apart. This one builds one from scratch: generate keys, construct a `DelegationCredential`, sign it, extend it into a narrowing multi-hop chain, and verify the result. Then we make a child over-scope and watch `verify_chain` reject it with `SCOPE_ESCALATION`. No hardware needed.
+This tutorial is for developers who want to issue permissions to agents in code. A delegation credential is a signed permission slip: one agent (the issuer) grants another (the subject) a list of permissions (the scope). You will create keys, write and sign a first slip, pass narrower slips down a chain of three agents, and check the result. Then you will make one agent try to grant more than it was given and watch `verify_chain` refuse it with `SCOPE_ESCALATION`. No special hardware is needed.
+
+The [verify a saved chain](verify-a-delegation-chain.md) tutorial picks up where this one ends.
 
 Everything here uses `ca2a_runtime.delegation`. For the field semantics and the full invariant table, see [the delegation chain spec](../spec/delegation-chain.md).
 
@@ -12,7 +14,7 @@ The example credentials omit validity bounds to keep the field walkthrough short
 
 ## 1. Generate keypairs
 
-Each hop is signed by its issuer and names a subject. Both are Ed25519 public keys, encoded as raw hex. `new_keypair()` returns the private key object and its public key hex.
+Each agent needs a key pair: a private key it keeps secret and signs with, and a public key others use to check its signature. Each handoff (hop) is signed by its issuer and names a subject, and both are identified by their public keys (Ed25519 keys, written as hex). `new_keypair()` returns the private key object and its public key hex.
 
 ```python
 from ca2a_runtime.delegation import new_keypair
@@ -62,7 +64,7 @@ else:
 
 ## 3. Extend the chain with narrowing scope
 
-Each subsequent hop is issued by the previous hop's subject. Continuity is the rule that a hop's `issuer` equals the previous hop's `subject`, its `parent_id` equals the previous hop's `credential_id`, and its `depth` is the previous depth plus one. B, holding `read+write+admin`, delegates a narrower `read+write` slice to C:
+Each later handoff is issued by the agent that received the one before it. Continuity is the rule that a hop's `issuer` equals the previous hop's `subject`, its `parent_id` equals the previous hop's `credential_id`, and its `depth` is the previous depth plus one. B, holding `read+write+admin`, delegates a narrower `read+write` slice to C:
 
 ```python
 mid = DelegationCredential(
@@ -86,7 +88,7 @@ leaf = DelegationCredential(
 ).sign(c_priv)                  # signed by C
 ```
 
-Scope narrows at every hop: `{read, write, admin}` to `{read, write}` to `{read}`. Attenuation requires each hop's `scope` to be a subset of its parent's; it may stay the same or shrink, never grow.
+Scope narrows at every hop: `{read, write, admin}` to `{read, write}` to `{read}`. This rule is called attenuation: each hop's `scope` must fit inside its parent's. It may stay the same or shrink, never grow.
 
 ## 4. Verify the chain
 
@@ -138,7 +140,7 @@ else:
     raise AssertionError("scope escalation accepted")
 ```
 
-The signature on `over` is valid; C really did sign it. That is the point. A well-formed signature proves only that C authored the grant, not that C was entitled to make it. The subset check on `scope` is what forecloses the confused-deputy move where a delegate quietly widens its own authority. See [the delegation chain spec](../spec/delegation-chain.md#attenuation-is-the-whole-point).
+The signature on `over` is valid; C really did sign it. That is the point. A valid signature proves only that C wrote the grant, not that C was entitled to make it. The scope check is what stops a delegate from quietly widening its own authority (security people call this the confused-deputy problem). See [the delegation chain spec](../spec/delegation-chain.md#attenuation-is-the-whole-point).
 
 ## 6. Serialize for the wire
 

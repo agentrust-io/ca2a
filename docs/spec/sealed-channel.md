@@ -2,6 +2,8 @@
 
 # Sealed Peer Channel
 
+The sealed channel encrypts a task so that only the agent it is meant for can read it. This page explains the encryption used, lets you try it in a few lines of Python, and says what hardware it takes before the protection covers the machine's own administrators. It is for implementers and security reviewers.
+
 The sealed channel encrypts a task to a peer's X25519 public key. Only the matching private key can open it. The reference runtime connects this encryption to channel-offer appraisal; software mode exercises the same encryption without proving hardware isolation.
 
 ## Scheme
