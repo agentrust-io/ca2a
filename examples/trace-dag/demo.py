@@ -73,8 +73,8 @@ def main() -> None:
             subject=SUBJECTS[i],
             signing_key=keys[i],
             context=HopContext.software(
-                model_provider="anthropic",
-                model_id="claude-opus-4-8",
+                model_provider="example-provider",
+                model_id="example-model",
                 image_label=f"ca2a-peer:{SUBJECTS[i].rsplit('/', 1)[-1]}",
                 policy_bundle_hash=digest(b"demo-policy-bundle"),
             ),
