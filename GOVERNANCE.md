@@ -8,7 +8,7 @@ This document describes how cA2A is governed: who holds what role, how decisions
 
 AAIF hosting for cA2A is **proposed, not accepted**. [CHARTER.md](CHARTER.md) is the
 authoritative record: it is a pre-acceptance draft, the AAIF project proposal is targeted for
-Q4 2026, and the "cA2A" and "cA2A-compatible" marks are currently held by OPAQUE Systems, Inc.
+Q4 2026, and the "cA2A" and "cA2A-compatible" marks are currently held by the founding maintainer.
 
 On acceptance the Foundation would set overall direction for the agentrust-io ecosystem, hold
 the project's trademarks, and provide a neutral venue for resolving disputes that cannot be
