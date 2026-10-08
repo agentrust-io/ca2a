@@ -41,8 +41,8 @@ _NOW = int(time.time())
 
 def _software_context(label: str = "ca2a-peer") -> HopContext:
     return HopContext.software(
-        model_provider="anthropic",
-        model_id="claude-opus-4-8",
+        model_provider="example-provider",
+        model_id="example-model",
         image_label=label,
         policy_bundle_hash=digest(b"policy-bundle"),
     )

@@ -25,7 +25,7 @@ assignees: ''
 
 - OS:
 - Python version:
-- TEE provider (`auto` / `tpm` / `sev-snp` / `tdx` / `opaque` / `software-only`):
+- TEE provider (`auto` / `tpm` / `sev-snp` / `tdx` / `software-only`):
 
 ## Security impact
 

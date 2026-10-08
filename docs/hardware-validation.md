@@ -202,7 +202,7 @@ Trusted Launch VMs actually present, not a discrete TPM chip.
 
 ## Collection on real silicon: SEV-SNP and TDX, GCP, 2026-08-24
 
-Both collectors were run on genuine confidential VMs in GCP `opaque-dev`,
+Both collectors were run on genuine confidential VMs in a GCP project in
 `us-central1-a`, and the evidence each produced was appraised by this codebase's
 own verifiers to the vendor roots. The VMs were ephemeral and deleted after the
 capture.

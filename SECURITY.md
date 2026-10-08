@@ -21,7 +21,7 @@ The following components are in scope:
 
 - **Delegation chain**: scope attenuation correctness (a child grant must be a provable subset of its parent), signature verification, depth limits, and cross-chain replay protection
 - **Sealed peer channel**: any path by which a task payload could be read outside the peer's attested measurement
-- **TEE attestation path**: peer measurement verification for TPM 2.0, AMD SEV-SNP, Intel TDX, and OPAQUE Managed Runtime providers, and binding of the channel key to that measurement
+- **TEE attestation path**: peer measurement verification for TPM 2.0, AMD SEV-SNP, and Intel TDX providers, and binding of the channel key to that measurement
 - **Signing key handling**: hardware-sealed key generation, storage, and use
 - **Provenance record**: integrity of the delegation DAG; any path by which a valid TRACE record could be forged, reparented, or suppressed
 

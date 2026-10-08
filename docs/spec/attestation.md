@@ -63,7 +63,6 @@ All four are absent on `software-only`, which has no evidence by construction. A
 | `sev-snp` | AMD SEV-SNP | Verifier and collector both implemented (see below). `attest` produces a real report on a non-paravisor SNP guest through configfs-TSM. |
 | `tdx` | Intel TDX | Verifier and collector both implemented (see below). `attest` produces a real DCAP quote on a TDX guest through configfs-TSM. |
 | `tpm` | TPM 2.0 / vTPM | Verifier and collector both implemented (see below). `attest` produces a real quote on a Linux host with a TPM and tpm2-pytss. |
-| `opaque` | OPAQUE Confidential Runtime | Tier 3, explicit opt-in, not auto-selected |
 
 ## SEV-SNP verification
 

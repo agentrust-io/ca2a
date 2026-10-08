@@ -1,5 +1,5 @@
 attestation:
-  provider: software-only   # auto | tpm | sev-snp | tdx | opaque | software-only
+  provider: software-only   # auto | tpm | sev-snp | tdx | software-only
   enforcement_mode: enforcing  # the peer path always fails closed today
   require_caller_attestation: none   # none | any | hardware; see docs/configuration.md
   # caller_verifier:                 # needed for `hardware`; TPM roots only today
