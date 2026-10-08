@@ -273,7 +273,7 @@ The file is YAML. `ca2a validate-config` checks it without starting anything. `c
 
 ```
 attestation:
-  provider: auto            # auto | tpm | sev-snp | tdx | opaque | software-only
+  provider: auto            # auto | tpm | sev-snp | tdx | software-only
   enforcement_mode: enforcing  # enforcing | advisory | silent
   require_caller_attestation: none   # none | any | hardware
   # caller_verifier:                 # required for `hardware`, optional for `any`
@@ -302,7 +302,7 @@ The settings most people change first are `trusted_root_issuers` (whose permissi
 
 | Field                                    | Default          | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | ---------------------------------------- | ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `attestation.provider`                   | `auto`           | TEE provider for peer attestation. `auto` selects a detected hardware provider and fails if there is none; it never falls back to `software-only`, which has to be named explicitly. `opaque` is not implemented.                                                                                                                                                                                                                                                                                                                                      |
+| `attestation.provider`                   | `auto`           | TEE provider for peer attestation. `auto` selects a detected hardware provider and fails if there is none; it never falls back to `software-only`, which has to be named explicitly. Any other value is rejected as an unknown provider.                                                                                                                                                                                                                                                                                                               |
 | `attestation.enforcement_mode`           | `enforcing`      | Intended mode. The peer path always fails closed on cA2A denials today; advisory and silent are accepted in config but not applied on the wire.                                                                                                                                                                                                                                                                                                                                                                                                        |
 | `attestation.require_caller_attestation` | `none`           | What the callee demands of a caller's own attestation, per [mutual-attestation.md](https://ca2a.agentrust-io.com/docs/spec/mutual-attestation/index.md). `none` records the outcome and demands nothing; `any` requires an offer that appraises, software assurance included; `hardware` requires hardware assurance. At every rung an offer that is present and does not appraise is refused.                                                                                                                                                         |
 | `attestation.caller_verifier`            | none             | How to appraise a hardware report a caller offers. `platform` plus `trusted_roots_path` (a PEM bundle, resolved relative to the config file). Required when the rung is `hardware`; without it, a hardware offer at `none` or `any` is refused as unappraisable rather than accepted. Only `tpm` can be built today, via `ca2a_verify.tpm.tpm_verifier`. `sev-snp` and `tdx` are accepted by the vocabulary and refused at startup with the reason: their verifiers take raw evidence and a certificate chain, and no report-level wrapper exists yet. |
@@ -689,13 +689,12 @@ All four are absent on `software-only`, which has no evidence by construction. A
 
 ## Providers
 
-| Provider        | Platform                    | Status                                                                                                                                  |
-| --------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| `software-only` | none                        | Available; for development and CI. Reports `platform: software-only`, never a hardware platform string.                                 |
-| `sev-snp`       | AMD SEV-SNP                 | Verifier and collector both implemented (see below). `attest` produces a real report on a non-paravisor SNP guest through configfs-TSM. |
-| `tdx`           | Intel TDX                   | Verifier and collector both implemented (see below). `attest` produces a real DCAP quote on a TDX guest through configfs-TSM.           |
-| `tpm`           | TPM 2.0 / vTPM              | Verifier and collector both implemented (see below). `attest` produces a real quote on a Linux host with a TPM and tpm2-pytss.          |
-| `opaque`        | OPAQUE Confidential Runtime | Tier 3, explicit opt-in, not auto-selected                                                                                              |
+| Provider        | Platform       | Status                                                                                                                                  |
+| --------------- | -------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| `software-only` | none           | Available; for development and CI. Reports `platform: software-only`, never a hardware platform string.                                 |
+| `sev-snp`       | AMD SEV-SNP    | Verifier and collector both implemented (see below). `attest` produces a real report on a non-paravisor SNP guest through configfs-TSM. |
+| `tdx`           | Intel TDX      | Verifier and collector both implemented (see below). `attest` produces a real DCAP quote on a TDX guest through configfs-TSM.           |
+| `tpm`           | TPM 2.0 / vTPM | Verifier and collector both implemented (see below). `attest` produces a real quote on a Linux host with a TPM and tpm2-pytss.          |
 
 ## SEV-SNP verification
 
@@ -1628,7 +1627,7 @@ Note also that this is a Hyper-V vTPM, which is what Azure confidential and Trus
 
 ## Collection on real silicon: SEV-SNP and TDX, GCP, 2026-08-24
 
-Both collectors were run on genuine confidential VMs in GCP `opaque-dev`, `us-central1-a`, and the evidence each produced was appraised by this codebase's own verifiers to the vendor roots. The VMs were ephemeral and deleted after the capture.
+Both collectors were run on genuine confidential VMs in a GCP project in `us-central1-a`, and the evidence each produced was appraised by this codebase's own verifiers to the vendor roots. The VMs were ephemeral and deleted after the capture.
 
 **Intel TDX**, `c3-standard-4`, Ubuntu 24.04, kernel `6.17.0-1022-gcp`. The guest confirmed itself (`tdx: Guest detected`), `/sys/kernel/config/tsm/report` was present and `/dev/tdx_guest` existed (root-only, so collection needs root). `TdxProvider.detect()` returned `True` and `TdxProvider.attest` produced an **8000-byte DCAP v4 quote** whose `REPORTDATA` matched the derived binding and whose PCK chain arrived inside the quote. `verify_tdx_quote` then appraised it to the **Intel SGX Root CA** committed in `tests/fixtures`, giving version 4, `tee_type 0x81`, and a non-zero 48-byte MRTD.
 
@@ -1903,7 +1902,7 @@ The following components are in scope:
 
 - **Delegation chain**: scope attenuation correctness (a child grant must be a provable subset of its parent), signature verification, depth limits, and cross-chain replay protection
 - **Sealed peer channel**: any path by which a task payload could be read outside the peer's attested measurement
-- **TEE attestation path**: peer measurement verification for TPM 2.0, AMD SEV-SNP, Intel TDX, and OPAQUE Managed Runtime providers, and binding of the channel key to that measurement
+- **TEE attestation path**: peer measurement verification for TPM 2.0, AMD SEV-SNP, and Intel TDX providers, and binding of the channel key to that measurement
 - **Signing key handling**: hardware-sealed key generation, storage, and use
 - **Provenance record**: integrity of the delegation DAG; any path by which a valid TRACE record could be forged, reparented, or suppressed
 

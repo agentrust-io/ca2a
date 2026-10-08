@@ -124,7 +124,7 @@ Note also that this is a Hyper-V vTPM, which is what Azure confidential and Trus
 
 ## Collection on real silicon: SEV-SNP and TDX, GCP, 2026-08-24
 
-Both collectors were run on genuine confidential VMs in GCP `opaque-dev`, `us-central1-a`, and the evidence each produced was appraised by this codebase's own verifiers to the vendor roots. The VMs were ephemeral and deleted after the capture.
+Both collectors were run on genuine confidential VMs in a GCP project in `us-central1-a`, and the evidence each produced was appraised by this codebase's own verifiers to the vendor roots. The VMs were ephemeral and deleted after the capture.
 
 **Intel TDX**, `c3-standard-4`, Ubuntu 24.04, kernel `6.17.0-1022-gcp`. The guest confirmed itself (`tdx: Guest detected`), `/sys/kernel/config/tsm/report` was present and `/dev/tdx_guest` existed (root-only, so collection needs root). `TdxProvider.detect()` returned `True` and `TdxProvider.attest` produced an **8000-byte DCAP v4 quote** whose `REPORTDATA` matched the derived binding and whose PCK chain arrived inside the quote. `verify_tdx_quote` then appraised it to the **Intel SGX Root CA** committed in `tests/fixtures`, giving version 4, `tee_type 0x81`, and a non-zero 48-byte MRTD.
 
