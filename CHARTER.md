@@ -48,7 +48,7 @@ All contributions must be made under the terms of [LICENSE](https://github.com/a
 
 ## 5. Trademark Policy
 
-"cA2A" and "cA2A-compatible" as project and conformance marks are currently held by OPAQUE Systems, Inc. Upon host organization acceptance, trademark ownership transfers to AAIF under their standard trademark policy.
+"cA2A" and "cA2A-compatible" as project and conformance marks are currently held by the founding maintainer. Upon host organization acceptance, trademark ownership transfers to AAIF under their standard trademark policy.
 
 Use of "cA2A-compatible" to describe a deployment requires that the implementation satisfies the attestation, attenuation, and provenance requirements defined in the project documentation for the version being claimed.
 
