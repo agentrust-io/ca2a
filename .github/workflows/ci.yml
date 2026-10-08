@@ -63,6 +63,7 @@ jobs:
         run: pytest tests/unit/ tests/conformance/ -v --tb=short --cov=src --cov-report=xml
 
       - name: Upload coverage report
+        if: github.event_name != 'release'
         uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
         with:
           use_oidc: true

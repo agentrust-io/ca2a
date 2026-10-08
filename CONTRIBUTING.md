@@ -55,7 +55,7 @@ All four must pass before a PR is mergeable.
 
 ### Release validation
 
-Release builds depend on the reusable CI workflow, including its Python 3.11,
+Release builds depend on a credential-free mirror of CI, including its Python 3.11,
 3.12 and 3.13 matrix on Linux and Windows. Failed, cancelled or skipped validation
 blocks the build and therefore publication. The existing wheel and source
 distribution installation checks still run before their artifacts are uploaded.
@@ -108,3 +108,8 @@ Do **not** open a public issue. Use [GitHub Security Advisories](https://github.
 ## Questions
 
 Open a [GitHub Discussion](https://github.com/orgs/agentrust-io/discussions) for design questions or proposals before writing code.
+
+The release validation workflow omits coverage upload and OIDC permission. A parity
+test requires every other CI job and step to match, preventing validation drift.
+Normal CI retains its coverage reporting; release events skip that upload. Only
+the separate publish job can request a release OIDC token.
