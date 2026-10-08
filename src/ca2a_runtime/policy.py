@@ -5,9 +5,9 @@ capabilities. The effective permission on a peer call is the delegated scope
 intersected with this allow set, so a peer can never exercise more than both
 its grant and the callee's local policy permit.
 
-The intersection semantics here are policy-language-agnostic. Binding a full
-Cedar policy engine (as cMCP does) is tracked separately; this allow-set model
-is the enforcement primitive the peer path uses today.
+The intersection semantics here are policy-language-agnostic. ``LocalPolicy``
+below is the allow-set model; ``ca2a_runtime.cedar.CedarPolicy`` evaluates a
+Cedar policy bundle behind the same ``Policy`` protocol.
 """
 
 from __future__ import annotations
