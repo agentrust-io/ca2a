@@ -53,3 +53,9 @@ Changes to MAINTAINERS.md must be approved by at least one existing maintainer.
 | Zoheb | [@zohebk8s](https://github.com/zohebk8s) | [Project Lead announcement](https://github.com/orgs/agentrust-io/discussions/31) |
 
 These appointments cover this repository. CODEOWNERS determines which paths each reviewer can approve for protected merges.
+
+## Reviewers
+
+| Name | GitHub | Since |
+|---|---|---|
+| Noah Ingwers | [@noah-ing](https://github.com/noah-ing) | 2026-10-14, [accepted](https://github.com/agentrust-io/.github/issues/60#issuecomment-6179377337) |
