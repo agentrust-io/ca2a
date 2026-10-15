@@ -59,4 +59,4 @@ Running without special hardware (software mode) gives weaker guarantees than ru
 
 For how the pieces fit together, read [How It Works](https://ca2a.agentrust-io.com/docs/concepts/index.md). The formal rules, with the delegation chain, sealed channel, and conformance requirements, are in [Profile](https://ca2a.agentrust-io.com/docs/spec/profile/index.md).
 
-**Status:** ca2a-runtime 0.4.0 developer preview · MIT · hosting at the Agentic AI Foundation proposed, not accepted · Sponsored by OPAQUE, which funds the engineering, infrastructure and confidential-computing work behind these projects.
+**Status:** ca2a-runtime 0.4.0 developer preview · MIT · hosting at the Agentic AI Foundation proposed, not accepted · AgenTrust is an independent open-source project. No company funds, owns or directs it; contributions are voluntary.

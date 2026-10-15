@@ -16,9 +16,9 @@ ______________________________________________________________________
 
 The project lead is responsible for the technical direction of cA2A, final say on architecture decisions, and representing the project to the Foundation.
 
-| Name           | Affiliation    | GitHub          |
-| -------------- | -------------- | --------------- |
-| Imran Siddique | OPAQUE Systems | @imran-siddique |
+| Name           | Affiliation  | GitHub          |
+| -------------- | ------------ | --------------- |
+| Imran Siddique | AgenTrust-io | @imran-siddique |
 
 The project lead role is subject to Foundation confirmation. Succession is decided by a 2/3 maintainer vote, ratified by the Foundation.
 
