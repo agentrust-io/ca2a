@@ -29,7 +29,7 @@ Out of scope: the A2A transport itself, agent identity issuance beyond delegatio
 
 Upon host organization acceptance, governance transitions from the current Project Lead model to a Technical Steering Committee (TSC).
 
-**Composition**: 3-7 members. No single organization may hold more than 40% of TSC seats. The founding Project Lead (Imran Siddique, OPAQUE Systems) holds one founding seat for the v1.0 release cycle.
+**Composition**: 3-7 members. No single organization may hold more than 40% of TSC seats. The founding Project Lead (Imran Siddique) holds one founding seat for the v1.0 release cycle.
 
 **Election**: TSC members are elected annually by active contributors (at least one merged pull request in the preceding 12 months). Each contributor has one vote.
 
