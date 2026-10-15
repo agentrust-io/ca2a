@@ -4,12 +4,8 @@
   "source": "agentrust-io/.github:maintainers/roster.json",
   "maintainers": [
     "imran-siddique",
-    "pforest",
-    "podcastinator",
     "carloshvp",
-    "Qiang-Xu",
-    "zohebk8s",
-    "AaronRoeF"
+    "zohebk8s"
   ],
   "security_paths": [
     "src/ca2a_runtime/delegation/",
