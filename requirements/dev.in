@@ -20,8 +20,8 @@ mypy>=1.10
 types-pyyaml
 bandit[toml]>=1.7
 pip-audit>=2.6
-agentrust-trace-tests>=0.4,<0.6
-a2a-sdk[http-server]==1.2.1
-uvicorn==0.53.0
+agentrust-trace-tests>=0.4,<0.7
+a2a-sdk[http-server]==1.2.2
+uvicorn==0.54.0
 aiohttp>=3.14.3
 setuptools>=83.0.0
