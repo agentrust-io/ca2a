@@ -1,0 +1,30 @@
+\section{Conclusion}\label{sec:conclusion}
+
+A2A standardizes how agents discover each other and exchange tasks, but its trust model stops at
+the Signed Agent Card. Card verification establishes that a domain owner issued a card. It does
+not establish that the peer runs attested code, that a delegating agent holds the authority it
+passes on, that the task payload is confidential to the peer, or that there is a record of who
+delegated what to whom. cA2A is a trust profile layered on A2A that addresses these with
+attenuated delegation, attestation-gated sealing, and signed per-hop provenance, reusing existing
+standards rather than defining a new transport~\citep{a2a2026,trace2025}.
+
+Rerun against ca2a 0.3.1, the software results hold. Attenuation was exact across 2,700
+narrowing and 2,700 escalating chains; in-chain replay and cross-chain splices were rejected;
+delegated scope was intersected with local policy, including on the reference inbound path;
+sealed payloads opened only with the peer's key and failed closed on tamper; and edits to linked
+provenance records were detected. Chain verification cost about 0.22\,ms per hop in our
+environment, and the sealed channel reached 212\,MiB/s at 256\,KiB.
+
+The limits are as important as the results. The provenance experiment shows structural
+consistency; authenticity depends on signed records, which the project's tests cover. The sealed
+channel is validated at the cryptographic layer only: the measured hosts lacked SEV-SNP ciphertext
+hiding, and the launch measurement in the recorded mutual run did not cover application code.
+Cross-operator attestation has been exercised with synthetic evidence and, on hardware, only
+one-directionally or within one operator. Section~\ref{sec:after} lists defects found after the
+original evaluation, including chains that acted as bearer credentials and unsigned provenance
+presented as authenticated; each was fixed in a released version.
+
+Until mutual attestation between independent operators is demonstrated on platforms that provide
+the needed memory protections, cA2A should not be described as attested across trust domains or as
+protecting payloads from a hosting operator. The specification, verifier, and experiments are
+available at \url{https://github.com/agentrust-io/ca2a} under the MIT license.

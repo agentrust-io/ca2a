@@ -1,0 +1,82 @@
+\section{Introduction}\label{sec:intro}
+
+The Agent2Agent (A2A) protocol~\citep{a2a2026} defines how one agent discovers another and hands
+it a task. It was contributed to the Linux Foundation, and on August 17, 2026 it joined the
+Agentic AI Foundation as a hosted project, which reported backing from more than 150
+organizations~\citep{aaifa2a2026}. Teams that need agents from different vendors to exchange work
+increasingly have a common transport to build on.
+
+A2A's trust anchor is the Signed Agent Card, which lets a client check that the owner of a
+domain issued the card. It does not establish that a peer runs attested, unmodified code; that a
+delegating agent actually holds the authority it passes on; that a task payload is confidential
+to the intended peer; or that there is an auditable record of who delegated what to whom and
+under which policy.
+
+This gap matters once one agent delegates to another. Agent A hands a task to B, and B hands
+part of it to C. Nothing in the transport constrains B or C to the authority A actually held. A
+card-verified peer can request more than it was granted, and the request will look valid at every
+hop. This is the confused deputy problem~\citep{confuseddeputy1988}, now across trust domains
+that never negotiated a shared authority model. Recent work treats verifiable delegation for
+agents as open: Prakash reports finding no prior implemented protocol that jointly combined
+verifiable delegation, holder-side attenuation, chained policy, transport bindings, and provenance
+records, and proposes one~\citep{aip2026}; Forough et al.\ list compound attestation for multi-hop
+agent chains among the open challenges for confidential agentic AI~\citep{secretssurvey2026}.
+Mutual TLS and OAuth scopes secure the connection and assert an identity; they do not attenuate
+authority per hop, appraise runtime integrity, or seal a payload to an appraised peer.
+
+This report describes cA2A (Confidential A2A), a trust \emph{profile} layered on A2A rather than a
+competing transport. cA2A does not move tasks between agents; A2A does that. It defines the trust
+envelope around a delegated task, in the way TRACE~\citep{trace2025} binds to
+RATS~\citep{rats2021} and EAT~\citep{eat2023} rather than replacing them. cA2A composes four
+mechanisms:
+
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Attenuated delegation.} Each hop carries a signed delegation credential whose
+    scope is a subset of its parent's. Depth is bounded, the root issuer must be trusted by the
+    verifier, and a credential identifier cannot repeat within a chain.
+  \item \textbf{Runtime attestation.} A caller appraises a peer's attestation evidence, which
+    binds the peer's channel key to a measurement, before it sends a delegated task.
+  \item \textbf{Sealed peer channel.} The task payload is sealed to the channel key the appraised
+    evidence vouches for, so only the holder of the matching private key can open it.
+  \item \textbf{Provenance record.} Each hop emits a signed TRACE record referencing its parent
+    record's hash and the delegation credential it acted under, so an auditor can check the
+    path offline.
+\end{itemize}
+
+None of these mechanisms is new in isolation. Macaroons introduced offline attenuation of bearer
+credentials~\citep{macaroons2014}, and recent agent-specific work specifies per-hop attenuation
+with Cedar policies and parent-swap resistance~\citep{pedigree2026} or implements attenuated,
+provenance-bound capability tokens across MCP and A2A~\citep{aip2026}. Section~\ref{sec:related}
+compares them.
+
+\subsection*{Contributions}
+
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{The cA2A profile.} A binding on A2A, and on the IETF RATS, EAT, and
+    SCITT~\citep{scitt2024} work, that composes attenuated delegation, attestation-gated sealing,
+    and signed provenance for agent-to-agent calls without changing the A2A transport.
+  \item \textbf{An open reference implementation.} The delegation credential model and offline
+    chain verifier, the inbound decision path, the sealed channel, attestation verifiers for AMD
+    SEV-SNP, Intel TDX, and TPM~2.0 evidence, signed TRACE provenance, and a CLI, released under
+    the MIT license as ca2a-runtime~\citep{ca2arepo2026}. Delegation semantics mirror those of
+    agent-manifest~\citep{agentmanifest2026}, and hardware-evidence parsing and certificate-chain
+    checks are shared with it.
+  \item \textbf{Six properties with their evidence stated.} We state six properties
+    (Section~\ref{sec:claims}) and report software experiments rerun against ca2a 0.3.1
+    (Section~\ref{sec:evaluation}). C1 (attenuation soundness) and C2 (in-chain replay and splice
+    rejection) are validated in software. C3 (scope-policy intersection) is validated in software,
+    including the inbound path of the reference transport. C4 (sealed-payload confidentiality) is
+    validated at the cryptographic layer only. C5 (provenance integrity) is validated for
+    structural consistency by the experiment, while authenticity rests on signed records covered by
+    the project's tests. C6 (cross-operator attestation) is exercised with synthetic evidence and
+    is not validated on hardware across independent operators.
+\end{itemize}
+
+\subsection*{Paper structure}
+
+Section~\ref{sec:background} covers A2A and its Signed Agent Card, TEE attestation, the TRACE
+record format, Cedar policy, and provenance. Section~\ref{sec:design} describes the cA2A profile
+and how its mechanisms compose. Section~\ref{sec:claims} states the six properties and the status
+of each. Section~\ref{sec:evaluation} presents the rerun experiments. Section~\ref{sec:after}
+reports findings made after the original evaluation. Section~\ref{sec:related} surveys related
+work, and Section~\ref{sec:conclusion} concludes.

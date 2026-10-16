@@ -1,0 +1,14 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.10, pytest-9.1.1, pluggy-1.6.0
+rootdir: <scratch>\ca2a
+configfile: pyproject.toml
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 57 items
+
+tests\unit\test_response_authentication.py ............................. [ 50%]
+............................                                             [100%]
+
+- generated xml file: <output>\pytest-baseline.xml -
+============================= 57 passed in 5.40s ==============================
+
+STDERR

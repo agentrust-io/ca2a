@@ -1,0 +1,37 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.10, pytest-9.1.1, pluggy-1.6.0
+rootdir: <scratch>\copy-consumption
+configfile: pyproject.toml
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 57 items
+
+tests\unit\test_response_authentication.py F.....................F...... [ 50%]
+...F........................                                             [100%]
+
+================================== FAILURES ===================================
+_______________________ test_valid_response_and_one_use _______________________
+tests\unit\test_response_authentication.py:53: in test_valid_response_and_one_use
+    with pytest.raises(ResponseAuthenticationFailed):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE ResponseAuthenticationFailed
+_____________ test_concurrent_consumption_has_exactly_one_success _____________
+tests\unit\test_response_authentication.py:147: in test_concurrent_consumption_has_exactly_one_success
+    assert sum(pool.map(consume, range(16))) == 1
+E   assert 16 == 1
+E    +  where 16 = sum(<generator object Executor.map.<locals>.result_iterator at 0x000001F258C56E30>)
+E    +    where <generator object Executor.map.<locals>.result_iterator at 0x000001F258C56E30> = map(<function test_concurrent_consumption_has_exactly_one_success.<locals>.consume at 0x000001F258D56700>, range(0, 16))
+E    +      where map = <concurrent.futures.thread.ThreadPoolExecutor object at 0x000001F258CD6330>.map
+E    +      and   range(0, 16) = range(16)
+__________________ test_invalid_response_consumes_occurrence __________________
+tests\unit\test_response_authentication.py:174: in test_invalid_response_consumes_occurrence
+    with pytest.raises(ResponseAuthenticationFailed):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE ResponseAuthenticationFailed
+- generated xml file: <output>\pytest-consumption.xml -
+=========================== short test summary info ===========================
+FAILED tests/unit/test_response_authentication.py::test_valid_response_and_one_use
+FAILED tests/unit/test_response_authentication.py::test_concurrent_consumption_has_exactly_one_success
+FAILED tests/unit/test_response_authentication.py::test_invalid_response_consumes_occurrence
+======================== 3 failed, 54 passed in 5.46s =========================
+
+STDERR

@@ -1,0 +1,66 @@
+\section{Related Work}\label{sec:related}
+
+cA2A draws on three lines of work: capability-based delegation, identity and transparency
+standards, and confidential computing for agents. Several of its mechanisms appear in prior or
+concurrent work, and we do not claim priority for attenuation or for binding provenance to
+authority. What we did not find in the work below is the combination of per-hop attenuation with
+appraisal of the delegate's TEE evidence and sealing of the task payload to the key that
+evidence vouches for, on the A2A delegation edge.
+
+\paragraph{Capability delegation for agents.}
+Macaroons~\citep{macaroons2014} introduced contextual caveats that attenuate a bearer credential
+without a round trip to the issuer; a derived credential can only be narrower, and the check is
+offline. Toma\v{s}ev, Franklin, and Osindero propose delegation capability tokens for AI agents based
+on macaroons or Biscuit tokens, wrapping resource credentials in attenuating
+caveats~\citep{tomasev2026}. Prakash's Agent Identity Protocol (AIP) implements invocation-bound
+capability tokens that combine identity, attenuated authorization, and provenance in an
+append-only token chain, with Biscuit and Datalog policies for multi-hop delegation, bindings for
+MCP, A2A, and HTTP, and interoperable Python and Rust implementations~\citep{aip2026}. The PEDIGREE
+Internet-Draft, an individual submission from Glyphzero Labs that extends the SPIFFE and WIMSE
+workload-identity model, specifies per-hop delegation with scope attenuation enforced at mint and
+at verification, Cedar-policy mandates with static-analysis proofs that a child mandate narrows
+its parent, and cryptographic re-verification of each parent token to resist parent-swap
+attacks~\citep{pedigree2026}. These cover the attenuation and chain-integrity ground of
+Properties~\ref{prop:c1} and~\ref{prop:c2}, and PEDIGREE's narrowing proofs over Cedar policies go
+further than cA2A's set-subset check. Neither AIP nor PEDIGREE addresses appraisal of the
+delegate's runtime attestation or encryption of the task payload to the delegate. cA2A's
+delegation semantics mirror agent-manifest~\citep{agentmanifest2026}.
+
+\paragraph{Identity and transparency standards.}
+The IETF WIMSE architecture draft~\citep{wimse2025} describes how workloads present and verify
+identity across systems, and the SCITT architecture, published as RFC~9943 in June
+2026~\citep{scitt2024}, defines transparency services for signed supply-chain statements. The same
+author as PEDIGREE has proposed binding per-action authorization and memory provenance into SCITT
+agent action capsules~\citep{capsule2026}. cA2A's per-hop records follow the SCITT pattern of
+signed statements that a verifier can appraise offline, and the TRACE record format it
+emits~\citep{trace2025} has a transparency field that can carry a SCITT receipt; cA2A does not
+itself operate a transparency service. From the adversary side, Anbiaee et al.\ compare the security of
+MCP, A2A, Agora, and ANP and identify protocol-level and cross-protocol risks, including missing
+validation and attestation of executable components~\citep{crossprotocol2026}.
+
+\paragraph{Agent identity and messaging infrastructure.}
+AGNTCY, initiated by Cisco and hosted by the Linux Foundation since July 2025, provides agent
+discovery, identity, and messaging components for multi-agent systems~\citep{agntcy2026}. It
+addresses naming, discovery, and authenticated communication at a scale cA2A does not attempt. We
+did not find in its published components a mechanism that intersects a delegated scope with the
+receiver's local policy or seals a payload to an appraised TEE key. The two could compose: such a
+layer can name the peers while cA2A governs the authority that flows between them.
+
+\paragraph{Hardware-attested provenance.}
+EQTY Lab's Verifiable Compute uses TEE attestation to notarize AI computation, pairing Intel TDX
+CPUs with NVIDIA H100 GPUs in its published design~\citep{eqtyvc2024}, and its Verifiable
+Knowledge work extends that approach to the provenance of data an agent uses, on NVIDIA BlueField
+hardware~\citep{eqty2026}. These are commercial systems built around particular hardware pairings.
+cA2A's verifier follows the RATS role separation~\citep{rats2021} and appraises SEV-SNP, TDX, and
+TPM evidence through one interface, but it has not been validated across independent operators
+(Property~\ref{prop:c6}).
+
+\paragraph{Confidential agentic AI.}
+Forough, Kogias, and Haddadi survey confidential computing for agentic AI across six TEE platforms
+and list open challenges, among them compound attestation for multi-hop agent
+chains~\citep{secretssurvey2026}; Mo, Tarkhani, and Haddadi systematize confidential computing for
+machine learning more broadly~\citep{confai2024}. cA2A's sealed channel
+(Property~\ref{prop:c4}) targets the delegation hop, and Section~\ref{sec:after} records why it is
+not yet a confidentiality guarantee against a hosting operator. The sibling cMCP
+profile~\citep{cmcp2026} applies confidential computing to the single-agent tool-call boundary;
+cA2A applies the same TEE provider pattern and Cedar engine to the agent-to-agent boundary.

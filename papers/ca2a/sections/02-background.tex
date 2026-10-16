@@ -1,0 +1,137 @@
+\section{Background}\label{sec:background}
+
+This section grounds cA2A in the protocols and mechanisms it composes. We describe A2A
+and its Signed Agent Card, the tool-side analog in MCP and cMCP, capability attenuation
+and how agent-manifest realizes a signed delegation chain, trusted execution environments
+and remote attestation, the Cedar policy language, and the provenance and transparency
+work that the TRACE record format draws on. None of this section is a novel claim; it
+fixes terminology and states what each cited system provides.
+
+\subsection{A2A and the Signed Agent Card}
+
+The Agent2Agent (A2A) protocol~\citep{a2a2026} is a protocol for agent-to-agent
+communication. An agent publishes an \emph{Agent Card}, a JSON document
+that advertises the agent's identity, endpoint, and the skills it offers. A client agent
+reads a peer's card, then sends it a \emph{task}, a unit of work the peer executes and
+reports back on. A2A defines how tasks are moved and how their state transitions; it does
+not define an authorization model for what a peer is permitted to do with a task once it
+holds it.
+
+The Signed Agent Card is A2A's trust anchor. The card carries a signature that lets a
+client verify that the claimed domain owner issued it. This answers one question: did this
+domain publish this card. It does not establish that the peer is running attested code,
+that a delegating agent holds the authority it forwards, that the task payload is
+confidential to the peer, or that there is an unbroken record of who delegated what to
+whom. cA2A adds these guarantees as a profile on A2A rather than as a competing transport.
+
+\subsection{MCP and cMCP as the Tool-Side Analog}
+
+The Model Context Protocol (MCP)~\citep{mcp2024} standardizes how an agent discovers and
+invokes tools hosted on external servers. Where A2A governs agent-to-agent calls, MCP
+governs the agent-to-tool call. MCP, like A2A, defines discovery and invocation but not
+authorization: it specifies no policy model, requires no audit record, and gives a client
+no way to confirm that a cached tool definition is still the definition the server will
+execute.
+
+cMCP~\citep{cmcp2026} closes those gaps for the tool call. It interposes a gateway that
+evaluates a Cedar policy per call, maintains a tamper-evident audit chain, and emits a
+signed TRACE Claim that any verifier can check offline. cA2A is the agent-to-agent
+counterpart of the same program: it takes the tool-side pattern of attested, policy-bound,
+provable calls and applies it to the delegation edge between agents. cA2A reuses cMCP's
+TEE provider pattern and runs the same Cedar engine (\texttt{cedarpy}) for local policy.
+
+\subsection{Capability Attenuation and Macaroons}
+
+The confused deputy problem~\citep{confuseddeputy1988} arises when a component with
+authority is induced to exercise it on behalf of a caller who should not have that
+authority. In a multi-agent workflow the deputy is any agent that accepts a narrow task
+and then acts with broader authority than the task granted. The capability discipline
+answers this by making authority a value that is passed explicitly and can only be
+narrowed as it is passed on.
+
+Macaroons~\citep{macaroons2014} are the reference construction for attenuable bearer
+credentials. A macaroon is a token whose holder can append \emph{caveats} that restrict
+its use, producing a strictly less powerful token without contacting the issuer; the chain
+of caveats is bound by a keyed-HMAC construction so that no caveat can be dropped. The
+essential property for delegation is monotone attenuation: a derived credential can only
+be a subset of the one it derives from.
+
+agent-manifest~\citep{agentmanifest2026} implements this discipline as a signed A2A
+delegation chain. Each hop is a \texttt{DelegationCredential} whose signed body names the
+issuer, the subject, the granted scope, a depth, and the parent hop's identifier. The body
+is signed with Ed25519~\citep{eddsa2017} over a canonical JSON encoding aligned with RFC
+8785~\citep{jcs2020}, so the exact bytes that were signed are reconstructable by any
+verifier. Verification enforces signature validity at every hop, continuity of the
+issuer-to-subject and parent-to-child links, a bounded depth, non-repetition of credential
+identifiers to defeat replay, and the subset check on scope that enforces attenuation. cA2A
+implements the same semantics in its own verifier, which the runtime calls on every inbound
+peer request, and signs over RFC 8785 canonical bytes so that credentials are
+cross-verifiable with agent-manifest. The attenuation subset check is what forecloses the
+confused-deputy escalation.
+
+\subsection{Trusted Execution Environments and Remote Attestation}
+
+A Trusted Execution Environment (TEE) is a CPU-enforced isolation boundary that provides
+two properties cA2A depends on: \emph{confidentiality}, so that memory inside the TEE is
+inaccessible to software outside it including the hypervisor and host OS, and
+\emph{remote attestation}, so that the TEE can produce a hardware-signed measurement report
+proving to a remote verifier which code is running inside. AMD SEV-SNP~\citep{amdsevsnp2023}
+and Intel TDX~\citep{inteltdx2023} are the two mainstream VM-level implementations; a survey
+of confidential machine learning provides broader context~\citep{confai2024}.
+
+The measurement report is the primitive of interest. Both platforms let the enclave place
+application-chosen bytes into a report field bound to the hardware measurement, which is how
+a public key can be tied to a specific attested measurement. The IETF RATS
+architecture~\citep{rats2021} gives the vendor-neutral roles for this exchange, an attester
+producing evidence and a verifier appraising it, and the Entity Attestation Token
+(EAT)~\citep{eat2023} gives a portable token format for carrying attestation claims. cA2A
+binds a peer's channel key to its attested measurement through this mechanism, so that a
+caller can seal a payload to a key the appraised evidence vouches for. Whether that key is in
+fact confined to the measured code depends on the platform and on what the measurement
+covers; Sections~\ref{sec:claims} and~\ref{sec:after} state what has and has not been shown.
+
+\subsection{Cedar Policy Language}
+
+Cedar~\citep{cedar2023} is a policy language and evaluation engine that expresses access
+control as \texttt{permit} and \texttt{forbid} rules over a principal, action, and
+resource, with optional conditions over a context object. Cedar's structural typing keeps
+evaluation decidable in bounded time, which matters when a policy check sits on the
+critical path of accepting a delegated task. cA2A uses Cedar to model the intersection of a
+forwarded delegation scope with a peer's local policy, so that a peer never acts beyond
+either the authority delegated to it or its own operator's rules. Property~\ref{prop:c3}
+states this intersection and Section~\ref{sec:eval-c3} evaluates it.
+
+\subsection{Provenance and Transparency}
+
+An offline-verifiable record of who delegated what to whom is a provenance problem. The
+W3C PROV data model~\citep{prov2013} gives the vocabulary for describing entities,
+activities, and the agents responsible for them, and the relationships that link a
+derived artifact to what it was derived from. cA2A's per-hop records form a delegation DAG
+in exactly this shape: each record names its parent, so the set of records across a
+multi-hop workflow reconstructs the delegation tree.
+
+A transparency log makes a registered record non-repudiable and lets anyone check that it was
+included; it cannot reveal a record that was never registered. Certificate
+Transparency~\citep{ct2013} established the pattern of an append-only, cryptographically
+verifiable log for security-critical statements, and the IETF SCITT
+architecture~\citep{scitt2024} generalizes it to supply-chain claims, giving neutral roles
+for registering and auditing signed statements. cA2A follows the same profile-over-standard
+posture toward SCITT that it takes toward A2A: it binds to the transparency architecture
+rather than reinventing it.
+
+\subsection{TRACE as the Record Format}
+
+TRACE (Trust, Runtime Attestation, and Compliance Evidence)~\citep{trace2025} is the open
+record format that cA2A emits per delegation hop. A TRACE record is a signed JSON document
+that carries a subject, a runtime measurement, and profile-specific context. cA2A defines
+an A2A profile of TRACE that adds a delegation-link block to each record: the hash of the
+parent hop's record and the identifier of the delegation credential the hop acted under. A
+root hop omits the block; every subsequent hop references its parent. Because each record
+is signed and references its parent by hash, a verifier can rebuild the parent links,
+confirm each hop acted under a credential whose chain verifies, and confirm that each record
+was signed by the key the chain names as that hop's delegate. These checks run offline, given
+the recipient's trusted keys and the delegation chain. They establish what the signers
+declared, not that the declared work completed or that the submitted path is the complete
+history, and the current verifiers accept one ordered root-to-leaf path rather than an
+arbitrary branching graph. This is the record substrate for the provenance property in
+Section~\ref{sec:claims}.

@@ -1,0 +1,13 @@
+# Environment (Python 3.12), from a clone of agentrust-io/ca2a
+git -C <source> checkout --detach 19407fb52f4ce5fa81db322d75908c9d9f17d862
+python -m venv <venv>
+<venv>/Scripts/python -m pip install --require-hashes -r <source>/requirements/dev.txt
+# Run (from this report's directory)
+<venv>/Scripts/python -B experiments/run.py --source <source> --commit 19407fb52f4ce5fa81db322d75908c9d9f17d862 --output <output>
+# Individual commands, as executed
+python -B -m pytest -p no:cacheprovider -p pytest_asyncio.plugin -q --tb=short --basetemp=<scratch>\baseline-tmp --junitxml=<output>\pytest-baseline.xml tests/unit/test_response_authentication.py
+python -B -m pytest -p no:cacheprovider -p pytest_asyncio.plugin -q --tb=short --basetemp=<scratch>\response-mac-tmp --junitxml=<output>\pytest-response-mac.xml tests/unit/test_response_authentication.py
+python -B -m pytest -p no:cacheprovider -p pytest_asyncio.plugin -q --tb=short --basetemp=<scratch>\consumption-tmp --junitxml=<output>\pytest-consumption.xml tests/unit/test_response_authentication.py
+python -B experiments/race_and_caller_mac.py <scratch>
+python -B experiments/transport_cut.py run <scratch> 
+python -B experiments/transport_cut.py run <scratch> 

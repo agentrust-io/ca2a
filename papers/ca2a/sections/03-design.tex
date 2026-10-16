@@ -1,0 +1,352 @@
+\section{Design}\label{sec:design}
+
+\subsection{Profile, not protocol}
+
+cA2A is a trust profile layered on the Agent2Agent (A2A) protocol \citep{a2a2026}, not a
+competing transport. A2A moves tasks between agents and, through the Signed Agent Card,
+answers exactly one question: did the domain owner issue this card. It does not establish
+that a peer runs attested code, that a delegating agent actually holds the authority it
+passes on, that a task payload is confidential to the intended peer, or that there is an
+unbroken record of who delegated what to whom. cA2A adds that trust envelope around a
+delegated task without redefining how the task is carried. It binds to A2A the way TRACE
+\citep{trace2025} binds to the IETF RATS \citep{rats2021}, EAT \citep{eat2023}, and SCITT
+\citep{scitt2024} work: as an overlay, not a replacement. The profile is written to be
+independent of any one organization, cloud, or TEE vendor; the implementation currently
+appraises AMD SEV-SNP, Intel TDX, and TPM~2.0 evidence.
+
+Four design tenets constrain every primitive below. First, \emph{profile, not protocol}:
+reuse A2A and the RATS, EAT, and SCITT stack rather than reinvent them. Second, \emph{neutral by
+construction}: no coupling to a single silicon vendor, cloud, or model platform. Third,
+\emph{fail closed}: absence of evidence is denial, not a warning; a missing attestation or an
+unverifiable chain denies the call. Fourth, \emph{offline verifiable}: a third party can
+verify a delegation chain and its provenance DAG without contacting or trusting any operator.
+
+\subsection{Where cA2A attaches to A2A}
+
+cA2A interposes on the trust decision that A2A leaves undefined: the moment one agent
+receives a delegated task from a peer and must decide whether to accept it. On an inbound
+peer call, the caller appraises the callee's attestation offer and seals the payload to the
+channel key it vouches for. The callee then, in order, (i) verifies the delegation chain
+(trusted root, signature, validity window, continuity, attenuation, in-chain replay, and
+revocation when a snapshot is supplied), (ii) checks a holder proof showing that the caller
+holds the key the chain delegates to, (iii) intersects the delegated scope with local policy,
+(iv) appraises the caller's own attestation when the callee requires it, (v) decides the
+requested capability, and (vi) only then opens the sealed payload and emits a linked
+provenance record for the allow or deny decision. The A2A transport, agent identity issuance beyond delegation, and model governance
+are all out of scope: cA2A governs only the delegation path between agents.
+
+\subsection{Threat model}
+
+cA2A defends the delegation path between agents against a capable adversary who may operate a
+peer agent in a trust domain cA2A does not control; present a valid A2A Signed Agent Card
+while running tampered or unmeasured code; sit on the network between two agents or operate
+the host a peer runs on; and attempt to widen a delegated grant, replay a credential into
+another chain, or reparent a provenance record. The assets and their defenses are summarized
+in Table~\ref{tab:primitives}.
+
+Out of adversary scope is breaking the underlying cryptographic primitives (Ed25519
+\citep{eddsa2017}, the hash function) or compromising TEE firmware or hardware microcode
+\citep{amdsevsnp2023,inteltdx2023}. Those are the trust anchors. The central attack cA2A
+addresses is the confused deputy \citep{confuseddeputy1988} at machine speed: a delegate that
+accepts a narrow task and then acts with authority it was never granted.
+
+What ca2a 0.3.1 defends is narrower than this threat model. Attenuated delegation,
+scope-policy intersection on the inbound path, the sealed channel's cryptography, and signed
+provenance ship and are tested in software (Section~\ref{sec:evaluation}). Attestation
+verifiers for SEV-SNP, TDX, and TPM evidence ship, and the live path can require hardware
+assurance, but this is opt in: the reference client and server default to software assurance.
+Hardware runs so far are one-directional across two clouds or mutual within one operator
+(Section~\ref{subsec:attestation}). Confidentiality against a hosting operator additionally
+depends on platform properties the recorded hosts lacked (Section~\ref{sec:after}). cA2A
+should therefore not be described as attested across independent trust domains, and task
+payloads should not be assumed protected from a hosting operator.
+
+\subsection{Primitive 1: attenuated delegation}\label{subsec:delegation}
+
+A delegation chain is a root-to-leaf list of signed credentials that lets Agent~A hand a
+bounded slice of its authority to~B, and B a still-smaller slice to~C, with each grant
+provably within the one above it. The semantics mirror the signed delegation chain
+implemented and tested in agent-manifest \citep{agentmanifest2026}, and follow the
+capability-attenuation model of macaroons \citep{macaroons2014}; cA2A implements that verifier
+and its runtime calls it on every inbound peer request.
+
+Each hop carries a \texttt{DelegationCredential} with a signed body and a detached Ed25519
+signature. The body has \texttt{credential\_id} (a unique id for the hop), \texttt{issuer}
+and \texttt{subject} (the delegator's and delegate's public keys), \texttt{scope} (the set of
+capabilities granted at this hop), \texttt{depth} (0 at the root, $+1$ per hop),
+and \texttt{parent\_id} (the parent hop's \texttt{credential\_id}, null at the root), with
+optional \texttt{not\_before} and \texttt{not\_after} bounds. The signed bytes are the RFC~8785
+\citep{jcs2020} canonical form of the body, with \texttt{scope} as a sorted array; floats are
+refused and integers are bounded to the range RFC~8785 can represent exactly.
+
+The verifier, \texttt{verify\_chain}, raises the specific error for the first invariant that
+fails. The root issuer must be in the verifier's trusted set (else
+\texttt{UNTRUSTED\_DELEGATION\_ROOT}); every hop's signature must verify against its issuer
+(else \texttt{INVALID\_CREDENTIAL}) and its validity window must contain the evaluation time;
+the root must have no parent and depth 0, each hop's \texttt{parent\_id} must equal the
+previous hop's \texttt{credential\_id}, and each hop's \texttt{issuer} must equal the previous
+hop's \texttt{subject}, and each hop's depth must be the previous depth $+1$ (else
+\texttt{BROKEN\_DELEGATION\_LINK}); no depth may exceed \texttt{max\_depth} (else
+\texttt{DELEGATION\_DEPTH\_EXCEEDED});
+each hop's scope must be a subset of its parent's scope (else \texttt{SCOPE\_ESCALATION});
+and no \texttt{credential\_id} may repeat (else \texttt{CREDENTIAL\_REPLAY}). Given a signed
+revocation snapshot, a hop revoked by its issuer or any issuer above it is refused
+(\texttt{CREDENTIAL\_REVOKED}). The verifier keeps no global history of used credentials, so
+replay of a whole valid chain by a different party is addressed by the holder proof in the
+inbound path rather than by \texttt{verify\_chain}.
+
+Consider the chain
+\[
+  \text{A} \xrightarrow{\ S_A\ } \text{B} \xrightarrow{\ S_B \subseteq S_A\ } \text{C},
+  \qquad S_C \subseteq S_B \subseteq S_A .
+\]
+A issues B a child credential whose scope $S_B$ is a subset of A's grant $S_A$, signed over
+the canonical body. B in turn issues C a credential with $S_C \subseteq S_B$. The subset
+check at every hop is the confused-deputy defense within a chain: it forecloses B accepting a narrow task
+from A and then acting with authority A never granted. Attenuation is the whole point.
+The \texttt{parent\_id}, \texttt{issuer}/\texttt{subject} continuity, and unique-id checks
+close the complementary attack of replaying a credential within a chain or splicing one from
+another chain into it. They do not bind a chain to a particular task or execution: a credential
+carries no task or execution identifier, so the delegate can present the same valid chain
+with a different request. Making execution lineage part of the authorization decision is the
+subject of history-based access control \citep{abadi2003history}, provenance-based access control
+\citep{park2012pbac}, and, for agent delegation, the PIC model \citep{gallo2026pic}. cA2A does not
+provide it; authenticated lineage records (Section~\ref{sec:after}) say which hop acted under
+which credential, which is not the same as refusing authority outside its lineage. This primitive is implemented and validated (Properties~\ref{prop:c1}
+and~\ref{prop:c2}).
+
+\subsection{Primitive 2: runtime peer attestation}\label{subsec:attestation}
+
+Before a peer is trusted with a delegated task, it presents evidence of the code it runs. cA2A
+follows the TEE provider pattern of cMCP \citep{cmcp2026}. A provider
+implements \texttt{detect()}, returning whether it is available on the current host, and
+\texttt{attest(public\_key, nonce)}, returning an \texttt{AttestationReport} that binds a
+public key to the host's hardware measurement under a nonce. The report carries
+\texttt{platform}, \texttt{measurement}, the bound \texttt{public\_key}, and the \texttt{nonce},
+following the RATS evidence model \citep{rats2021} and EAT claims format \citep{eat2023}.
+
+The providers are a \texttt{software-only} backend (for development and CI, which reports
+\texttt{platform:\ software-only} and never a hardware platform string) and three hardware
+backends: \texttt{tpm} (TPM 2.0 or vTPM), \texttt{sev-snp} (AMD SEV-SNP \citep{amdsevsnp2023}),
+and \texttt{tdx} (Intel TDX \citep{inteltdx2023}).
+
+\textbf{Implementation status at 0.3.1.} The SEV-SNP and TDX verifiers check certificate chains
+to pinned AMD and Intel roots, report signatures, and key binding, and the project records runs
+against genuine evidence from both platforms; for this edition the TDX verifier was re-run
+against a public GCP TDX quote (Section~\ref{sec:evaluation}). The TPM verifier checks quote
+structure, binding, and attestation-key signature; its certificate chain depends on a
+caller-supplied vendor root, and on one Azure host generation no chain to a pinnable root could
+be assembled. SEV-SNP and TDX collectors use the kernel configfs-TSM interface and have run on
+GCP confidential VMs; an Azure SEV-SNP guest is paravisor-mediated, cannot set
+\texttt{REPORT\_DATA} directly, and roots its channel key through the vTPM instead. The project
+records two live runs. On July 27, 2026 an Azure SEV-SNP caller appraised a GCP TDX peer's quote
+against the Intel root, sealed a delegated task to the bound key, and the peer allowed an
+in-scope capability and refused an out-of-scope one; the callee did not appraise the caller, and
+one operator ran both sides. On September 17, 2026 two GCP SEV-SNP guests in one project
+appraised each other and exchanged sealed non-secret payloads in both directions. Neither run is
+mutual attestation between independent operators, so Property~\ref{prop:c6} is not validated on
+hardware. Verification fails closed when required evidence is absent. In 0.3.1 a required caller
+appraisal could be satisfied by an offer relayed from another node (Section~\ref{sec:after}).
+
+\subsection{Primitive 3: sealed peer channel}\label{subsec:sealed}
+
+When A sends B a task payload, that payload crosses a network and lands in B's memory. If B is
+in another trust domain, mTLS protects the pipe but not the endpoint: the operator hosting B,
+or a connectivity provider between them, can read plaintext. The sealed channel encrypts the
+payload to B's channel public key, and B's attestation evidence binds that key to a
+measurement, extending the attestation-gated key pattern cMCP uses for the agent-to-gateway
+case to the peer-to-peer case. The connectivity path sees ciphertext. The interface is
+\texttt{SealedChannel(peer\_public\_key).seal} on the sender and \texttt{open\_sealed} with the
+private key on the receiver.
+
+\textbf{Cryptographic layer: implemented and validated.} The channel ships over
+X25519 ECDH, HKDF-SHA256 key derivation, and ChaCha20-Poly1305 AEAD. A payload sealed to a
+peer's channel key decrypts only with that key, the connectivity path sees only ciphertext, and
+a tampered blob fails AEAD authentication so \texttt{open} fails closed rather than returning
+plaintext. Property~\ref{prop:c4} validates exactly this at the cryptographic layer
+(Section~\ref{sec:evaluation}).
+\textbf{Binding to attestation.} On the live path the caller seals only to a channel key that
+its verifier has appraised (\texttt{ca2a\_runtime.attestation}). In software mode that appraisal
+has assurance \texttt{none}; with a hardware verifier configured and
+\texttt{require\_hardware} set, a software offer is refused before sealing. Even with hardware
+appraisal, the channel key is an ordinary key held by a process in the guest. In the
+September 17 diagnostic the launch measurements did not cover application code installed after
+boot, and the SEV-SNP hosts reported that ciphertext hiding was not enabled. Confidentiality
+against the hosting operator therefore remains the dependency that Property~\ref{prop:c4}
+names.
+
+Figure~\ref{fig:sealed-channel} shows the seal-and-open path. The sender derives a
+one-time symmetric key from an ephemeral X25519 ECDH to the peer's channel public key,
+runs it through HKDF-SHA256, and encrypts the payload under ChaCha20-Poly1305. The
+connectivity path sees only the sealed blob; only the holder of the peer's channel private key
+recovers the plaintext.
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+  font=\small,
+  node distance=6mm,
+  cryptobox/.style={draw, rounded corners, minimum height=8mm, align=center,
+    fill=blue!6, inner sep=3pt},
+  enclavebox/.style={draw, rounded corners, minimum height=8mm, align=center,
+    fill=green!8, inner sep=3pt},
+  flow/.style={-{Stealth[length=2mm]}, thick},
+]
+  % Sender-side derivation pipeline.
+  \node[cryptobox] (eph) {ephemeral\\X25519};
+  \node[cryptobox, right=of eph] (ecdh) {ECDH\\to peer key};
+  \node[cryptobox, right=of ecdh] (hkdf) {HKDF-\\SHA256};
+  \node[cryptobox, right=of hkdf] (aead) {ChaCha20-\\Poly1305};
+  \draw[flow] (eph) -- (ecdh);
+  \draw[flow] (ecdh) -- (hkdf);
+  \draw[flow] (hkdf) -- (aead);
+
+  % Untrusted path carrying ciphertext.
+  \node[draw, dashed, rounded corners, below=10mm of hkdf, minimum width=32mm,
+    minimum height=7mm, align=center, fill=red!5] (wire)
+    {untrusted path / host\\(sees ciphertext only)};
+  \draw[flow] (aead.south) |- (wire.east) node[midway, above right, font=\scriptsize]
+    {sealed blob};
+
+  % Peer enclave that opens the blob.
+  \node[enclavebox, below=10mm of eph, minimum width=26mm] (peer)
+    {peer TEE guest\\open with\\private key};
+  \draw[flow] (wire.west) -- (wire.west -| peer.east);
+  \node[below=1mm of peer, font=\scriptsize, align=center]
+    {key bound to appraised\\evidence (hardware opt-in)};
+
+  % Grouping label for the sender pipeline.
+  \begin{scope}[on background layer]
+    \node[draw=blue!30, rounded corners, fit=(eph)(aead), inner sep=5mm,
+      label=above:{sender: seal to peer public key}] {};
+  \end{scope}
+\end{tikzpicture}
+\caption{Sealed peer channel. An ephemeral X25519 ECDH to the peer's channel key is run
+through HKDF-SHA256 to derive a symmetric key, and the payload is sealed under
+ChaCha20-Poly1305 AEAD. The untrusted connectivity path sees only ciphertext; only the
+private key matching the appraised channel key opens the blob. Whether the peer's host can
+reach that key depends on the platform (Section~\ref{sec:after}).}
+\label{fig:sealed-channel}
+\end{figure}
+
+\subsection{Primitive 4: provenance DAG}\label{subsec:provenance}
+
+cA2A emits a signed TRACE record per delegation hop \citep{trace2025}. The A2A profile adds a
+delegation-link block to the base TRACE record, which otherwise carries a subject but no notion
+of a parent. The block has \texttt{delegation.parent\_record\_hash}, the hash of the parent
+hop's TRACE record, and \texttt{delegation.credential\_id}, the id of the delegation credential
+this hop acted under. A root hop omits the block; each subsequent hop references its parent, so
+the set of records across A~to~B~to~C reconstructs the delegation tree. The construction follows
+the W3C PROV data model \citep{prov2013} for lineage and the SCITT \citep{scitt2024} approach to
+transparency over signed statements.
+
+Given the records for a workflow and the recipient's trusted signing keys, a verifier
+(\texttt{verify\_trace\_dag}) checks each record's signature and rebuilds the parent links from
+\texttt{parent\_record\_hash}; a cross-check (\texttt{cross\_check\_trace\_dag}) then aligns the
+path with a separately verified delegation chain, requiring matching path length and credential
+identifiers and that each record was signed by the key the chain names as that hop's delegate.
+Tampering any signed record breaks its signature, and altering a parent link breaks the chain of
+hashes. The runtime also keeps an unsigned \texttt{DelegationRecord} form whose hash links give
+only structural consistency: a party able to rewrite the whole path can recompute every link,
+so since ca2a 0.3.0 the CLI reports such a path as structurally consistent but not
+authenticated. Property~\ref{prop:c5} and Section~\ref{sec:eval-c5} distinguish the two. Both
+verifiers accept one ordered root-to-leaf path. The A2A profile's delegation-link block is
+defined in trace-spec.
+
+Figure~\ref{fig:delegation-dag} shows both halves together: the attenuated delegation chain
+on top, where each hop's scope is a subset of its parent's (strictly smaller in this example), and the hash-linked
+provenance path below, where each record carries the hash of its parent record and names the
+credential the hop acted under. The two are bound: record $i$ must match credential $i$ and, for
+signed records, must be signed by that credential's delegate key.
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+  font=\small,
+  credbox/.style={draw, rounded corners, minimum width=30mm, minimum height=11mm,
+    align=center, fill=blue!6, inner sep=2pt},
+  recbox/.style={draw, rounded corners, minimum width=30mm, minimum height=10mm,
+    align=center, fill=orange!8, inner sep=2pt},
+  deleg/.style={-{Stealth[length=2mm]}, thick},
+  hashlink/.style={-{Stealth[length=2mm]}, thick, densely dashed},
+  bind/.style={dotted, thick, gray},
+]
+  % Attenuated delegation chain (top row): scope narrows per hop.
+  \node[credbox] (a) {A $\to$ B\\scope $\{r,w,x\}$};
+  \node[credbox, right=14mm of a] (b) {B $\to$ C\\scope $\{r,w\}$};
+  \node[credbox, right=14mm of b] (c) {C $\to$ D\\scope $\{r\}$};
+  \draw[deleg] (a) -- node[above, font=\scriptsize] {$\subseteq$} (b);
+  \draw[deleg] (b) -- node[above, font=\scriptsize] {$\subseteq$} (c);
+
+  % Provenance records (bottom row), hash-linked to parent.
+  \node[recbox, below=16mm of a] (r0) {record 0\\parent: none};
+  \node[recbox, below=16mm of b] (r1) {record 1\\parent hash $h_0$};
+  \node[recbox, below=16mm of c] (r2) {record 2\\parent hash $h_1$};
+  \draw[hashlink] (r1) -- node[below, font=\scriptsize] {$h_0$} (r0);
+  \draw[hashlink] (r2) -- node[below, font=\scriptsize] {$h_1$} (r1);
+
+  % Bind record i to credential i.
+  \draw[bind] (a) -- (r0);
+  \draw[bind] (b) -- (r1);
+  \draw[bind] (c) -- (r2);
+
+  \node[right=3mm of c, align=left, font=\scriptsize] {narrowing\\scope};
+  \node[left=2mm of r0, align=right, font=\scriptsize] {hash-\\linked\\DAG};
+\end{tikzpicture}
+\caption{Attenuated delegation chain (top, solid) and its hash-linked provenance DAG
+(bottom, dashed). Each delegation hop's scope is a provable subset ($\subseteq$) of its
+parent's; each provenance record stores the SHA-256 hash of its parent record. The dotted
+lines bind record $i$ to credential $i$. With signed records and trusted keys, tampering,
+reparenting, or attributing a record to the wrong delegate is detected offline; hash links
+alone give only structural consistency.}
+\label{fig:delegation-dag}
+\end{figure}
+
+\subsection{Scope-policy intersection}\label{subsec:cedar}
+
+Verifying that a delegated grant is well-formed is not the same as deciding that the local peer
+is willing to act on it. On an inbound call, the cA2A runtime is specified to intersect the
+delegated scope $S_B$ with the peer's local authorization policy, expressed in Cedar
+\citep{cedar2023} or as a simple allow set, and to act only on the intersection
+$S_B \cap P_{\text{local}}$. A grant is
+thus bounded from above by both the delegator's authority (attenuation) and the delegate's own
+policy, so neither a broad grant nor a permissive local default alone can widen what B actually
+does.
+
+\textbf{Implementation status.} The intersection runs against either a Cedar engine
+(\texttt{cedarpy} 4.8.7) or the set-based \texttt{LocalPolicy}, inside the inbound decision
+path (\texttt{handle\_peer\_request}). That path is served by the reference HTTP transport
+(since ca2a commit \texttt{7d33445}, July 2026) and by a bridge to the official \texttt{a2a-sdk}
+(commit \texttt{f26e2bc}), which the project tests over a local JSON-RPC loopback with
+\texttt{a2a-sdk} 1.1.4. Property~\ref{prop:c3} is evaluated in Section~\ref{sec:eval-c3}.
+
+\subsection{Primitives to properties}
+
+Table~\ref{tab:primitives} maps each primitive to the asset it protects, the security property
+it supports, and its status at ca2a 0.3.1. The software results need no hardware TEE and can be
+rerun from the open-source codebase; the hardware dependencies are stated per row.
+
+\begin{table}[h]
+\centering
+\caption{cA2A primitives, the assets they protect, the properties they support, and status.
+``Validated'' means backed by the rerun software experiments of Section~\ref{sec:evaluation},
+at the layer stated.}
+\label{tab:primitives}
+\small
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.0cm}>{\raggedright\arraybackslash}p{3.4cm}>{\raggedright\arraybackslash}p{3.4cm}>{\raggedright\arraybackslash}p{3.4cm}@{}}
+\toprule
+\textbf{Primitive} & \textbf{Asset protected} & \textbf{Property} & \textbf{Status} \\
+\midrule
+Attenuated delegation & Bounded authority (no delegate exceeds its grant) &
+  C1 attenuation soundness; C2 in-chain replay and splice rejection & Validated (software) \\
+Scope-policy intersection & Bounded authority under local policy &
+  C3 scope-policy intersection & Validated (software), including the reference inbound path \\
+Runtime peer attestation & Peer integrity (only appraised code trusted) &
+  C6 cross-operator attestation & Synthetic evidence only; hardware runs one-directional or same-operator \\
+Sealed peer channel & Task confidentiality to the intended peer &
+  C4 sealed-payload confidentiality & Validated (cryptographic layer); key confinement not shown \\
+Provenance record & Provenance (signed record of who delegated what) &
+  C5 provenance integrity & Structural checks validated; signed path covered by project tests \\
+\bottomrule
+\end{tabular}
+\end{table}

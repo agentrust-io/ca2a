@@ -1,0 +1,64 @@
+\section{Findings after the evaluation}\label{sec:after}
+
+The July 2026 draft was evaluated against an early checkout. Later work in the ca2a repository
+found gaps in that code and in the draft's claims. They are listed here with the commit that
+addressed each and the first release containing it, so that the July results can be read against
+them. All are recorded in the project's changelog.
+
+\textbf{A delegation chain was a bearer credential.} The inbound path verified a chain and then
+granted its leaf authority without asking the caller to show any relationship to the leaf
+subject, so anyone holding a copy of a published chain could exercise it, and the provenance
+record would name the legitimate delegate. Property~\ref{prop:c2} as tested does not catch this,
+because nothing inside the chain changes. Since commit \texttt{cbfeb40} (0.2.0) the callee issues
+a challenge and requires a signature under the leaf subject's key over the request, the channel
+key, and the payload digest.
+
+\textbf{Untrusted roots were accepted.} A chain that was internally consistent verified whoever
+minted its root, so an attacker could grant itself any locally allowed capability (GHSA-95qh-qjph-8622). The runtime
+required a trusted root set from commit \texttt{e647e90} (0.2.0), and \texttt{verify\_chain}
+itself from commit \texttt{23c980a} (0.3.0). The July C1 and C2 results were produced without a
+trust set; the rerun supplies one.
+
+\textbf{Unsigned provenance did not authenticate lineage.} The July draft described the C5 records
+as verifiable ``from signed records alone'', but the experiment used unsigned records whose hash
+links a writer can recompute. Since commit \texttt{550fba9} (0.3.0) the CLI separates
+authenticated lineage over signed TRACE records from structural diagnostics, and commit
+\texttt{e8b5cb7} (0.3.0) requires each signed record's key to match the delegate named by the
+chain, which the cross-check had not compared.
+
+\textbf{Grants could not be revoked early.} Until commit \texttt{f018c0e} (0.3.0) a credential
+stayed valid for its whole window. Issuers can now sign revocation statements that a verifier
+consults through a supplied snapshot. cA2A does not publish or fetch revocation data, and a
+verifier without a snapshot reports revocation as not checked.
+
+\textbf{The TDX parser rejected every genuine quote.} Real DCAP v4 quotes nest the quoting-enclave
+data under a type-6 header that the parser and its synthetic fixtures both omitted, so the TDX
+path had never accepted real evidence. The failure was closed rather than an unsound accept. It
+was fixed in commit \texttt{82be440} (0.2.0) when a genuine quote was first appraised, which is
+why this edition re-appraised a public genuine quote rather than relying on synthetic vectors.
+
+\textbf{Measured hosts lacked platform protections.} The GCP SEV-SNP hosts used on August 24 and
+September 17, 2026 reported \texttt{PLATFORM\_INFO} 0x25: SMT enabled and ciphertext hiding not
+enabled. Stricter platform policies correctly refused them. cA2A can enforce such a policy, but
+appraisal of platform state is opt in and off by default. In the September 17 diagnostic the
+launch measurement also did not cover application code installed after boot. Both bear directly
+on Property~\ref{prop:c4}: a hardware-appraised channel key on such a host is not shown to be out
+of the host operator's reach.
+
+\textbf{Malformed input escaped as exceptions.} Before commit \texttt{66ad9f0} (0.3.1) some
+malformed wire documents, TDX quotes, and MAC strings raised Python exceptions instead of the
+documented error, and the canonicalizer coerced non-string keys so that two distinct objects could
+serialize alike. Each now fails with a documented error.
+
+\textbf{Caller attestation could be relayed.} Through 0.3.1 a callee that required hardware
+caller attestation appraised the caller's offer but never asked the caller to prove it held the
+offered channel key, and any node attested its own key under whatever nonce reached its public
+channel endpoint. A delegate with no TEE could fetch an honest hardware peer's offer under the
+callee's challenge, present it as its own, and be recorded with hardware caller attestation
+(GHSA-xxj2-p57x-x954, affecting 0.2.0 to 0.3.1). Since commit \texttt{19407fb} (0.4.0) caller and
+callee offers are signed under separate role prefixes, and the caller sends a MAC keyed from
+X25519 between its attested channel key and the callee's. The September 17 diagnostic predates
+this fix; it ran honest nodes under one operator, so no relay was attempted, but its caller
+appraisal did not include proof of possession. The software experiments of
+Section~\ref{sec:evaluation} do not send caller offers, and the six repository experiments
+produce the same results at 0.4.0.

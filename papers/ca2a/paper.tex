@@ -1,0 +1,124 @@
+\documentclass[10pt,letterpaper]{article}
+
+\usepackage[margin=1in]{geometry}
+\usepackage{iftex}
+% mathptmx has no TU-encoded faces, so under XeTeX (Tectonic) earlier versions fell back
+% to Latin Modern regular and lost every bold and italic. Use Termes there.
+\ifPDFTeX\usepackage{mathptmx}\else\usepackage{fontspec}\setmainfont{texgyretermes}[Extension=.otf,UprightFont=*-regular,BoldFont=*-bold,ItalicFont=*-italic,BoldItalicFont=*-bolditalic]\fi
+\usepackage{amsmath}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{positioning,arrows.meta,fit,backgrounds,calc}
+\usepackage{natbib}
+\usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+\usepackage{microtype}
+\usepackage{parskip}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{caption}
+\usepackage{needspace}
+
+\setlength{\parskip}{6pt}
+\setlength{\parindent}{0pt}
+\setlength{\emergencystretch}{3em}
+
+\lstset{
+  basicstyle=\small\ttfamily,
+  breaklines=true,
+  frame=single,
+  numbers=left,
+  numberstyle=\tiny,
+  xleftmargin=2em,
+  framexleftmargin=1.5em,
+  backgroundcolor=\color{gray!8},
+}
+
+\definecolor{claimcolor}{RGB}{0,70,140}
+\newcounter{claim}
+\newenvironment{property}[1][]{%
+  \refstepcounter{claim}%
+  \needspace{6\baselineskip}%
+  \vspace{4pt}%
+  \noindent\fbox{\parbox{\dimexpr\linewidth-2\fboxsep-2\fboxrule}{%
+    \textbf{\textcolor{claimcolor}{Property \theclaim} (#1).}
+}}\par\vspace{2pt}%
+}{\vspace{4pt}}
+
+\title{\textbf{cA2A: Confidential Agent-to-Agent Delegation as a Profile on A2A}}
+
+\author{
+  Rishabh Poddar \quad Aaron Fulkerson \quad Imran Siddique \\
+  OPAQUE Systems \\[4pt]
+  \normalsize \url{https://github.com/agentrust-io/ca2a}
+}
+
+\date{October 1, 2026 \ \small Technical report, version 3}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+The Agent2Agent (A2A) protocol moves tasks between agents, and its Signed Agent Card lets a
+client check that a domain owner issued a card. The card does not bound the authority a
+delegating agent passes on, establish what code a peer runs, keep a task payload from the
+peer's host, or leave an offline record of who delegated what to whom. This technical report
+describes cA2A (Confidential A2A), a trust profile layered on A2A rather than a new transport.
+It composes four mechanisms: signed delegation credentials whose scope can only narrow at each
+hop, appraisal of a peer's attestation evidence before a task is sent, a payload sealed to the
+channel key that evidence vouches for, and a signed per-hop provenance record linked to its
+parent. Attenuated delegation and provenance binding are covered by prior capability-token work
+and IETF drafts; the contribution here is their composition on A2A with an open implementation.
+We state six properties and report software experiments rerun against ca2a 0.3.1: attenuation
+checks over 5,400 generated chains, rejection of in-chain replay and cross-chain splicing,
+intersection of delegated scope with local policy, sealed-payload behavior at the cryptographic layer, structural checks on linked
+provenance records, and a cross-operator attestation protocol exercised with synthetic
+evidence. Chain verification cost about 0.22\,ms per hop in this environment. These results do
+not show that a peer's key is confined to attested code or that attestation works across
+independent operators. Recorded hardware runs cover one-directional appraisal of an Intel TDX
+peer by an AMD SEV-SNP peer in another cloud and a same-operator mutual SEV-SNP diagnostic;
+mutual attestation between independent operators has not been demonstrated.
+\end{abstract}
+
+\paragraph{Scope of this edition.}
+This is an author-prepared technical report, not peer reviewed and not a normative
+specification. Version 3 adds the caller-attestation relay that ca2a 0.4.0 fixed
+(GHSA-xxj2-p57x-x954), which affects the release evaluated here, and corrects four statements:
+0.3.1 was no longer the current release when version 2 appeared, a transparency log does not
+make omission detectable, a wrong depth increment raises a broken-link error, and scope may stay
+equal across a hop. It also restores bold and italic type that the Tectonic build had dropped. Results are unchanged. Version 2 (October 1, 2026) narrowed a design claim
+of version 1 (September 27, 2026): the chain checks do not bind a delegation chain to a task or
+execution, so a delegate can reuse a valid chain across tasks. Version 1 revised a draft dated
+July 2026. Every software experiment was rerun on September 27, 2026 against ca2a 0.3.1 (commit
+\texttt{7d90823}), then the current release; the July
+results came from an unpinned earlier checkout and are retained beside the rerun. Correctness
+counts are unchanged. Timings changed: chain verification rose from about 195 to about 216
+microseconds per hop, and sealed-channel throughput at 256\,KiB fell from 266 to 212\,MiB/s.
+Text, tables, and figures report the rerun. Status statements for C3 to C6 were revised to
+match the 0.3.1 code, security fixes made after the original evaluation are reported in
+Section~\ref{sec:after}, and the related work was corrected and extended. No hardware run was
+repeated. Current behavior, requirements, and limitations are maintained in the project
+repository.
+
+\noindent\textbf{Patent Pending.}
+
+\tableofcontents
+\newpage
+
+\input{sections/01-intro}
+\input{sections/02-background}
+\input{sections/03-design}
+\input{sections/04-claims}
+\input{sections/05-evaluation}
+\input{sections/05b-after}
+\input{sections/06-related}
+\input{sections/07-conclusion}
+
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\end{document}

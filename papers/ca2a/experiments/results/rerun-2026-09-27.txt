@@ -1,0 +1,76 @@
+cA2A software rerun, 2026-09-27
+Repository: https://github.com/agentrust-io/ca2a
+Commit: 7d90823142dda1be589def3b22a3099581c7df7a (tag v0.3.1, ca2a-runtime 0.3.1, main as of 2026-09-27)
+Source obtained with git archive of that tag, so tests that read committed blobs through git were skipped (see pytest).
+Python: 3.12.10, x86-64 build (MSC v.1943 AMD64), running under Windows 11 on an ARM64 Snapdragon X1E80100 laptop (x86-64 emulation).
+Dependencies: the project's requirements/runtime.txt lock at the commit above, installed without hashes, except cbor2 5.9.0 instead of the
+  locked 6.1.4 (the local application-control policy blocks the cbor2 6.x native extension; 5.x is pure Python). Resolved versions:
+  agent-manifest==0.12.0 agentrust-trace==0.10.0 cedarpy==4.8.7 cryptography==50.0.1 pydantic==2.13.5 rfc8785==0.1.4 cbor2==5.9.0
+  test-only: pytest==9.1.1 pytest-asyncio==1.4.0 a2a-sdk==1.1.4 uvicorn==0.53.0 aiohttp==3.14.3 agentrust-trace-tests==0.5.1 matplotlib==3.11.2
+The July 1, 2026 results this report originally cited were produced against an unpinned ca2a checkout of that date and are kept
+unchanged under results/original-2026-07-01/.
+
+## Paper experiments (this directory), CA2A_ROOT at the commit above
+Change needed to run at 0.3.1: verify_chain now fails closed without an explicit trusted root (ca2a #132, commit 23c980a),
+so each script passes the chain's own root issuer as trusted_root_issuers. No other logic changed.
+
+### experiments/c1_attenuation_scale.py (exit 0)
+C1 at scale: attenuation soundness vs delegation-chain depth
+  depth= 2: 500/500 narrowing accepted; 500/500 escalations -> ScopeEscalation; 0 wrong-error
+  depth= 3: 500/500 narrowing accepted; 500/500 escalations -> ScopeEscalation; 0 wrong-error
+  depth= 4: 500/500 narrowing accepted; 500/500 escalations -> ScopeEscalation; 0 wrong-error
+  depth= 6: 500/500 narrowing accepted; 500/500 escalations -> ScopeEscalation; 0 wrong-error
+  depth= 8: 500/500 narrowing accepted; 500/500 escalations -> ScopeEscalation; 0 wrong-error
+KEY RESULT: 2500/2500 narrowing chains accepted; 2500/2500 escalation attempts rejected with ScopeEscalation across depths [2, 3, 4, 6, 8]
+
+### experiments/verify_latency_vs_depth.py (exit 0)
+Verification latency vs delegation-chain depth
+  depth=  1: mean=0.2456 ms  p50=0.2705 ms  p99=0.4357 ms  per-hop=245.59 us
+  depth=  2: mean=0.5322 ms  p50=0.5433 ms  p99=1.0974 ms  per-hop=266.11 us
+  depth=  4: mean=0.9483 ms  p50=0.9627 ms  p99=2.2214 ms  per-hop=237.07 us
+  depth=  8: mean=2.0740 ms  p50=2.1049 ms  p99=4.3023 ms  per-hop=259.25 us
+  depth= 16: mean=3.8187 ms  p50=3.9466 ms  p99=6.6624 ms  per-hop=238.67 us
+  depth= 32: mean=7.6170 ms  p50=7.7715 ms  p99=12.9805 ms  per-hop=238.03 us
+  depth= 64: mean=13.8701 ms  p50=13.7088 ms  p99=26.0845 ms  per-hop=216.72 us
+KEY RESULT: verify latency is linear in depth at ~216.3 us/hop; a 64-hop chain verifies in 13.870 ms mean (p99 26.085 ms)
+
+### experiments/sealed_channel_throughput.py (exit 0)
+Sealed peer channel: throughput and latency vs payload size
+  size=     64B: seal=0.1006 ms  open=0.0661 ms  rt=0.1667 ms  thr=    0.37 MiB/s  ok=True
+  size=    256B: seal=0.0984 ms  open=0.0646 ms  rt=0.1630 ms  thr=    1.50 MiB/s  ok=True
+  size=   1024B: seal=0.1060 ms  open=0.0673 ms  rt=0.1732 ms  thr=    5.64 MiB/s  ok=True
+  size=   4096B: seal=0.1030 ms  open=0.0691 ms  rt=0.1721 ms  thr=   22.70 MiB/s  ok=True
+  size=  16384B: seal=0.1210 ms  open=0.0864 ms  rt=0.2074 ms  thr=   75.34 MiB/s  ok=True
+  size=  65536B: seal=0.2449 ms  open=0.2035 ms  rt=0.4484 ms  thr=  139.39 MiB/s  ok=True
+  size= 262144B: seal=0.6199 ms  open=0.5604 ms  rt=1.1803 ms  thr=  211.81 MiB/s  ok=True
+KEY RESULT: a 64-byte task envelope seals+opens in 0.1667 ms (setup-dominated); at 262144 bytes the AEAD reaches 211.8 MiB/s; all round-trips verified
+
+## Repository claim experiments at the commit above (experiments/claim*/run.py)
+claim1 (exit 0): KEY RESULT: 200/200 narrowing chains accepted; 200/200 escalation attempts rejected (ScopeEscalation)
+claim2 (exit 0): KEY RESULT: 2/2 replay attacks rejected (1 CredentialReplay, 1 BrokenDelegationLink); 2/2 control chains valid
+claim3 (exit 0): KEY RESULT: effective scope ['read']; 1/1 allowed, 3/3 denied; capability granted only when delegated AND locally permitted
+claim4 (exit 0): KEY RESULT: 4/4 encryption checks passed; matching key opens; wrong key and tamper rejected (software keys; no hardware assurance)
+claim5 (exit 0): KEY RESULT: tamper flips ~50% of hash bits (138/256), ProvenanceLinkBroken raised; reparent detected; provenance bound to authority
+claim6 (exit 0): KEY RESULT: 4/4 two operators, independent keys, mutual attestation, sealed cross-operator delegation, binary-swap detected (synthetic vectors; real hardware end-to-end pending)
+Claim 5 bit counts vary with random key material: 119/256 and 138/256 in two runs on this date.
+Claim 6 uses synthetic SEV-SNP report and certificate vectors; both synthetic VCEKs chain to one synthetic root standing in for the AMD ARK.
+
+## pytest -q at the commit above
+SKIPPED [5] tests/conformance/test_action_fixture_bundles.py:84: git or the committed source archive is unavailable; cannot read HEAD blobs
+SKIPPED [2] tests/unit/test_committed_examples_verify.py:35: git is unavailable or the example is not committed yet
+SKIPPED [2] tests/unit/test_committed_examples_verify.py:69: git is unavailable or the example is not committed yet
+SKIPPED [1] tests/unit/test_sev_snp.py:331: set CA2A_SNP_FIXTURE_DIR to a dir with snp_report.bin + vcek.der + cert_chain.pem (a real SEV-SNP capture) to run the hardware test
+SKIPPED [1] tests/unit/test_tdx.py:186: set CA2A_TDX_QUOTE to a real DCAP v4 quote file to run the hardware test
+779 passed, 11 skipped, 100 warnings in 50.54s
+The 9 git-dependent skips follow from the archive checkout; the 2 hardware skips need a capture path: the TDX one is rerun below against a public quote; no SEV-SNP capture is published, because a report carries a per-CPU CHIP_ID.
+
+## Public hardware evidence re-appraised at the commit above
+tests/unit/test_tdx.py with CA2A_TDX_QUOTE set to the genuine GCP C3 Intel TDX quote published in agentrust-io/agent-manifest
+at commit e1cd860caca4f7a036bd839abd008207731e6518, path python/tests/fixtures/hardware/gcp-tdx-2026-07-21/tdx_quote.bin
+(SHA-256 f9efbac112efe510aa8ccd20703b063591b8c2c54c474d0ff1d6500299bae0ba): 17 passed, including
+test_real_tdx_quote_verifies_to_the_intel_root (PCK chain to the pinned Intel SGX Root CA, quote signature, version 4, tee_type 0x81,
+non-zero MRTD). This checks appraisal of one captured quote offline; it is not a live attested call and checks no TCB currency.
+
+Not rerun: no hardware run was repeated. The hardware observations cited in the report (2026-07-27 one-directional
+SEV-SNP to TDX run; 2026-09-17 same-operator mutual SEV-SNP diagnostic) are the project's recorded transcripts, not new measurements.
+Timings are single runs on a laptop under emulation and vary from run to run; compare shapes, not absolute values.

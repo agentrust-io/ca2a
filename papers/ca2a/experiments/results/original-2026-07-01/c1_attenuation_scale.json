@@ -1,0 +1,53 @@
+{
+  "trials_per_depth": 500,
+  "depths": [
+    2,
+    3,
+    4,
+    6,
+    8
+  ],
+  "root_universe": 16,
+  "rows": [
+    {
+      "depth": 2,
+      "trials": 500,
+      "narrowing_accepted": 500,
+      "escalation_rejected": 500,
+      "rejected_other_error": 0
+    },
+    {
+      "depth": 3,
+      "trials": 500,
+      "narrowing_accepted": 500,
+      "escalation_rejected": 500,
+      "rejected_other_error": 0
+    },
+    {
+      "depth": 4,
+      "trials": 500,
+      "narrowing_accepted": 500,
+      "escalation_rejected": 500,
+      "rejected_other_error": 0
+    },
+    {
+      "depth": 6,
+      "trials": 500,
+      "narrowing_accepted": 500,
+      "escalation_rejected": 500,
+      "rejected_other_error": 0
+    },
+    {
+      "depth": 8,
+      "trials": 500,
+      "narrowing_accepted": 500,
+      "escalation_rejected": 500,
+      "rejected_other_error": 0
+    }
+  ],
+  "total_narrowing_accepted": 2500,
+  "total_narrowing": 2500,
+  "total_escalation_rejected": 2500,
+  "total_escalation": 2500,
+  "all_ok": true
+}
