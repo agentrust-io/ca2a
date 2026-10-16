@@ -60,11 +60,11 @@ dev = [
     "bandit[toml]>=1.7",
     "pip-audit>=2.6",
     # Conformance suite: asserts emitted records pass the TRACE Level checks.
-    "agentrust-trace-tests>=0.4,<0.6",
+    "agentrust-trace-tests>=0.4,<0.7",
     # The bridge and real HTTP loopback run in the normal CI matrix. Pin the
     # tested SDK/server surface here; the public a2a-sdk extra remains a range.
-    "a2a-sdk[http-server]==1.2.1",
-    "uvicorn==0.53.0",
+    "a2a-sdk[http-server]==1.2.2",
+    "uvicorn==0.54.0",
     "aiohttp>=3.14.3",
 ]
 
