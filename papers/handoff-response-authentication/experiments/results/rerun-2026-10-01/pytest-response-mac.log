@@ -1,0 +1,40 @@
+============================= test session starts =============================
+platform win32 -- Python 3.12.10, pytest-9.1.1, pluggy-1.6.0
+rootdir: <scratch>\copy-response-mac
+configfile: pyproject.toml
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collected 57 items
+
+tests\unit\test_response_authentication.py .F....F...................... [ 50%]
+.............F.............F                                             [100%]
+
+================================== FAILURES ===================================
+______________ test_changed_response_is_not_exposed[body-value0] ______________
+tests\unit\test_response_authentication.py:72: in test_changed_response_is_not_exposed
+    with pytest.raises(ResponseAuthenticationFailed):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE ResponseAuthenticationFailed
+_ test_changed_response_is_not_exposed[mac-0000000000000000000000000000000000000000000000000000000000000000] _
+tests\unit\test_response_authentication.py:72: in test_changed_response_is_not_exposed
+    with pytest.raises(ResponseAuthenticationFailed):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE ResponseAuthenticationFailed
+_______ test_real_http_substituted_response_never_reaches_caller[body] ________
+tests\unit\test_response_authentication.py:311: in test_real_http_substituted_response_never_reaches_caller
+    with pytest.raises(ResponseAuthenticationFailed, match="unknown"):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE ResponseAuthenticationFailed
+__________ test_committed_language_neutral_vector_and_negative_twins __________
+tests\unit\test_response_authentication.py:451: in test_committed_language_neutral_vector_and_negative_twins
+    with pytest.raises(ResponseAuthenticationFailed):
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E   Failed: DID NOT RAISE ResponseAuthenticationFailed
+- generated xml file: <output>\pytest-response-mac.xml -
+=========================== short test summary info ===========================
+FAILED tests/unit/test_response_authentication.py::test_changed_response_is_not_exposed[body-value0]
+FAILED tests/unit/test_response_authentication.py::test_changed_response_is_not_exposed[mac-0000000000000000000000000000000000000000000000000000000000000000]
+FAILED tests/unit/test_response_authentication.py::test_real_http_substituted_response_never_reaches_caller[body]
+FAILED tests/unit/test_response_authentication.py::test_committed_language_neutral_vector_and_negative_twins
+======================== 4 failed, 53 passed in 5.47s =========================
+
+STDERR

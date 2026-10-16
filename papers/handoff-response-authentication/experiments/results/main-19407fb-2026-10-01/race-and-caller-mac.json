@@ -1,0 +1,28 @@
+{
+  "rounds": 20,
+  "attempts": 320,
+  "successes_per_round": [
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1
+  ],
+  "caller_constructed_mac_accepted": true,
+  "limit": "Local caller authentication is not transferable evidence of peer authorship."
+}

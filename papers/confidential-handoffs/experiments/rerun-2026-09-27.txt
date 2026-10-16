@@ -1,0 +1,124 @@
+Composed software harness rerun, September 27, 2026
+===================================================
+
+Purpose: rerun the composed software experiment of section 8 for the version 1
+technical report, from the harness as merged on WCM main, and reproduce it from
+a fresh environment using the harness README (python/composed/README.md and
+BUNDLE.md).
+
+Sources
+-------
+WCM (agentrust-io/weight-custody-manifest) main  94d5519fd604f7be5a784539a37c1fc021e3d607
+  (chore(release): 0.28.5 (#166); python/composed merged via PR 148 on
+  2026-09-20, reproduction bundle via PR 151 on 2026-09-22)
+cMCP (agentrust-io/cmcp)                         2cdb168ce52020406ff0ef6cbc34447f0ea55aee
+cA2A (agentrust-io/ca2a)                         fc22c644846111c7f375446399e9097a73f93214
+cMCP confinement adapter                         bad751becca0ec5c42d70062e5c9fe5ee1380e85
+These are the same cMCP, cA2A and confinement revisions as the recorded run.
+
+Recorded run (reference, cited in the September 19 draft)
+---------------------------------------------------------
+WCM tested merge 15e67c2fb75b92b4e7d0f182e398915bfd9bc6a2 (PR head f168aa8),
+GitHub Actions run 35469947313: 36 passed in 19.24s.
+Files: reference-2026-09-19/
+
+Runs for this edition
+---------------------
+A. Hosted, WCM main
+   GitHub Actions run 36272971255 (workflow composed-software, push to main,
+   2026-09-26T21:27Z to 21:29Z, conclusion success).
+   Ubuntu runner, kernel 6.17.0-1022-azure, Docker Engine 28.0.4, Python 3.12.
+   run.py with --confinement-source: 36 passed in 18.76s.
+   Files: rerun-2026-09-27/hosted-main/
+   The run was triggered by the merge push, not by this edition; its logs and
+   artifacts were downloaded and checked on 2026-09-27.
+
+B. Hosted, fresh environment from the bundle
+   Same workflow run. package.py built composed-reproduction.zip
+   (sha256 a209faca6139cd3c02b554edae0d9702af4f1932ae19fca939ce4e4229829ef4),
+   then reproduce.py --confined fetched all four sources by revision into a new
+   workspace and a new virtual environment: 36 passed in 18.60s.
+   Files: rerun-2026-09-27/hosted-fresh-bundle/
+
+C. Local, fresh environment from the bundle (executed 2026-09-27)
+   The same ZIP (digest above, bundle.json file digests verified by the
+   launcher) was extracted and run as
+       python reproduce.py --workspace <new directory>
+   on Windows 11 (10.0.26200), Python 3.12.10. The launcher created the
+   workspace, fetched WCM, cMCP and cA2A at the revisions above, installed the
+   pinned runtime versions (cbor2 6.1.4 imported without error here), and ran
+   the portable profile: 32 passed in 18.56s, exit 0.
+   The native confined profile needs native Linux with Docker; it was not
+   available on this host, so the 4 native cases rest on runs A and B.
+   Files: rerun-2026-09-27/windows-fresh-bundle/
+   Note: this checkout used Git's CRLF conversion, so the harness file hashes
+   in its manifest.json differ from runs A and B. After converting CRLF to LF,
+   all 12 harness files hash identically to run A. Windows added one extra
+   installed package, colorama 0.4.6 (a pytest dependency on Windows).
+
+Case counts
+-----------
+                               recorded   A    B    C
+Portable valid path               1       1    1    1
+Portable refusal paths           13      13   13   13
+Ambiguous callback outcome        2       2    2    2
+Portable gate mutations          16      16   16   16
+Native valid path                 1       1    1    -
+Native isolation mutations        3       3    3    -
+Total passed                     36      36   36   32
+Oracle failures                   0       0    0    0
+
+Comparison with the recorded run
+--------------------------------
+    python compare_observations.py reference-2026-09-19/observations.jsonl \
+        rerun-2026-09-27/hosted-main/observations.jsonl \
+        rerun-2026-09-27/hosted-fresh-bundle/observations.jsonl \
+        rerun-2026-09-27/windows-fresh-bundle/observations.jsonl
+
+After removing per-run transaction identifiers and the locally built
+container image digest, every record in A and B equals a record of the
+recorded run (36 of 36), and every record in C equals one of the 32 portable
+recorded records. Stage states, failure classes, receipt counts, network,
+filesystem and log observations, allowed/denied gateway counts and stderr
+byte counts are unchanged. No numbers differ.
+
+Container image digests: recorded sha256:2978d609...; A and B
+sha256:d46bb547.... The image is rebuilt per run from the pinned Dockerfile.
+
+Harness changes between the recorded revision and main
+-------------------------------------------------------
+Of the nine harness files hashed by the recorded run, eight are byte-identical
+on main. test_composed.py differs in one place: the missing-evidence mutation
+wrapper for KeyBrokerService._check_cpu_quote takes an added `manifest`
+argument, following the key-broker interface change in WCM PR 162
+(feat(kbs): let the manifest require evidence verification). The mutation
+still removes the same check. package.py, reproduce.py and test_package.py
+are new with PR 151. Runtime dependency changes from the recorded run:
+agent-manifest 0.12.0 to 0.13.0, weight-custody-manifest 0.28.2 to 0.28.5,
+PyJWT 2.14.0 to 2.15.0, starlette 1.6.0 to 1.7.0, uvicorn 0.53.0 to 0.54.0,
+filelock 4.0.1 to 4.0.3, platformdirs 4.11.11 to 4.11.14, pyparsing 3.3.2 to
+3.3.3.
+
+Released packages (wheel inspection, 2026-09-27, not executed with the harness)
+-------------------------------------------------------------------------------
+cmcp-runtime 0.6.0 (PyPI upload 2026-09-25)
+  cmcp_runtime-0.6.0-py3-none-any.whl
+  sha256 51a2cad197f2fa4ef484f0c9936df7d58e6f1a4cd9c8877ea6fbd8a3f2016f5b
+  contains cmcp_runtime/disclosure.py, byte-identical to src/cmcp_runtime/
+  disclosure.py at cMCP 2cdb168. Does not contain the examples/confinement
+  adapter the native profile imports.
+ca2a-runtime 0.3.1 (PyPI upload 2026-09-26)
+  ca2a_runtime-0.3.1-py3-none-any.whl
+  sha256 d2ec958118733a02514b7f4e85ddf3f0a981efb22b75bed8cf30de22aaaf0b07
+  contains ca2a_runtime/response.py, byte-identical to src/ca2a_runtime/
+  response.py at cA2A fc22c64; transport/client.py exposes
+  require_authenticated_response.
+The harness still imports WCM test fixtures and the cMCP confinement example
+from source. integrations#199 remains open.
+
+Scope
+-----
+Synthetic attestation signed by test-owned roots. One operator runs every
+party. The diagnostic affine model runs on the trusted host. No hardware,
+protected key custody, GPU path or independently operated peer is involved.
+No hardware evidence is included in these files.

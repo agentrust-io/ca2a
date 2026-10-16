@@ -1,0 +1,35 @@
+Weight Custody Manifest
+Copyright 2026 AgenTrust Authors
+
+This product includes software developed by the AgenTrust project
+(https://github.com/agentrust-io/weight-custody-manifest).
+
+Portions of the Python SDK's canonicalization and signing primitives were
+adapted from the agentrust-io/agent-manifest SDK (Apache-2.0) to keep the
+family byte-compatible.
+
+---
+
+Third-party components used by the Python SDK:
+
+pydantic
+  License: MIT
+  https://github.com/pydantic/pydantic
+
+cryptography
+  License: Apache-2.0 / BSD
+  https://github.com/pyca/cryptography
+
+fastapi (optional - reference KBS server, [server] extra)
+  License: MIT
+  https://github.com/fastapi/fastapi
+
+uvicorn (optional - reference KBS server, [server] extra)
+  License: BSD
+  https://github.com/encode/uvicorn
+
+The post-quantum profile (ML-DSA-65) uses cryptography's native FIPS 204
+support; it requires no external liboqs/pyoqs. The CLI uses only the Python
+standard library (argparse), and canonicalization (RFC 8785) is implemented
+in-tree - so the base package's only runtime dependencies are pydantic and
+cryptography.

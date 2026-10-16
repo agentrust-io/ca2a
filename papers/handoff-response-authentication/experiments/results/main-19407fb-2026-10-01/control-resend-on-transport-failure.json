@@ -1,0 +1,63 @@
+{
+  "experiment": "transport-cut",
+  "cases": [
+    {
+      "mode": "pass",
+      "caller_outcome": "accepted",
+      "peer_executions": 1,
+      "submissions_seen_by_relay": 1,
+      "after_restart": {
+        "business-op-pass": "accepted"
+      },
+      "captured_response_replay": "refused",
+      "ok": true
+    },
+    {
+      "mode": "cut_before_dispatch",
+      "caller_outcome": "unknown",
+      "peer_executions": 0,
+      "submissions_seen_by_relay": 2,
+      "after_restart": {
+        "business-op-cut_before_dispatch": "unknown"
+      },
+      "captured_response_replay": "no-capture",
+      "ok": false
+    },
+    {
+      "mode": "cut_after_dispatch",
+      "caller_outcome": "unknown",
+      "peer_executions": 2,
+      "submissions_seen_by_relay": 2,
+      "after_restart": {
+        "business-op-cut_after_dispatch": "unknown"
+      },
+      "captured_response_replay": "refused",
+      "ok": false
+    },
+    {
+      "mode": "truncate",
+      "caller_outcome": "unknown",
+      "peer_executions": 1,
+      "submissions_seen_by_relay": 1,
+      "after_restart": {
+        "business-op-truncate": "unknown"
+      },
+      "captured_response_replay": "refused",
+      "ok": true
+    },
+    {
+      "mode": "hold",
+      "caller_outcome": "caller-killed",
+      "peer_executions": 1,
+      "submissions_seen_by_relay": 1,
+      "after_restart": {
+        "business-op-hold": "unknown"
+      },
+      "captured_response_replay": "refused",
+      "ok": true
+    }
+  ],
+  "cases_passed": 3,
+  "cases_total": 5,
+  "criterion_met": false
+}

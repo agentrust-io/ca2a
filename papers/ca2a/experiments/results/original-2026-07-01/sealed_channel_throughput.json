@@ -1,0 +1,92 @@
+{
+  "repeats": 2000,
+  "sizes": [
+    64,
+    256,
+    1024,
+    4096,
+    16384,
+    65536,
+    262144
+  ],
+  "all_roundtrips_ok": true,
+  "rows": [
+    {
+      "size_bytes": 64,
+      "repeats": 2000,
+      "seal_mean_ms": 0.12678360025165603,
+      "seal_p99_ms": 0.7144000264815986,
+      "open_mean_ms": 0.08346869971137494,
+      "open_p99_ms": 0.3543999628163874,
+      "roundtrip_mean_ms": 0.21025229996303096,
+      "throughput_mib_s": 0.2902948327353942,
+      "roundtrip_ok": true
+    },
+    {
+      "size_bytes": 256,
+      "repeats": 2000,
+      "seal_mean_ms": 0.12101729930145666,
+      "seal_p99_ms": 0.5374000174924731,
+      "open_mean_ms": 0.081439300411148,
+      "open_p99_ms": 0.35479996586218476,
+      "roundtrip_mean_ms": 0.20245659971260466,
+      "throughput_mib_s": 1.2058911655464306,
+      "roundtrip_ok": true
+    },
+    {
+      "size_bytes": 1024,
+      "repeats": 2000,
+      "seal_mean_ms": 0.12355444935383275,
+      "seal_p99_ms": 0.5643999902531505,
+      "open_mean_ms": 0.08077815035358071,
+      "open_p99_ms": 0.33359997905790806,
+      "roundtrip_mean_ms": 0.20433259970741346,
+      "throughput_mib_s": 4.779278986311302,
+      "roundtrip_ok": true
+    },
+    {
+      "size_bytes": 4096,
+      "repeats": 2000,
+      "seal_mean_ms": 0.1298232511326205,
+      "seal_p99_ms": 0.6504000048153102,
+      "open_mean_ms": 0.08663019890082069,
+      "open_p99_ms": 0.32839999767020345,
+      "roundtrip_mean_ms": 0.21645345003344119,
+      "throughput_mib_s": 18.046605398973778,
+      "roundtrip_ok": true
+    },
+    {
+      "size_bytes": 16384,
+      "repeats": 2000,
+      "seal_mean_ms": 0.14076784942881204,
+      "seal_p99_ms": 0.61039999127388,
+      "open_mean_ms": 0.10039080059505068,
+      "open_p99_ms": 0.38430001586675644,
+      "roundtrip_mean_ms": 0.24115865002386272,
+      "throughput_mib_s": 64.7913728097827,
+      "roundtrip_ok": true
+    },
+    {
+      "size_bytes": 65536,
+      "repeats": 2000,
+      "seal_mean_ms": 0.21593040053267032,
+      "seal_p99_ms": 0.7789000519551337,
+      "open_mean_ms": 0.18400519955321215,
+      "open_p99_ms": 0.9960000170394778,
+      "roundtrip_mean_ms": 0.39993560008588247,
+      "throughput_mib_s": 156.2751602672498,
+      "roundtrip_ok": true
+    },
+    {
+      "size_bytes": 262144,
+      "repeats": 2000,
+      "seal_mean_ms": 0.49358985002618283,
+      "seal_p99_ms": 1.6650999896228313,
+      "open_mean_ms": 0.4467086501244921,
+      "open_p99_ms": 1.5171000268310308,
+      "roundtrip_mean_ms": 0.940298500150675,
+      "throughput_mib_s": 265.87301794051524,
+      "roundtrip_ok": true
+    }
+  ]
+}

@@ -1,0 +1,207 @@
+{
+  "note": "Recorded results this rerun is compared against: the selected tests and control removals of September 23, 2026, and the experiments of September 27, 2026, at the same source pin. Extracted from the original run records; timings are informational. Experiment labels were renamed to match this directory; the comparison ignores them.",
+  "pytest": {
+    "baseline": {
+      "exit_code": 0,
+      "tests": 57,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "failed_cases": []
+    },
+    "response-mac": {
+      "exit_code": 1,
+      "tests": 57,
+      "failures": 4,
+      "errors": 0,
+      "skipped": 0,
+      "failed_cases": [
+        "test_changed_response_is_not_exposed[body-value0]",
+        "test_changed_response_is_not_exposed[mac-0000000000000000000000000000000000000000000000000000000000000000]",
+        "test_real_http_substituted_response_never_reaches_caller[body]",
+        "test_committed_language_neutral_vector_and_negative_twins"
+      ]
+    },
+    "consumption": {
+      "exit_code": 1,
+      "tests": 57,
+      "failures": 3,
+      "errors": 0,
+      "skipped": 0,
+      "failed_cases": [
+        "test_valid_response_and_one_use",
+        "test_concurrent_consumption_has_exactly_one_success",
+        "test_invalid_response_consumes_occurrence"
+      ]
+    }
+  },
+  "boundary": {
+    "rounds": 20,
+    "attempts": 320,
+    "successes_per_round": [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    "caller_constructed_mac_accepted": true,
+    "limit": "Local caller authentication is not transferable evidence of peer authorship."
+  },
+  "experiment": {
+    "experiment": "transport-cut",
+    "cases": [
+      {
+        "mode": "pass",
+        "caller_outcome": "accepted",
+        "peer_executions": 1,
+        "submissions_seen_by_relay": 1,
+        "after_restart": {
+          "business-op-pass": "accepted"
+        },
+        "captured_response_replay": "refused",
+        "ok": true
+      },
+      {
+        "mode": "cut_before_dispatch",
+        "caller_outcome": "unknown",
+        "peer_executions": 0,
+        "submissions_seen_by_relay": 1,
+        "after_restart": {
+          "business-op-cut_before_dispatch": "unknown"
+        },
+        "captured_response_replay": "no-capture",
+        "ok": true
+      },
+      {
+        "mode": "cut_after_dispatch",
+        "caller_outcome": "unknown",
+        "peer_executions": 1,
+        "submissions_seen_by_relay": 1,
+        "after_restart": {
+          "business-op-cut_after_dispatch": "unknown"
+        },
+        "captured_response_replay": "refused",
+        "ok": true
+      },
+      {
+        "mode": "truncate",
+        "caller_outcome": "unknown",
+        "peer_executions": 1,
+        "submissions_seen_by_relay": 1,
+        "after_restart": {
+          "business-op-truncate": "unknown"
+        },
+        "captured_response_replay": "refused",
+        "ok": true
+      },
+      {
+        "mode": "hold",
+        "caller_outcome": "caller-killed",
+        "peer_executions": 1,
+        "submissions_seen_by_relay": 1,
+        "after_restart": {
+          "business-op-hold": "unknown"
+        },
+        "captured_response_replay": "refused",
+        "ok": true
+      }
+    ],
+    "cases_passed": 5,
+    "cases_total": 5,
+    "criterion_met": true
+  },
+  "controls": {
+    "resend-on-transport-failure": {
+      "experiment": "transport-cut",
+      "cases": [
+        {
+          "mode": "pass",
+          "caller_outcome": "accepted",
+          "peer_executions": 1,
+          "submissions_seen_by_relay": 1,
+          "after_restart": {
+            "business-op-pass": "accepted"
+          },
+          "captured_response_replay": "refused",
+          "ok": true
+        },
+        {
+          "mode": "cut_before_dispatch",
+          "caller_outcome": "unknown",
+          "peer_executions": 0,
+          "submissions_seen_by_relay": 2,
+          "after_restart": {
+            "business-op-cut_before_dispatch": "unknown"
+          },
+          "captured_response_replay": "no-capture",
+          "ok": false
+        },
+        {
+          "mode": "cut_after_dispatch",
+          "caller_outcome": "unknown",
+          "peer_executions": 2,
+          "submissions_seen_by_relay": 2,
+          "after_restart": {
+            "business-op-cut_after_dispatch": "unknown"
+          },
+          "captured_response_replay": "refused",
+          "ok": false
+        },
+        {
+          "mode": "truncate",
+          "caller_outcome": "unknown",
+          "peer_executions": 1,
+          "submissions_seen_by_relay": 1,
+          "after_restart": {
+            "business-op-truncate": "unknown"
+          },
+          "captured_response_replay": "refused",
+          "ok": true
+        },
+        {
+          "mode": "hold",
+          "caller_outcome": "caller-killed",
+          "peer_executions": 1,
+          "submissions_seen_by_relay": 1,
+          "after_restart": {
+            "business-op-hold": "unknown"
+          },
+          "captured_response_replay": "refused",
+          "ok": true
+        }
+      ],
+      "cases_passed": 3,
+      "cases_total": 5,
+      "criterion_met": false
+    }
+  },
+  "recorded_versions_2026_09_23": {
+    "pytest": "9.1.1",
+    "pytest-asyncio": "1.4.0",
+    "cryptography": "50.0.1",
+    "pydantic": "2.13.5",
+    "rfc8785": "0.1.4",
+    "agent-manifest": "0.12.0",
+    "agentrust-trace": "0.5.0",
+    "cedarpy": "4.8.7",
+    "httpx": "0.28.1",
+    "starlette": "1.3.1"
+  },
+  "recorded_python_2026_09_23": "3.12.14"
+}

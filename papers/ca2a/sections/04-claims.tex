@@ -1,0 +1,103 @@
+\section{Security Properties}\label{sec:claims}
+
+We state six security properties of the cA2A profile. Each is an informal invariant over the
+runtime; formal proofs are left to future work. Each carries a status line for ca2a 0.3.1 that
+names the layer at which it has been checked and what that check does not cover. This section
+states the guarantees and mechanisms; results appear in Section~\ref{sec:evaluation}.
+
+\begin{property}[Attenuation Soundness]
+\label{prop:c1}
+\emph{Status: validated in software.} For any delegation chain of signed credentials rooted at a
+trusted issuer, the scope granted at each hop is a subset of the scope of its parent, and any
+attempt to grant a capability the parent does not hold is rejected. This is the confused-deputy
+defense \citep{confuseddeputy1988} within a chain: without it, a delegate could accept a narrow task and then
+act with authority the delegator never conferred. The mechanism is a per-hop subset check in
+\texttt{verify\_chain}: each credential carries a \texttt{scope} set, a \texttt{depth}, a
+\texttt{parent\_id}, and a detached Ed25519 signature \citep{eddsa2017} over the canonical body.
+A hop whose \texttt{scope} is not contained in its parent's \texttt{scope} raises
+\texttt{ScopeEscalation}; a monotone-narrowing chain verifies. The semantics mirror
+agent-manifest \citep{agentmanifest2026} and follow the capability-attenuation model of
+macaroons \citep{macaroons2014}.
+\end{property}
+
+\begin{property}[In-Chain Replay and Splice Rejection]
+\label{prop:c2}
+\emph{Status: validated in software.} A credential presented twice within a chain, or lifted
+from one chain and spliced into another, is rejected. This forecloses splicing a legitimately
+issued grant into an unrelated delegation to inherit authority out of context. The mechanism
+combines two checks in \texttt{verify\_chain}. First, each hop's \texttt{credential\_id} must be
+unique within the chain; a repeat raises \texttt{CredentialReplay}. Second, structural
+continuity binds each hop to the previous one: a hop's \texttt{parent\_id} must equal the
+previous hop's \texttt{credential\_id} and its \texttt{issuer} must equal the previous hop's
+\texttt{subject}. A credential spliced from a foreign chain breaks one of these links and raises
+\texttt{BrokenDelegationLink}. The property does not cover presentation of a whole valid chain
+by a party other than its delegate, since the verifier keeps no global history; on the live path
+that case is refused by the holder proof (Section~\ref{sec:after}). Nor does it cover the delegate
+itself presenting a valid chain with a request from a different task, since nothing binds a
+chain to an execution (Section~\ref{sec:design}).
+\end{property}
+
+\begin{property}[Scope-Policy Intersection]
+\label{prop:c3}
+\emph{Status: validated in software, including the inbound path of the reference transport.}
+The effective permission at an inbound peer call is the delegated scope intersected with the
+receiving agent's local policy \citep{cedar2023}: a capability is exercised only if the upstream
+chain granted it \emph{and} the local policy independently permits it. This makes each domain the
+final authority over what runs on its own resources, so an over-broad delegated grant cannot force
+action the receiver's policy forbids. The mechanism is the intersection of the verified chain
+scope (Property~\ref{prop:c1}) with the local policy decision, evaluated in
+\texttt{effective\_scope} and \texttt{enforce\_peer\_call} in \texttt{ca2a\_runtime.peer}; a
+capability outside the intersection raises \texttt{ScopeNotPermitted}. Local policy is either a
+Cedar policy set evaluated by \texttt{cedarpy} or a set-based \texttt{LocalPolicy}. The same
+decision runs inside \texttt{handle\_peer\_request}, which the reference HTTP transport and the
+\texttt{a2a-sdk} bridge call on each inbound request. The check does not cover third-party A2A
+servers or a production deployment.
+\end{property}
+
+\begin{property}[Sealed-Payload Confidentiality]
+\label{prop:c4}
+\emph{Status: validated at the cryptographic layer.} A task payload sent across a trust boundary
+decrypts only with the private key matching the channel key the caller appraised, so no party on
+the connectivity path can read plaintext. The mechanism seals the payload to the peer's channel
+public key with an HPKE-style X25519, HKDF-SHA256, and ChaCha20-Poly1305 construction
+(\texttt{ca2a\_runtime.channel}); only the peer's private key opens it, an unrelated key fails,
+and a tampered ciphertext fails closed under AEAD authentication. What software cannot establish
+is that the private key is confined to the attested code, so that the operator hosting the peer
+cannot read it. That depends on hardware appraisal being required on the call, on the
+measurement covering the code that holds the key, and on platform protections such as SEV-SNP
+ciphertext hiding. Section~\ref{sec:after} records that the measured hosts did not meet the last
+two conditions. Until they are met, confidential payloads should not be sent across a trust
+boundary in the belief that a compromised host cannot read them.
+\end{property}
+
+\begin{property}[Provenance Integrity]
+\label{prop:c5}
+\emph{Status: structural checks validated in software; authenticated lineage covered by the
+project's tests.} The per-hop records for a workflow form a linked path that is bound to the
+delegation authority. With signed TRACE records and trusted signing keys, tampering with any
+record, reparenting a record, or attributing a record to a hop that did not sign it is detected
+offline \citep{prov2013}. The mechanism adds a delegation-link block to each record:
+\texttt{parent\_record\_hash} links a hop to its parent, and \texttt{credential\_id} names the
+credential the hop acted under. Altering a record changes its hash and breaks the child's
+\texttt{parent\_record\_hash} link, raising \texttt{ProvenanceLinkBroken}. A cross-check binds the
+provenance path to the delegation chain of Property~\ref{prop:c1}: record $i$ must correspond to
+credential $i$, and a signed record must carry the delegate key that credential names. Hash links
+without signatures detect only partial edits: a writer who rewrites the whole path can recompute
+every link. The property does not establish that declared work completed or that the submitted
+path is complete.
+\end{property}
+
+\begin{property}[Cross-Operator Attestation]
+\label{prop:c6}
+\emph{Status: exercised with synthetic evidence; not validated on hardware across independent
+operators.} Two agents in independent trust domains, holding independently generated keys, each
+appraise the other's runtime attestation before a delegated task is accepted, and a peer that
+loads a different binary than the one expected is detected. The mechanism follows the IETF RATS
+architecture \citep{rats2021}: each peer produces a hardware-signed attestation report binding its
+channel key and a nonce, and the counterpart verifies the report's certificate chain and
+signature and compares its measurement with an expected value, so a binary swap changes the
+measurement and is rejected. The SEV-SNP, TDX, and TPM verifiers that this requires ship in ca2a
+0.3.1 (Section~\ref{subsec:attestation}). The recorded hardware runs are one-directional across
+two clouds, or mutual within one operator's project; neither is mutual attestation between
+independent operators.
+\end{property}

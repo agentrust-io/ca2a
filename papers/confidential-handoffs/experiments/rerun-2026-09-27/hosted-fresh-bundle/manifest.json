@@ -1,0 +1,444 @@
+{
+  "profile": "wcm-composed-software-v1",
+  "claim": "selected software admission gates prevent downstream delivery in the tested path",
+  "evidence_class": "synthetic-attestation/local-software",
+  "sources": {
+    "wcm": "94d5519fd604f7be5a784539a37c1fc021e3d607",
+    "cmcp": "2cdb168ce52020406ff0ef6cbc34447f0ea55aee",
+    "ca2a": "fc22c644846111c7f375446399e9097a73f93214",
+    "confinement": "bad751becca0ec5c42d70062e5c9fe5ee1380e85"
+  },
+  "wcm_tracked_diff_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "harness_files": {
+    "agent.py": "c3d86cb0ad1116213ebb734f827897436268b6543c3481f876d6da362dc476df",
+    "confined.py": "02b0e9491ccabf6d8868a40c3e8c4904773e5d449e0d08c568e8d0afac5f7c26",
+    "gateway.py": "f2a4630e38c5db808276bbb2ab747253a829a27b9d0b7e9220a4f555b3d0ba9e",
+    "harness.py": "38f2f6bf28cd5b9ea2460f4e34fa400997b1285291e5d84dbdb4d4986c881c74",
+    "package.py": "a15c4eab5903537ae57166c7f0df580b5fb67cbce1cfe1f352102d110802330a",
+    "reproduce.py": "e91fc3687421deb4ee68acd18e46bb11375ec9e44558b5383cdfc800cb77d74d",
+    "run.py": "768eba2d49e207a1985e89c82dfe279102aec567cad274dd8cdcb62e5fd55347",
+    "test_composed.py": "72e005d3fa891a807e7732e37a8dd74d612174d5d3c06d90bb8a32ad8804f5f5",
+    "test_confined.py": "b47659cb9cabb4b3ed8541a359514fab85ba5a4afb1139faa99f695ee2c5b405",
+    "test_package.py": "8746a966607008a24d4203b357b9813cbd5f9b25571b5ae948e2e539a7753506",
+    "upstream.py": "78d0dbe530849fdf323c1896471508f343a3730ac4678394eef50742e89adb74",
+    "Dockerfile": "83006eec5b6b02327b6be3426054cb6f3de0081e661d9523b85be1aa6e24bb6e"
+  },
+  "dependencies": [
+    {
+      "name": "agent-manifest",
+      "version": "0.13.0"
+    },
+    {
+      "name": "agentrust-trace",
+      "version": "0.10.0"
+    },
+    {
+      "name": "annotated-doc",
+      "version": "0.0.5"
+    },
+    {
+      "name": "annotated-types",
+      "version": "0.8.0"
+    },
+    {
+      "name": "anyio",
+      "version": "4.15.1"
+    },
+    {
+      "name": "asn1crypto",
+      "version": "1.5.1"
+    },
+    {
+      "name": "ast_serialize",
+      "version": "0.11.2"
+    },
+    {
+      "name": "attrs",
+      "version": "26.1.0"
+    },
+    {
+      "name": "bandit",
+      "version": "1.9.4"
+    },
+    {
+      "name": "blake3",
+      "version": "1.0.9"
+    },
+    {
+      "name": "boolean.py",
+      "version": "5.0"
+    },
+    {
+      "name": "ca2a-runtime",
+      "version": "0.2.1"
+    },
+    {
+      "name": "CacheControl",
+      "version": "0.14.4"
+    },
+    {
+      "name": "cbor2",
+      "version": "6.1.4"
+    },
+    {
+      "name": "cedarpy",
+      "version": "4.8.7"
+    },
+    {
+      "name": "certifi",
+      "version": "2026.7.22"
+    },
+    {
+      "name": "cffi",
+      "version": "2.1.1"
+    },
+    {
+      "name": "charset-normalizer",
+      "version": "3.5.1"
+    },
+    {
+      "name": "click",
+      "version": "8.5.0"
+    },
+    {
+      "name": "cmcp-runtime",
+      "version": "0.5.0"
+    },
+    {
+      "name": "coverage",
+      "version": "7.16.1"
+    },
+    {
+      "name": "cryptography",
+      "version": "50.0.1"
+    },
+    {
+      "name": "cyclonedx-python-lib",
+      "version": "11.12.0"
+    },
+    {
+      "name": "defusedxml",
+      "version": "0.7.1"
+    },
+    {
+      "name": "dnspython",
+      "version": "2.8.0"
+    },
+    {
+      "name": "email-validator",
+      "version": "2.3.0"
+    },
+    {
+      "name": "fastapi",
+      "version": "0.141.1"
+    },
+    {
+      "name": "filelock",
+      "version": "4.0.3"
+    },
+    {
+      "name": "h11",
+      "version": "0.16.0"
+    },
+    {
+      "name": "httpcore",
+      "version": "1.0.9"
+    },
+    {
+      "name": "httpx",
+      "version": "0.28.1"
+    },
+    {
+      "name": "id",
+      "version": "1.6.1"
+    },
+    {
+      "name": "idna",
+      "version": "3.20"
+    },
+    {
+      "name": "in-toto-attestation",
+      "version": "0.9.3"
+    },
+    {
+      "name": "iniconfig",
+      "version": "2.3.0"
+    },
+    {
+      "name": "jsonschema",
+      "version": "4.26.0"
+    },
+    {
+      "name": "jsonschema-specifications",
+      "version": "2025.9.1"
+    },
+    {
+      "name": "librt",
+      "version": "0.15.0"
+    },
+    {
+      "name": "license-expression",
+      "version": "30.4.4"
+    },
+    {
+      "name": "markdown-it-py",
+      "version": "4.2.0"
+    },
+    {
+      "name": "mdurl",
+      "version": "0.1.2"
+    },
+    {
+      "name": "model-signing",
+      "version": "1.1.1"
+    },
+    {
+      "name": "msgpack",
+      "version": "1.2.2"
+    },
+    {
+      "name": "mypy",
+      "version": "2.3.1"
+    },
+    {
+      "name": "mypy_extensions",
+      "version": "1.1.0"
+    },
+    {
+      "name": "packageurl-python",
+      "version": "0.17.6"
+    },
+    {
+      "name": "packaging",
+      "version": "26.3"
+    },
+    {
+      "name": "pathspec",
+      "version": "1.1.1"
+    },
+    {
+      "name": "pip",
+      "version": "26.2.1"
+    },
+    {
+      "name": "pip-requirements-parser",
+      "version": "32.0.1"
+    },
+    {
+      "name": "pip_api",
+      "version": "0.0.35"
+    },
+    {
+      "name": "pip_audit",
+      "version": "2.10.1"
+    },
+    {
+      "name": "platformdirs",
+      "version": "4.11.14"
+    },
+    {
+      "name": "pluggy",
+      "version": "1.6.0"
+    },
+    {
+      "name": "protobuf",
+      "version": "7.36.2"
+    },
+    {
+      "name": "py-serializable",
+      "version": "2.1.0"
+    },
+    {
+      "name": "pyasn1",
+      "version": "0.6.4"
+    },
+    {
+      "name": "pycparser",
+      "version": "3.0"
+    },
+    {
+      "name": "pydantic",
+      "version": "2.13.5"
+    },
+    {
+      "name": "pydantic_core",
+      "version": "2.46.5"
+    },
+    {
+      "name": "Pygments",
+      "version": "2.21.0"
+    },
+    {
+      "name": "PyJWT",
+      "version": "2.15.0"
+    },
+    {
+      "name": "pyOpenSSL",
+      "version": "26.4.0"
+    },
+    {
+      "name": "pyparsing",
+      "version": "3.3.3"
+    },
+    {
+      "name": "pytest",
+      "version": "9.1.1"
+    },
+    {
+      "name": "pytest-cov",
+      "version": "7.1.0"
+    },
+    {
+      "name": "PyYAML",
+      "version": "6.0.3"
+    },
+    {
+      "name": "referencing",
+      "version": "0.37.0"
+    },
+    {
+      "name": "requests",
+      "version": "2.34.2"
+    },
+    {
+      "name": "rfc3161-client",
+      "version": "1.0.9"
+    },
+    {
+      "name": "rfc3986-validator",
+      "version": "0.1.1"
+    },
+    {
+      "name": "rfc8785",
+      "version": "0.1.4"
+    },
+    {
+      "name": "rich",
+      "version": "15.0.0"
+    },
+    {
+      "name": "rpds-py",
+      "version": "2026.6.3"
+    },
+    {
+      "name": "securesystemslib",
+      "version": "1.5.1"
+    },
+    {
+      "name": "sigstore",
+      "version": "4.5.0"
+    },
+    {
+      "name": "sigstore-models",
+      "version": "0.0.6"
+    },
+    {
+      "name": "sigstore-rekor-types",
+      "version": "0.0.18"
+    },
+    {
+      "name": "sortedcontainers",
+      "version": "2.4.0"
+    },
+    {
+      "name": "starlette",
+      "version": "1.7.0"
+    },
+    {
+      "name": "stevedore",
+      "version": "5.9.1"
+    },
+    {
+      "name": "tomli",
+      "version": "2.4.1"
+    },
+    {
+      "name": "tomli_w",
+      "version": "1.2.0"
+    },
+    {
+      "name": "tuf",
+      "version": "7.0.1"
+    },
+    {
+      "name": "typing-inspection",
+      "version": "0.4.4"
+    },
+    {
+      "name": "typing_extensions",
+      "version": "4.16.0"
+    },
+    {
+      "name": "urllib3",
+      "version": "2.8.0"
+    },
+    {
+      "name": "uvicorn",
+      "version": "0.54.0"
+    },
+    {
+      "name": "weight-custody-manifest",
+      "version": "0.28.5"
+    }
+  ],
+  "policy": {
+    "model": "affine y=3x+2, input 7",
+    "tool": "confidential ceiling",
+    "peer_scope": [
+      "read"
+    ],
+    "release_recipient": "recipient",
+    "release_purpose": "review",
+    "policy_version": "composition-v1"
+  },
+  "trust": "test-generated SNP signing chain, owner signing key and local delegation root",
+  "principals": [
+    "synthetic owner",
+    "broker",
+    "workload",
+    "tool",
+    "delegated peer",
+    "recipient"
+  ],
+  "limits": [
+    "no hardware or protected-key custody",
+    "same host/operator; observers share test ownership",
+    "in-memory adapters and loopback HTTP",
+    "affine diagnostic model, not LLM execution",
+    "mutation coverage is scoped to named scenarios; not complete issue 199 acceptance",
+    "unreleased source pins; not a published integration",
+    "no secure erasure or trusted clock",
+    "selected agent egress probes only; host, broker, tool and peer remain trusted"
+  ],
+  "confinement_image": "sha256:d46bb54723bc45e6ea2782854d06fa322b4273a1a4394f9d6ecd0caae4a76c5d",
+  "command": [
+    "python",
+    "-m",
+    "pytest",
+    "-q",
+    "-o",
+    "addopts=",
+    "composed/test_composed.py",
+    "composed/test_confined.py"
+  ],
+  "mutation_targets": [
+    "configuration",
+    "downgrade",
+    "forbidden-tool",
+    "key",
+    "missing-approval",
+    "missing-evidence",
+    "model",
+    "none",
+    "output",
+    "response",
+    "revoked",
+    "scope",
+    "timeout",
+    "timeout-before",
+    "transaction",
+    "workload"
+  ],
+  "untargeted_cases": [],
+  "exit_code": 0
+}

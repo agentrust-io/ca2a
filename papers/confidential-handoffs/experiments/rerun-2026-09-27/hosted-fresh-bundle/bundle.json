@@ -1,0 +1,26 @@
+{
+  "format": "wcm-composed-source-bundle-v1",
+  "sources": {
+    "wcm": "94d5519fd604f7be5a784539a37c1fc021e3d607",
+    "cmcp": "2cdb168ce52020406ff0ef6cbc34447f0ea55aee",
+    "ca2a": "fc22c644846111c7f375446399e9097a73f93214",
+    "confinement": "bad751becca0ec5c42d70062e5c9fe5ee1380e85"
+  },
+  "evidence_class": "synthetic-attestation/local-software",
+  "evaluated_profile": "wcm-composed-software-v1",
+  "reference_manifest_sha256": "1bcb035e47d60abcc8b5b94e9885aec475999eb238b91986bbd2aa0aec94795f",
+  "files": {
+    "reproduce.py": "e91fc3687421deb4ee68acd18e46bb11375ec9e44558b5383cdfc800cb77d74d",
+    "requirements.txt": "48cefc7af21dc71cb7694665f31493381f1b02eb377b08db315eb6ca3bbfb996",
+    "README.md": "e82e344b2dd9f8a088d3f32b8f8230f980766092d90ff8d722bd6aebab6ebb6d",
+    "LICENSE": "c95bae1d1ce0235ecccd3560b772ec1efb97f348a79f0fbe0a634f0c2ccefe2c",
+    "NOTICE": "bd432d8da5c70cec594ffd907a6d61e933815ae1c113d65475afbc2070c3b64f"
+  },
+  "limits": [
+    "source-based research package; not a released integration",
+    "network required for GitHub, PyPI and optional Docker base image",
+    "runtime versions pinned; dependencies and build tools not hash locked",
+    "bundle hashes detect modification; they are not independent provenance",
+    "synthetic attestation, same operator, host-side diagnostic model"
+  ]
+}
