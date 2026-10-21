@@ -31,14 +31,14 @@ jobs:
           PYTHONPATH: src
           UV_PROJECT_ENVIRONMENT: ${{ runner.temp }}/tck-env
         run: |
-          ../ca2a-tck-sut/bin/python experiments/a2a-tck/run.py --tck ../a2a-tck --output ../tck-baseline-results --mode baseline
-          ../ca2a-tck-sut/bin/python experiments/a2a-tck/run.py --tck ../a2a-tck --output ../tck-extension-results --mode extension
-          python experiments/a2a-tck/compare.py ../tck-baseline-results ../tck-extension-results
+          ../ca2a-tck-sut/bin/python experiments/a2a-tck/run.py --tck ../a2a-tck --output tck-baseline-results --mode baseline
+          ../ca2a-tck-sut/bin/python experiments/a2a-tck/run.py --tck ../a2a-tck --output tck-extension-results --mode extension
+          python experiments/a2a-tck/compare.py tck-baseline-results tck-extension-results
           ../ca2a-tck-sut/bin/python -m pytest experiments/a2a-tck/test_compare.py tests/unit/test_a2a_sdk_bridge.py tests/unit/test_a2a_sdk_loopback.py
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.0
         if: always()
         with:
           name: a2a-tck-evidence
           path: |
-            ../tck-baseline-results
-            ../tck-extension-results
+            tck-baseline-results
+            tck-extension-results
