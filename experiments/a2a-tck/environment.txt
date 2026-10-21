@@ -15,7 +15,7 @@ boolean-py==5.0
 cachecontrol==0.14.4
 cbor2==6.1.4
 cedarpy==4.12.1
-certifi==2026.7.22
+certifi==2026.10.19
 cffi==2.1.1
 charset-normalizer==3.5.1
 click==8.5.0
