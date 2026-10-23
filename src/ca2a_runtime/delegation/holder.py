@@ -67,6 +67,7 @@ applied to the credential that actually gates authority.
 from __future__ import annotations
 
 import hashlib
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -84,6 +85,8 @@ from ca2a_runtime.errors import AttestationFailed, HolderProofInvalid
 #: Domain separator. A signature made for a holder proof must never be
 #: mistakable for a signature over a credential body or a TRACE record.
 PROOF_DOMAIN = "ca2a-holder-proof-v1"
+_HEX_64_RE = re.compile(r"[0-9a-f]{128}")
+_HOLDER_PROOF_FIELDS = frozenset({"challenge", "signature"})
 
 __all__ = [
     "PROOF_DOMAIN",
@@ -154,12 +157,20 @@ class HolderProof:
                 "holder_proof must be an object",
                 detail=f"got {type(data).__name__}",
             )
+        unknown = sorted(set(data) - _HOLDER_PROOF_FIELDS)
+        if unknown:
+            raise HolderProofInvalid(
+                "holder_proof contains unknown fields",
+                detail=f"unknown={unknown}",
+            )
         challenge = data.get("challenge")
         signature = data.get("signature")
         if not isinstance(challenge, str) or not challenge:
             raise HolderProofInvalid("holder_proof.challenge must be a non-empty string")
-        if not isinstance(signature, str) or not signature:
-            raise HolderProofInvalid("holder_proof.signature must be a non-empty string")
+        if not isinstance(signature, str) or not _HEX_64_RE.fullmatch(signature):
+            raise HolderProofInvalid(
+                "holder_proof.signature must be a lowercase 64-byte Ed25519 signature in hex"
+            )
         return cls(challenge=challenge, signature=signature)
 
 
@@ -254,6 +265,10 @@ def verify_holder_proof(
         caller_channel_key=caller_channel_key,
         parent_record_hash=parent_record_hash,
     )
+    if not isinstance(proof.signature, str) or not _HEX_64_RE.fullmatch(proof.signature):
+        raise HolderProofInvalid(
+            "holder_proof.signature must be a lowercase 64-byte Ed25519 signature in hex"
+        )
     try:
         pub = Ed25519PublicKey.from_public_bytes(bytes.fromhex(leaf.subject))
         pub.verify(bytes.fromhex(proof.signature), canonicalize(body))

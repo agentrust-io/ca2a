@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import re
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
@@ -221,6 +222,8 @@ def appraise_caller(
 CALLER_OFFER_VERSION = "ca2a-caller-offer-v2"
 _POSSESSION_KEY_INFO = b"ca2a/caller-possession/v2/key"
 _POSSESSION_STATEMENT = b"ca2a/caller-possession/v2/statement\x00"
+_POSSESSION_MAC_RE = re.compile(r"[0-9a-f]{64}")
+_POSSESSION_FIELDS = frozenset({"version", "mac"})
 
 
 @dataclass(frozen=True)
@@ -239,11 +242,19 @@ class CallerPossession:
             raise AttestationFailed(
                 "caller_possession must be an object", detail=f"got {type(data).__name__}"
             )
+        unknown = sorted(set(data) - _POSSESSION_FIELDS)
+        if unknown:
+            raise AttestationFailed(
+                "caller_possession contains unknown fields",
+                detail=f"unknown={unknown}",
+            )
         version, mac = data.get("version"), data.get("mac")
         if not isinstance(version, str) or not version:
             raise AttestationFailed("caller_possession.version must be a non-empty string")
-        if not isinstance(mac, str) or not mac:
-            raise AttestationFailed("caller_possession.mac must be a non-empty string")
+        if not isinstance(mac, str) or not _POSSESSION_MAC_RE.fullmatch(mac):
+            raise AttestationFailed(
+                "caller_possession.mac must be 64 lowercase hex characters"
+            )
         return cls(version=version, mac=mac)
 
 
@@ -358,6 +369,10 @@ def verify_caller_possession(
         raise AttestationFailed(
             "caller proof of possession has an unsupported version",
             detail=f"got {possession.version!r}, expected {CALLER_OFFER_VERSION!r}",
+        )
+    if not isinstance(possession.mac, str) or not _POSSESSION_MAC_RE.fullmatch(possession.mac):
+        raise AttestationFailed(
+            "caller_possession.mac must be 64 lowercase hex characters"
         )
     callee_channel_key = callee_private_key.public_key().public_bytes_raw().hex()
     if transcript.get("callee_channel_key") != callee_channel_key:

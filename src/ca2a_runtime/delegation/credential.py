@@ -36,7 +36,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
     Ed25519PublicKey,
 )
 
-from ca2a_runtime.canonical import canonicalize
+from ca2a_runtime.canonical import _MAX_SAFE_INTEGER, canonicalize
 from ca2a_runtime.delegation.revocation import (
     REVOCATION_NOT_CHECKED,
     RevocationSnapshot,
@@ -102,9 +102,17 @@ class DelegationCredential:
         # constructor, and sign() would otherwise put a bound outside the
         # documented wire format into a signed body that this implementation's
         # own parser rejects. replace() re-runs this, so no path around it.
+        if (
+            isinstance(self.depth, bool)
+            or not isinstance(self.depth, int)
+            or not 0 <= self.depth <= _MAX_SAFE_INTEGER
+        ):
+            raise InvalidCredential("depth must be a non-negative safe integer")
         for name, bound in (("not_before", self.not_before), ("not_after", self.not_after)):
             if bound is not None and (
-                isinstance(bound, bool) or not isinstance(bound, int) or bound < 0
+                isinstance(bound, bool)
+                or not isinstance(bound, int)
+                or not 0 <= bound <= _MAX_SAFE_INTEGER
             ):
                 raise InvalidCredential(f"{name} must be a non-negative integer when present")
         if (
@@ -205,7 +213,11 @@ class DelegationCredential:
             or len(set(scope)) != len(scope)
         ):
             raise InvalidCredential("scope must be a non-empty array of unique non-empty strings")
-        if isinstance(depth, bool) or not isinstance(depth, int) or depth < 0:
+        if (
+            isinstance(depth, bool)
+            or not isinstance(depth, int)
+            or not 0 <= depth <= _MAX_SAFE_INTEGER
+        ):
             raise InvalidCredential("depth must be a non-negative integer")
         if parent_id is not None and (not isinstance(parent_id, str) or not parent_id):
             raise InvalidCredential("parent_id must be a non-empty string or null")
@@ -218,7 +230,9 @@ class DelegationCredential:
         # so null would be a second wire form for the same signed object.
         for name, bound in (("not_before", not_before), ("not_after", not_after)):
             if name in data and (
-                isinstance(bound, bool) or not isinstance(bound, int) or bound < 0
+                isinstance(bound, bool)
+                or not isinstance(bound, int)
+                or not 0 <= bound <= _MAX_SAFE_INTEGER
             ):
                 raise InvalidCredential(f"{name} must be a non-negative integer when present")
         if not_before is not None and not_after is not None and not_before > not_after:
@@ -279,13 +293,15 @@ def verify_chain(
     # compared against holds the same line, or True / 1.5 / -1 from a library
     # caller would silently decide validity. (The CLI is already argparse-typed.)
     if at_time is not None and (
-        isinstance(at_time, bool) or not isinstance(at_time, int) or at_time < 0
+        isinstance(at_time, bool)
+        or not isinstance(at_time, int)
+        or not 0 <= at_time <= _MAX_SAFE_INTEGER
     ):
         raise ValueError("at_time must be a non-negative integer or None")
     if max_revocation_staleness is not None and (
         isinstance(max_revocation_staleness, bool)
         or not isinstance(max_revocation_staleness, int)
-        or max_revocation_staleness < 0
+        or not 0 <= max_revocation_staleness <= _MAX_SAFE_INTEGER
     ):
         raise ValueError("max_revocation_staleness must be a non-negative integer or None")
 

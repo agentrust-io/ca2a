@@ -55,6 +55,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
     Ed25519PublicKey,
 )
 
+from ca2a_runtime.canonical import _MAX_SAFE_INTEGER
 from ca2a_runtime.canonical import canonicalize as canonical_bytes
 from ca2a_runtime.errors import InvalidRevocation
 
@@ -82,7 +83,11 @@ def credential_digest(credential: DelegationCredential) -> str:
 
 
 def _non_negative_int(value: Any) -> bool:
-    return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+    return (
+        isinstance(value, int)
+        and not isinstance(value, bool)
+        and 0 <= value <= _MAX_SAFE_INTEGER
+    )
 
 
 @dataclass(frozen=True)

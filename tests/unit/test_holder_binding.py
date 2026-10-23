@@ -389,11 +389,66 @@ def test_missing_challenge_context_fails_closed() -> None:
 
 
 @pytest.mark.parametrize(
-    "bad", [{"challenge": "c"}, {"signature": "ab"}, {"challenge": "", "signature": "ab"}, "str", 7]
+    "bad",
+    [
+        {"challenge": "c"},
+        {"signature": "ab"},
+        {"challenge": "", "signature": "ab"},
+        {"challenge": "c", "signature": "ab"},
+        {"challenge": "c", "signature": "A" * 128},
+        {"challenge": "c", "signature": " " + "a" * 128},
+        {"challenge": "c", "signature": "a" * 128, "extra": 1},
+        "str",
+        7,
+    ],
 )
 def test_malformed_proof_is_rejected(bad: object) -> None:
     with pytest.raises(HolderProofInvalid):
         HolderProof.from_dict(bad)
+
+
+def test_safe_integer_bounds_and_possession_hex_validation() -> None:
+    from ca2a_runtime.attestation import (
+        CALLER_OFFER_VERSION,
+        CallerPossession,
+        verify_caller_possession,
+    )
+    from ca2a_runtime.canonical import _MAX_SAFE_INTEGER
+    from ca2a_runtime.delegation.credential import verify_chain
+    from ca2a_runtime.delegation.revocation import RevocationSnapshot, RevocationStatement
+    from ca2a_runtime.errors import AttestationFailed, InvalidCredential, InvalidRevocation
+
+    chain, _keys = _chain()
+    raw_cred = {**chain[0].body(), "signature": chain[0].signature}
+    with pytest.raises(InvalidCredential):
+        DelegationCredential.from_dict({**raw_cred, "depth": _MAX_SAFE_INTEGER + 1})
+    with pytest.raises(InvalidCredential):
+        DelegationCredential.from_dict({**raw_cred, "not_after": _MAX_SAFE_INTEGER + 1})
+    with pytest.raises(ValueError, match="at_time"):
+        verify_chain(chain, trusted_root_issuers={chain[0].issuer}, at_time=_MAX_SAFE_INTEGER + 1)
+    with pytest.raises(InvalidRevocation):
+        RevocationStatement(
+            revoked_digest="sha256:" + "a" * 64,
+            revoker="b" * 64,
+            issued_at=_MAX_SAFE_INTEGER + 1,
+        )
+    with pytest.raises(InvalidRevocation):
+        RevocationSnapshot.from_dict({"as_of": _MAX_SAFE_INTEGER + 1, "revocations": []})
+
+    for bad_poss in [
+        {"version": CALLER_OFFER_VERSION, "mac": "A" * 64},
+        {"version": CALLER_OFFER_VERSION, "mac": "a" * 64, "extra": 1},
+        {"version": CALLER_OFFER_VERSION, "mac": "\ud800" + "a" * 63},
+    ]:
+        with pytest.raises(AttestationFailed):
+            CallerPossession.from_dict(bad_poss)
+    with pytest.raises(AttestationFailed):
+        verify_caller_possession(
+            CallerPossession(CALLER_OFFER_VERSION, "\ud800"),
+            callee_private_key=TEST_CALLEE_KEY,
+            transcript={"callee_channel_key": TEST_CALLEE_PUB, "caller_channel_key": TEST_CALLEE_PUB},
+        )
+
 
 
 def test_unauthenticated_caller_never_reaches_policy_evaluation() -> None:
