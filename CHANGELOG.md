@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Reject RFC 7517 / RFC 7518 / RFC 8037 private or symmetric JWK members (`d`,
+  `p`, `q`, `dp`, `dq`, `qi`, `oth`, `k`) and enforce canonical unpadded 32-byte
+  base64url public keys in `ca2a_verify.dag` and `ca2a_runtime.agent_manifest`
+  (#267).
+- Reject lone UTF-16 surrogates (`U+D800..U+DFFF`) in `ca2a_runtime.canonical`
+  string values and object keys with a deterministic `ValueError` instead of
+  leaking `UnicodeEncodeError` (#267).
+- Reject duplicate JSON object member names when loading chain and revocation
+  files in `ca2a_verify.verify` (#267).
+
 ### Removed
 
 - The `opaque` attestation provider value. It had no collector and was never
