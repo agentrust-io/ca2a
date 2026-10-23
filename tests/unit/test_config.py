@@ -190,3 +190,30 @@ def test_agent_manifest_config_is_loaded_as_a_complete_set() -> None:
 def test_incomplete_or_unbound_agent_manifest_config_is_rejected(manifest: dict) -> None:
     with pytest.raises(ConfigError, match="agent_manifest"):
         Ca2aConfig.from_dict({"agent_manifest": manifest})
+
+
+@pytest.mark.parametrize("bad_depth", [True, False, 0, -1, "8"])
+def test_bool_or_non_positive_max_delegation_depth_rejected(bad_depth: object) -> None:
+    from ca2a_runtime.node import PeerNode
+    from ca2a_runtime.policy import LocalPolicy
+
+    with pytest.raises(ConfigError, match="max_delegation_depth"):
+        Ca2aConfig.from_dict({"max_delegation_depth": bad_depth})
+    with pytest.raises(ConfigError, match="max_depth"):
+        PeerNode(LocalPolicy.of(["read"]), max_depth=bad_depth)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("bad_ttl", [True, False, 0, -1, "60"])
+def test_peer_node_rejects_bool_or_non_positive_challenge_ttl(bad_ttl: object) -> None:
+    from ca2a_runtime.node import PeerNode
+    from ca2a_runtime.policy import LocalPolicy
+
+    with pytest.raises(ConfigError, match="challenge_ttl_seconds"):
+        PeerNode(LocalPolicy.of(["read"]), challenge_ttl_seconds=bad_ttl)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("bad_att", ["software-only", [1], 42, True])
+def test_non_mapping_attestation_config_rejected(bad_att: object) -> None:
+    with pytest.raises(ConfigError, match="attestation must be a mapping"):
+        Ca2aConfig.from_dict({"attestation": bad_att})
+
