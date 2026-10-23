@@ -78,13 +78,48 @@ def _cmd_verify_chain(args: argparse.Namespace) -> int:
     return 0
 
 
+def _no_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in out:
+            raise ValueError(f"duplicate JSON object key: {key!r}")
+        out[key] = value
+    return out
+
+
+def _no_nonfinite_constant(value: str) -> Any:
+    raise ValueError(f"non-finite JSON constant is not allowed: {value}")
+
+
+def _require_non_empty_str(field: str, value: Any) -> str:
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"{field} must be a non-empty string")
+    return value
+
+
+def _require_optional_str(field: str, value: Any) -> str | None:
+    if value is None:
+        return None
+    return _require_non_empty_str(field, value)
+
+
+def _require_str_frozenset(field: str, value: Any) -> frozenset[str]:
+    if not isinstance(value, list) or not all(isinstance(s, str) and s for s in value):
+        raise ValueError(f"{field} must be a list of non-empty strings")
+    return frozenset(value)
+
+
 def _load_chain(path: str) -> list[DelegationCredential]:
     p = Path(path)
     if not p.is_file():
         raise InvalidCredential(f"chain file not found: {p}")
     try:
-        data: Any = json.loads(p.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
+        data: Any = json.loads(
+            p.read_text(encoding="utf-8"),
+            object_pairs_hook=_no_duplicate_keys,
+            parse_constant=_no_nonfinite_constant,
+        )
+    except (json.JSONDecodeError, ValueError) as exc:
         raise InvalidCredential(f"invalid JSON in {p}", detail=str(exc)) from exc
     if isinstance(data, dict) and "chain" in data:
         data = data["chain"]
@@ -98,8 +133,12 @@ def _load_records(path: str) -> list[DelegationRecord]:
     if not p.is_file():
         raise ProvenanceLinkBroken(f"dag file not found: {p}")
     try:
-        data: Any = json.loads(p.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
+        data: Any = json.loads(
+            p.read_text(encoding="utf-8"),
+            object_pairs_hook=_no_duplicate_keys,
+            parse_constant=_no_nonfinite_constant,
+        )
+    except (json.JSONDecodeError, ValueError) as exc:
         raise ProvenanceLinkBroken(f"invalid JSON in {p}", detail=str(exc)) from exc
     if isinstance(data, dict) and "records" in data:
         data = data["records"]
@@ -107,36 +146,39 @@ def _load_records(path: str) -> list[DelegationRecord]:
         raise ProvenanceLinkBroken('dag document must be a list or {"records": [...]}')
     records: list[DelegationRecord] = []
     for item in data:
+        if not isinstance(item, dict):
+            raise ProvenanceLinkBroken(
+                "malformed provenance record", detail="record must be an object"
+            )
         try:
             records.append(
                 DelegationRecord(
-                    record_id=str(item["record_id"]),
-                    credential_id=str(item["credential_id"]),
-                    subject=str(item["subject"]),
-                    scope=frozenset(str(s) for s in item["scope"]),
-                    parent_record_hash=(
-                        None
-                        if item.get("parent_record_hash") is None
-                        else str(item["parent_record_hash"])
+                    record_id=_require_non_empty_str("record_id", item["record_id"]),
+                    credential_id=_require_non_empty_str("credential_id", item["credential_id"]),
+                    subject=_require_non_empty_str("subject", item["subject"]),
+                    scope=_require_str_frozenset("scope", item["scope"]),
+                    parent_record_hash=_require_optional_str(
+                        "parent_record_hash", item.get("parent_record_hash")
                     ),
-                    decision=str(item.get("decision", "allow")),
-                    requested_capability=(
-                        None
-                        if item.get("requested_capability") is None
-                        else str(item["requested_capability"])
+                    decision=_require_non_empty_str("decision", item.get("decision", "allow")),
+                    requested_capability=_require_optional_str(
+                        "requested_capability", item.get("requested_capability")
                     ),
                     effective_scope=(
                         None
                         if item.get("effective_scope") is None
-                        else frozenset(str(s) for s in item["effective_scope"])
+                        else _require_str_frozenset("effective_scope", item.get("effective_scope"))
                     ),
-                    denial_reason=(
-                        None if item.get("denial_reason") is None else str(item["denial_reason"])
+                    denial_reason=_require_optional_str(
+                        "denial_reason", item.get("denial_reason")
                     ),
                     # A record written before this field existed hashes as
                     # "not_offered", which is what its emitter could honestly have
                     # claimed: it never appraised a caller.
-                    caller_attestation=str(item.get("caller_attestation", CALLER_NOT_OFFERED)),
+                    caller_attestation=_require_non_empty_str(
+                        "caller_attestation",
+                        item.get("caller_attestation", CALLER_NOT_OFFERED),
+                    ),
                 )
             )
         except (KeyError, TypeError, ValueError) as exc:
@@ -203,7 +245,11 @@ def _cmd_verify_lineage(args: argparse.Namespace) -> int:
             revocations=_load_revocations(args),
             max_revocation_staleness=args.max_revocation_staleness,
         )
-        records = json.loads(Path(args.dag).read_text(encoding="utf-8"))
+        records = json.loads(
+            Path(args.dag).read_text(encoding="utf-8"),
+            object_pairs_hook=_no_duplicate_keys,
+            parse_constant=_no_nonfinite_constant,
+        )
         if isinstance(records, dict):
             records = records.get("records")
         if not isinstance(records, list) or not all(isinstance(r, dict) for r in records):

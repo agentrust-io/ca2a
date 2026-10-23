@@ -82,10 +82,38 @@ def _read_bounded(resp: Any) -> bytes:
     return body
 
 
+def _parse_json_object(raw: bytes) -> dict[str, Any]:
+    def _no_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        out: dict[str, Any] = {}
+        for key, value in pairs:
+            if key in out:
+                raise ValueError(f"duplicate JSON object key: {key!r}")
+            out[key] = value
+        return out
+
+    def _no_nonfinite_constant(value: str) -> Any:
+        raise ValueError(f"non-finite JSON constant is not allowed: {value}")
+
+    try:
+        parsed = json.loads(
+            raw.decode("utf-8"),
+            object_pairs_hook=_no_duplicate_keys,
+            parse_constant=_no_nonfinite_constant,
+        )
+    except (ValueError, UnicodeDecodeError, RecursionError) as exc:
+        raise TransportError("peer response is not valid JSON", detail=str(exc)) from exc
+    if not isinstance(parsed, dict):
+        raise TransportError(
+            "peer response must be a JSON object",
+            detail=f"got {type(parsed).__name__}",
+        )
+    return parsed
+
+
 def _get_json(url: str) -> dict[str, Any]:
     _require_http_url(url)
     with urllib.request.urlopen(url, timeout=_TIMEOUT) as resp:  # noqa: S310  # nosec B310
-        return json.loads(_read_bounded(resp))
+        return _parse_json_object(_read_bounded(resp))
 
 
 def _post_json(url: str, body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
@@ -96,9 +124,9 @@ def _post_json(url: str, body: dict[str, Any]) -> tuple[int, dict[str, Any]]:
     )
     try:
         with urllib.request.urlopen(req, timeout=_TIMEOUT) as resp:  # noqa: S310  # nosec B310
-            return resp.status, json.loads(_read_bounded(resp))
+            return resp.status, _parse_json_object(_read_bounded(resp))
     except urllib.error.HTTPError as exc:
-        return exc.code, json.loads(_read_bounded(exc))
+        return exc.code, _parse_json_object(_read_bounded(exc))
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
