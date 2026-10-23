@@ -278,6 +278,19 @@ def test_snapshot_at_the_bound_is_accepted() -> None:
     assert status.checked is True
 
 
+def test_future_snapshot_under_policy_fails_closed() -> None:
+    chain, keys = _chain()
+    with pytest.raises(RevocationStatusUnknown, match="in the future"):
+        _verify(chain, _snapshot(as_of=NOW + 1), at_time=NOW, max_revocation_staleness=300)
+
+    # A future-dated snapshot that carries a valid revocation still proves the
+    # credential is revoked before the freshness bound is evaluated.
+    future_revoked = _snapshot(revoke(chain[2], keys[2], issued_at=NOW), as_of=NOW + 3600)
+    with pytest.raises(CredentialRevoked):
+        _verify(chain, future_revoked, at_time=NOW, max_revocation_staleness=300)
+
+
+
 def test_stale_snapshot_still_proves_revocation() -> None:
     chain, keys = _chain()
     # Revocation is monotonic, so an old statement is still true. The refusal is

@@ -77,3 +77,25 @@ def test_non_string_object_keys_rejected() -> None:
     for value in ({1: "a", "1": "b"}, {True: 1}, {None: 1}, {"outer": {2: "x"}}):
         with pytest.raises(TypeError, match="keys must be strings"):
             canonicalize(value)
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "\ud800",
+        "\udbff",
+        "\udc00",
+        "\udfff",
+        "prefix-\ud800-suffix",
+        ["\ud83d"],
+        {"k": "\ude00"},
+        {"\ud800": 1},
+        {"a": 1, "\udfff": 2},
+    ],
+)
+def test_lone_utf16_surrogates_rejected_with_deterministic_value_error(value: object) -> None:
+    """RFC 8785 (I-JSON) forbids unpaired UTF-16 surrogates in strings and keys."""
+    with pytest.raises(ValueError, match="lone UTF-16 surrogate") as exc_info:
+        canonicalize(value)
+    assert type(exc_info.value) is ValueError
+

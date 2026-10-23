@@ -193,7 +193,9 @@ class RevocationSnapshot:
     ``as_of`` is when the supplier of this snapshot last brought it up to date,
     in Unix epoch seconds. It is asserted by whoever hands the snapshot to the
     verifier and is not signed by any revoker, so a staleness bound built on it
-    detects a feed that has stopped updating, not a supplier that lies about it.
+    detects a feed that has stopped updating (and rejects future-dated ``as_of``
+    timestamps that would otherwise bypass ``max_revocation_staleness``), not a
+    supplier that lies about it within the window.
     Individual statements are signed, so a supplier can withhold a statement but
     cannot forge one.
     """

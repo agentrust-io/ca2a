@@ -385,3 +385,53 @@ def test_non_object_record_is_invalid_not_a_crash(record: object) -> None:
     """
     with pytest.raises(TraceRecordInvalid, match="not a JSON object"):
         verify_trace_dag([record], trusted_keys=[])  # type: ignore[list-item]
+
+
+@pytest.mark.parametrize("param", ["d", "p", "q", "dp", "dq", "qi", "oth", "k"])
+def test_jwk_with_private_or_symmetric_parameter_rejected(param: str) -> None:
+    """Public verification JWKs must never carry private or symmetric key material."""
+    chain, keys = build_chain_with_keys([frozenset({"cap:a"})])
+    records = emit_dag(_hops(chain, keys))
+    root = records[0]
+    valid_jwk = dict(root["cnf"]["jwk"])
+    tainted_jwk = {**valid_jwk, param: "AAAA"}
+
+    with pytest.raises(TraceRecordInvalid, match="private or symmetric"):
+        verify_trace_dag([root], trusted_keys=[tainted_jwk])
+
+    tainted_record = {**root, "cnf": {"jwk": tainted_jwk}}
+    with pytest.raises(TraceRecordInvalid, match="private or symmetric"):
+        cross_check_trace_dag([tainted_record], chain)
+    with pytest.raises(TraceRecordInvalid):
+        verify_trace_dag([tainted_record], trusted_keys=[valid_jwk])
+
+
+@pytest.mark.parametrize(
+    "bad_x",
+    [
+        "",
+        "A",
+        "AAAA=",
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA+A",
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/A",
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA ",
+        # 43 chars where the final 4-bit group has non-zero trailing bits ('B' = 1).
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB",
+        # Valid canonical base64url of 31 bytes (42 chars) instead of 32 bytes.
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+    ],
+)
+def test_non_canonical_or_wrong_length_jwk_x_rejected(bad_x: str) -> None:
+    """cnf.jwk 'x' and trusted JWK dicts must be canonical unpadded 32-byte base64url."""
+    key = generate_key()
+    root = sign_trace_record(
+        build_trace_record(
+            subject="spiffe://ca2a.example/root", iat=_NOW, context=_software_context()
+        ),
+        key,
+    )
+    bad_jwk = {"kty": "OKP", "crv": "Ed25519", "x": bad_x}
+    with pytest.raises(TraceRecordInvalid):
+        verify_trace_dag([root], trusted_keys=[bad_jwk])
+

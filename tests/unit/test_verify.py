@@ -9,8 +9,13 @@ import pytest
 
 from ca2a_runtime.cli import main as cli_main
 from ca2a_runtime.delegation import DelegationCredential
-from ca2a_runtime.errors import CA2AError, InvalidCredential, ScopeEscalation
-from ca2a_verify import ChainResult, verify_chain_file, verify_delegation_chain
+from ca2a_runtime.errors import CA2AError, InvalidCredential, InvalidRevocation, ScopeEscalation
+from ca2a_verify import (
+    ChainResult,
+    load_revocation_snapshot,
+    verify_chain_file,
+    verify_delegation_chain,
+)
 from tests.unit.conftest import build_chain
 
 
@@ -137,3 +142,35 @@ def test_verify_dag_cli_requires_a_trusted_root_when_cross_checking_chain(
         )
 
     assert exc.value.code == 2
+
+
+def test_verify_chain_file_rejects_duplicate_json_keys(
+    tmp_path: Path, valid_chain: list[DelegationCredential]
+) -> None:
+    dumped = _dump(valid_chain)
+    hop_json = json.dumps(dumped[0])
+    # Inject a duplicate credential_id key before the legitimate one.
+    dup_hop = '{"credential_id": "shadowed", ' + hop_json[1:]
+    p = tmp_path / "dup-hop.json"
+    p.write_text(f"[{dup_hop}]", encoding="utf-8")
+    with pytest.raises(InvalidCredential, match="invalid JSON") as exc_info:
+        verify_chain_file(p, trusted_root_issuers={valid_chain[0].issuer})
+    assert "duplicate JSON object key" in (exc_info.value.detail or "")
+
+    p_top = tmp_path / "dup-top.json"
+    p_top.write_text(
+        f'{{"chain": [], "chain": {json.dumps(dumped)}}}',
+        encoding="utf-8",
+    )
+    with pytest.raises(InvalidCredential, match="invalid JSON") as exc_top:
+        verify_chain_file(p_top, trusted_root_issuers={valid_chain[0].issuer})
+    assert "duplicate JSON object key" in (exc_top.value.detail or "")
+
+
+def test_load_revocation_snapshot_rejects_duplicate_json_keys(tmp_path: Path) -> None:
+    p = tmp_path / "dup-revocations.json"
+    p.write_text('{"as_of": 100, "as_of": 200, "revocations": []}', encoding="utf-8")
+    with pytest.raises(InvalidRevocation, match="invalid JSON") as exc_info:
+        load_revocation_snapshot(p)
+    assert "duplicate JSON object key" in (exc_info.value.detail or "")
+

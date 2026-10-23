@@ -200,3 +200,54 @@ def test_trust_anchor_key_id_must_match_key(tmp_path: Path) -> None:
     path = _trust_file(tmp_path / "manifest-key.json", "0" * 64, keypair.public_bytes)
     with pytest.raises(ConfigError, match="key_id does not match"):
         load_agent_manifest_trust_anchor(path)
+
+
+@pytest.mark.parametrize("param", ["d", "p", "q", "dp", "dq", "qi", "oth", "k"])
+def test_trust_anchor_rejects_private_or_symmetric_jwk_parameters(
+    tmp_path: Path, param: str
+) -> None:
+    keypair = sdk.generate_ed25519()
+    pub_b64 = base64.urlsafe_b64encode(keypair.public_bytes).rstrip(b"=").decode("ascii")
+    single = tmp_path / f"single-{param}.json"
+    single.write_text(
+        json.dumps({"key_id": keypair.key_id, "public_key_base64url": pub_b64, param: "secret"}),
+        encoding="utf-8",
+    )
+    with pytest.raises(ConfigError, match="private or symmetric"):
+        load_agent_manifest_trust_anchor(single)
+
+    nested = tmp_path / f"nested-{param}.json"
+    nested.write_text(
+        json.dumps(
+            {
+                "keys": [
+                    {"key_id": keypair.key_id, "public_key_base64url": pub_b64, param: "secret"}
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(ConfigError, match="private or symmetric"):
+        load_agent_manifest_trust_anchor(nested)
+
+
+@pytest.mark.parametrize(
+    "bad_pub",
+    [
+        "",
+        "A",
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA+A",
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/A",
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAB",
+        "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        None,
+        123,
+    ],
+)
+def test_trust_anchor_rejects_non_canonical_base64url(tmp_path: Path, bad_pub: object) -> None:
+    path = tmp_path / "bad-anchor.json"
+    path.write_text(json.dumps({"public_key_base64url": bad_pub}), encoding="utf-8")
+    with pytest.raises(ConfigError):
+        load_agent_manifest_trust_anchor(path)
+
