@@ -241,3 +241,56 @@ def test_sealed_payload_is_opaque_bytes_only() -> None:
 def test_extension_uri_is_stable() -> None:
     assert EXTENSION_URI == "https://agentrust-io.com/extensions/ca2a/v0.1"
     assert KEY_DELEGATION_CHAIN.startswith(EXTENSION_URI)
+
+
+@pytest.mark.parametrize("bad_b64", ["A", "AB", "AC", "AD", "AAAAA", "AA="])
+def test_non_canonical_base64url_rejected_in_sealed_payload_and_offer(bad_b64: str) -> None:
+    from ca2a_runtime.transport import wire
+    from ca2a_runtime.transport._b64url import b64url_decode
+
+    with pytest.raises(TransportError, match="not valid base64url"):
+        b64url_decode("sealed_payload", bad_b64)
+    with pytest.raises(TransportError, match="not valid base64url"):
+        parse_peer_request({"metadata": _ca2a_meta(sealed_payload=bad_b64)})
+    offer_dict = {
+        "channel_public_key": "aa" * 32,
+        "attestation": {
+            "platform": "tpm",
+            "measurement": "sha256:abc",
+            "public_key": "aa" * 32,
+            "nonce": "n1",
+            "raw_evidence": bad_b64,
+        },
+    }
+    with pytest.raises(TransportError, match="not valid base64url"):
+        wire.parse_channel_offer(offer_dict)
+
+
+@pytest.mark.parametrize("bad_val", [None, 123, False, True, "", ["x"], {"k": "v"}])
+@pytest.mark.parametrize(
+    "field",
+    ["channel_public_key", "platform", "measurement", "public_key", "nonce"],
+)
+def test_parse_channel_offer_rejects_non_string_or_empty_claim_fields(
+    field: str, bad_val: object
+) -> None:
+    from ca2a_runtime.transport import wire
+
+    offer_dict: dict[str, object] = {
+        "channel_public_key": "aa" * 32,
+        "attestation": {
+            "platform": "software-only",
+            "measurement": "sha256:abc",
+            "public_key": "aa" * 32,
+            "nonce": "n1",
+        },
+    }
+    if field == "channel_public_key":
+        offer_dict["channel_public_key"] = bad_val
+    else:
+        att = dict(offer_dict["attestation"])  # type: ignore[arg-type]
+        att[field] = bad_val
+        offer_dict["attestation"] = att
+    with pytest.raises(TransportError, match="malformed channel offer"):
+        wire.parse_channel_offer(offer_dict)
+
