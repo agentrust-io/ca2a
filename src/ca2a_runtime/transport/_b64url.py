@@ -32,13 +32,19 @@ def b64url_decode(field: str, value: str) -> bytes:
     ``field`` names the value in the error message (e.g. ``"sealed_payload"``
     or ``"raw_evidence"``), since the same helper serves several wire fields.
     """
-    if not isinstance(value, str) or not _BASE64URL_RE.fullmatch(value):
+    if not isinstance(value, str) or not _BASE64URL_RE.fullmatch(value) or len(value) % 4 == 1:
         raise TransportError(
             f"{field} is not valid base64url",
-            detail=f"expected a non-empty base64url string, got {type(value).__name__}",
+            detail=f"expected a canonical non-empty base64url string, got {type(value).__name__}",
         )
     try:
         padded = value + "=" * (-len(value) % 4)
-        return base64.urlsafe_b64decode(padded.encode("ascii"))
+        raw = base64.urlsafe_b64decode(padded.encode("ascii"))
     except (ValueError, UnicodeEncodeError) as exc:
         raise TransportError(f"{field} is not valid base64url", detail=str(exc)) from exc
+    if b64url_encode(raw) != value:
+        raise TransportError(
+            f"{field} is not valid base64url",
+            detail="non-canonical base64url encoding (non-zero trailing padding bits)",
+        )
+    return raw
