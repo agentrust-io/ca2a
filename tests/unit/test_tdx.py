@@ -260,3 +260,26 @@ def test_trailing_padding_after_the_signature_section_is_ignored(quote_and_root)
         expected_mrtd=quote_and_root["mrtd"],
         expected_report_data=quote_and_root["rd"],
     )
+
+
+def test_nonzero_trailing_bytes_or_nested_container_slack_rejected(quote_and_root) -> None:
+    quote: bytes = quote_and_root["quote"]
+    with pytest.raises(AttestationFailed, match="non-zero trailing bytes"):
+        TdxQuote.parse(quote + b"\x01")
+
+    signed = 48 + 584
+    sig = quote[signed + 4 :]
+    head = quote[:signed]
+
+    # Trailing byte inside sig after outer QE certification data
+    sig_with_slack = sig + b"\x00"
+    with pytest.raises(AttestationFailed, match="trailing bytes after QE certification data"):
+        TdxQuote.parse(head + struct.pack("<I", len(sig_with_slack)) + sig_with_slack)
+
+    # Trailing byte inside outer QE certification data after PCK chain
+    qe = 128 + 6
+    cert_data = sig[qe:] + b"\x00"
+    new_sig = sig[:128] + struct.pack("<HI", 6, len(cert_data)) + cert_data
+    with pytest.raises(AttestationFailed, match="trailing bytes after PCK certificate chain"):
+        TdxQuote.parse(head + struct.pack("<I", len(new_sig)) + new_sig)
+
