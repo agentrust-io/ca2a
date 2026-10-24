@@ -147,3 +147,57 @@ def test_untrusted_root_is_rejected(evidence, capsys):
 def test_malformed_signed_path_fails_closed(evidence, capsys, bad):
     rc, out = run(evidence, capsys, bad)
     assert rc == 1 and out["verified"] is False
+
+
+def test_cli_rejects_duplicate_json_keys_and_non_string_record_fields(evidence, capsys):
+    chain, _, _, native, chain_path, dag_path = evidence
+    # Duplicate key in DAG JSON
+    raw_rec = json.dumps(native[0].body())
+    dup_dag = "[" + raw_rec[:-1] + ', "decision": "allow", "decision": "deny"}]'
+    dag_path.write_text(dup_dag, encoding="utf-8")
+    rc = main(["verify-dag", "--dag", str(dag_path), "--structural-only"])
+    out = json.loads(capsys.readouterr().out)
+    assert rc == 1 and out["code"] == "PROVENANCE_LINK_BROKEN"
+
+    # String scope instead of list (previously split into characters)
+    bad_scope = native[0].body()
+    bad_scope["scope"] = "read"
+    dag_path.write_text(json.dumps([bad_scope]), encoding="utf-8")
+    rc = main(["verify-dag", "--dag", str(dag_path), "--structural-only"])
+    out = json.loads(capsys.readouterr().out)
+    assert rc == 1 and out["code"] == "PROVENANCE_LINK_BROKEN"
+
+    # Non-string record_id (previously coerced via str(...))
+    bad_id = native[0].body()
+    bad_id["record_id"] = 123
+    dag_path.write_text(json.dumps([bad_id]), encoding="utf-8")
+    rc = main(["verify-dag", "--dag", str(dag_path), "--structural-only"])
+    out = json.loads(capsys.readouterr().out)
+    assert rc == 1 and out["code"] == "PROVENANCE_LINK_BROKEN"
+
+    # Invalid decision value
+    bad_dec = native[0].body()
+    bad_dec["decision"] = "maybe"
+    dag_path.write_text(json.dumps([bad_dec]), encoding="utf-8")
+    rc = main(["verify-dag", "--dag", str(dag_path), "--structural-only"])
+    out = json.loads(capsys.readouterr().out)
+    assert rc == 1 and out["code"] == "PROVENANCE_LINK_BROKEN"
+
+    # Duplicate key in chain JSON
+    raw_cred = json.dumps(chain[0].body() | {"signature": chain[0].signature})
+    dup_chain = "[" + raw_cred[:-1] + ', "depth": 0}]'
+    chain_path.write_text(dup_chain, encoding="utf-8")
+    rc = main(
+        [
+            "verify-lineage",
+            "--dag",
+            str(dag_path),
+            "--chain",
+            str(chain_path),
+            "--trusted-root-issuer",
+            chain[0].issuer,
+        ]
+    )
+    out = json.loads(capsys.readouterr().out)
+    assert rc == 1 and out["code"] == "INVALID_CREDENTIAL"
+
