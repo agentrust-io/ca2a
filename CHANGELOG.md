@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Sealing to a low-order X25519 peer key raises `SealedChannelError`, consistent
+  with other invalid channel keys, instead of leaking a backend `ValueError`.
+  These keys were already refused; no ciphertext format or acceptance rule changes.
+
 ### Removed
 
 - The `opaque` attestation provider value. It had no collector and was never
