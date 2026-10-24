@@ -270,8 +270,9 @@ def verify_chain(
     offline verification as "not revoked".
 
     ``max_revocation_staleness`` (seconds) makes revocation checking mandatory:
-    with it set, a missing snapshot, or one whose ``as_of`` is more than that
-    many seconds before the evaluation time, raises ``RevocationStatusUnknown``.
+    with it set, a missing snapshot, one dated after the evaluation time, or one
+    whose ``as_of`` is more than that many seconds before the evaluation time
+    raises ``RevocationStatusUnknown``.
     It defaults to ``None`` so that offline verification with no revocation data
     keeps working.
     """
@@ -404,6 +405,13 @@ def _check_revocation(
                 ),
             )
 
+    if max_staleness is not None and revocations.as_of > now:
+        raise RevocationStatusUnknown(
+            "revocation snapshot is dated in the future relative to evaluation time",
+            detail=(
+                f"as_of={revocations.as_of} at_time={now} max_revocation_staleness={max_staleness}"
+            ),
+        )
     if max_staleness is not None and now - revocations.as_of > max_staleness:
         raise RevocationStatusUnknown(
             "revocation snapshot is older than this verifier accepts",
