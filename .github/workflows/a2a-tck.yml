@@ -1,0 +1,44 @@
+name: Pinned A2A ordinary-path TCK
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'experiments/a2a-tck/**'
+      - 'examples/a2a-sdk/**'
+      - '.github/workflows/a2a-tck.yml'
+permissions:
+  contents: read
+jobs:
+  differential:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Prepare isolated pinned environments
+        run: |
+          python -m pip install uv==0.12.23
+          uv venv --python 3.12 ../ca2a-tck-sut
+          uv pip install --python ../ca2a-tck-sut/bin/python -r experiments/a2a-tck/environment.txt
+          git clone https://github.com/a2aproject/a2a-tck.git ../a2a-tck
+          git -C ../a2a-tck checkout 5daf0144b4a4adbdefb62180739b13c5bd7d8196
+          cd ../a2a-tck
+          UV_PROJECT_ENVIRONMENT="$RUNNER_TEMP/tck-env" uv sync --frozen
+      - name: Run paired TCK and protected cA2A tests
+        env:
+          PYTHONPATH: src
+          UV_PROJECT_ENVIRONMENT: ${{ runner.temp }}/tck-env
+        run: |
+          ../ca2a-tck-sut/bin/python experiments/a2a-tck/run.py --tck ../a2a-tck --output tck-baseline-results --mode baseline
+          ../ca2a-tck-sut/bin/python experiments/a2a-tck/run.py --tck ../a2a-tck --output tck-extension-results --mode extension
+          python experiments/a2a-tck/compare.py tck-baseline-results tck-extension-results
+          ../ca2a-tck-sut/bin/python -m pytest experiments/a2a-tck/test_compare.py tests/unit/test_a2a_sdk_bridge.py tests/unit/test_a2a_sdk_loopback.py
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.0
+        if: always()
+        with:
+          name: a2a-tck-evidence
+          path: |
+            tck-baseline-results
+            tck-extension-results
