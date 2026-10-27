@@ -278,6 +278,48 @@ def test_snapshot_at_the_bound_is_accepted() -> None:
     assert status.checked is True
 
 
+@pytest.mark.parametrize("future_offset", [1, 1_000_000])
+@pytest.mark.parametrize("max_staleness", [0, 300])
+def test_future_snapshot_under_freshness_policy_is_unknown(
+    future_offset: int, max_staleness: int
+) -> None:
+    chain, _ = _chain()
+    with pytest.raises(RevocationStatusUnknown, match="future") as exc:
+        _verify(
+            chain,
+            _snapshot(as_of=NOW + future_offset),
+            at_time=NOW,
+            max_revocation_staleness=max_staleness,
+        )
+    assert exc.value.code == "REVOCATION_STATUS_UNKNOWN"
+
+
+def test_snapshot_at_evaluation_time_satisfies_zero_staleness() -> None:
+    chain, _ = _chain()
+    status = _verify(chain, _snapshot(), at_time=NOW, max_revocation_staleness=0)
+    assert status.checked is True
+    assert status.as_of == NOW
+
+
+def test_future_snapshot_still_proves_effective_revocation() -> None:
+    chain, keys = _chain()
+    snapshot = _snapshot(revoke(chain[2], keys[2], issued_at=NOW), as_of=NOW + 1)
+    with pytest.raises(CredentialRevoked):
+        _verify(chain, snapshot, at_time=NOW, max_revocation_staleness=300)
+
+
+def test_offline_verifier_propagates_future_snapshot_unknown() -> None:
+    chain, _ = _chain()
+    with pytest.raises(RevocationStatusUnknown, match="future"):
+        verify_delegation_chain(
+            chain,
+            trusted_root_issuers={chain[0].issuer},
+            revocations=_snapshot(as_of=NOW + 1),
+            at_time=NOW,
+            max_revocation_staleness=300,
+        )
+
+
 def test_stale_snapshot_still_proves_revocation() -> None:
     chain, keys = _chain()
     # Revocation is monotonic, so an old statement is still true. The refusal is
