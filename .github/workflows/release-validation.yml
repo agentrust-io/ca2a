@@ -32,6 +32,9 @@ jobs:
       - name: Install local package
         run: python -m pip install --no-deps -e .
 
+      - name: Check installed dependency consistency
+        run: python -m pip check
+
       - name: Security scan
         # bandit and pip-audit are already in the dev extra above, so the
         # scan runs against the same pinned versions rather than fetching
@@ -72,6 +75,9 @@ jobs:
 
       - name: Install local package
         run: python -m pip install --no-deps -e .
+
+      - name: Check installed dependency consistency
+        run: python -m pip check
 
       # AGT 4.1 currently constrains cryptography below 49, while the runtime
       # requires 50+ for published security fixes. Keep the scanner isolated
@@ -126,6 +132,9 @@ jobs:
 
       - name: Install local package
         run: python -m pip install --no-deps -e .
+
+      - name: Check installed dependency consistency
+        run: python -m pip check
 
       - name: Run benchmark (software-only, CI gate p99 < 5ms)
         run: python -m ca2a_runtime.benchmarks --provider software-only --hops 10000 --out benchmarks/
