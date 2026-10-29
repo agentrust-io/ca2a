@@ -121,7 +121,7 @@ def test_deadline_clock_rollback_and_invalid_clock_fail_closed(now):
         pending.verify(200, encode(success(producer)))
 
 
-@pytest.mark.parametrize("timeout", [0, -1, 301, float("nan"), float("inf")])
+@pytest.mark.parametrize("timeout", [0, -1, 301, float("nan"), float("inf"), True, False, "30"])
 def test_invalid_timeout(timeout):
     private = X25519PrivateKey.generate()
     with pytest.raises(ValueError):
@@ -130,6 +130,34 @@ def test_invalid_timeout(timeout):
             {},
             timeout=timeout,
         )
+
+
+@pytest.mark.parametrize(
+    ("status", "body"),
+    [
+        (True, {"accepted": True}),
+        (201, {"accepted": True}),
+        (302, {"error": {"code": "X"}}),
+        (200, {"accepted": False}),
+        (200, {}),
+        (403, {"error": "not-a-dict"}),
+        (403, {}),
+    ],
+)
+def test_response_producer_finish_rejects_invalid_status_or_body(status, body):
+    _, _, producer = exchange()
+    with pytest.raises(ResponseAuthenticationFailed):
+        producer.finish(status, body)
+
+
+def test_decode_rejects_non_bytes_and_authenticated_peer_error_preserves_detail():
+    with pytest.raises(ResponseAuthenticationFailed):
+        decode("{}")  # type: ignore[arg-type]
+    _, pending, producer = exchange()
+    body = {"error": {"code": "DENIED", "message": "denied", "detail": "missing cap:write"}}
+    response = pending.verify(403, encode(producer.finish(403, body)))
+    err = AuthenticatedPeerError(response)
+    assert err.detail == "missing cap:write"
 
 
 def test_concurrent_consumption_has_exactly_one_success():
