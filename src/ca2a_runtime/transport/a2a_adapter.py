@@ -52,6 +52,16 @@ def collect_metadata(
     2. ``message.metadata`` / ``params.message.metadata``
     3. Explicit ``metadata`` keyword (caller override)
     """
+    if not isinstance(message_or_request, dict):
+        raise TransportError(
+            "message_or_request must be a JSON object",
+            detail=f"got {type(message_or_request).__name__}",
+        )
+    if metadata is not None and not isinstance(metadata, dict):
+        raise TransportError(
+            "metadata must be a mapping",
+            detail=f"got {type(metadata).__name__}",
+        )
     collected: dict[str, Any] = {}
 
     params = message_or_request.get("params")
@@ -140,10 +150,10 @@ def parse_peer_request(
     parent_raw = meta[KEY_PARENT_RECORD_HASH]
     if parent_raw is None:
         parent_record_hash: str | None = None
-    elif isinstance(parent_raw, str):
+    elif isinstance(parent_raw, str) and parent_raw:
         parent_record_hash = parent_raw
     else:
-        raise TransportError("parent_record_hash must be a string or null")
+        raise TransportError("parent_record_hash must be a non-empty string or null")
 
     sealed_payload: bytes | None = None
     if KEY_SEALED_PAYLOAD in meta and meta[KEY_SEALED_PAYLOAD] is not None:

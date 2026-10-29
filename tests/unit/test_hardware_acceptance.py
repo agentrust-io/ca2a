@@ -197,3 +197,38 @@ def test_real_http_quote_timeout_is_incomplete_work_not_security_rejection(tmp_p
     receiver = [json.loads(line) for line in receiver_log.path.read_text().splitlines()]
     assert receiver[-1]["event"] == "operation_completed"
     assert receiver[-1]["stage"] == "receiver_offer"
+
+
+@pytest.mark.parametrize(
+    "bad_cfg",
+    [
+        '{"a": 1, "a": 2}',
+        '{"a": NaN}',
+        "[1, 2]",
+    ],
+)
+def test_harness_rejects_duplicate_keys_nonfinite_and_non_dict_config(
+    tmp_path, monkeypatch, bad_cfg
+):
+    config = tmp_path / "config.json"
+    config.write_text(bad_cfg, encoding="utf-8")
+    receipt = tmp_path / "receipt.jsonl"
+    monkeypatch.setattr(
+        "sys.argv",
+        ["hardware_acceptance", "call", str(config), "--receipt", str(receipt), "--run-id", "r1"],
+    )
+    assert harness.main() == 1
+    entry = json.loads(receipt.read_text())
+    assert entry["event"] == "run_failed"
+    assert entry["error_type"] == "ValueError"
+
+
+def test_adapter_rejects_non_dict_inputs_empty_parent_hash_and_sdk_unsafe_float():
+    from ca2a_runtime.errors import TransportError
+    from ca2a_runtime.transport import a2a_adapter
+
+    for bad_msg in ([1, 2], "str", None):
+        with pytest.raises(TransportError):
+            a2a_adapter.collect_metadata(bad_msg)  # type: ignore[arg-type]
+    with pytest.raises(TransportError):
+        a2a_adapter.collect_metadata({}, metadata=["not-a-dict"])  # type: ignore[arg-type]
