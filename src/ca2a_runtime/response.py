@@ -32,8 +32,14 @@ class AuthenticatedPeerError(CA2AError):
     """An authenticated peer denial, not proof that no side effect occurred."""
 
     def __init__(self, response: VerifiedResponse) -> None:
-        error = response.body["error"]
-        super().__init__(str(error.get("message", "peer denial")))
+        error = response.body.get("error")
+        if not isinstance(error, dict):
+            raise _fail()
+        detail = error.get("detail")
+        super().__init__(
+            str(error.get("message", "peer denial")),
+            detail=detail if isinstance(detail, str) else None,
+        )
         self.code = str(error.get("code", "PEER_DENIAL"))
         self.http_status = response.status
         self.response_authentication = response.authentication()
@@ -81,10 +87,14 @@ def encode(value: dict[str, Any]) -> bytes:
 
 def decode(raw: bytes) -> dict[str, Any]:
     """Reject ambiguous/oversized JSON before it can be authenticated."""
-    if len(raw) > MAX_BYTES:
+    if type(raw) is not bytes or len(raw) > MAX_BYTES:
         raise _fail()
     try:
-        value = json.loads(raw.decode("utf-8"), object_pairs_hook=_object)
+        value = json.loads(
+            raw.decode("utf-8"),
+            object_pairs_hook=_object,
+            parse_constant=lambda _token: (_ for _ in ()).throw(_fail()),
+        )
         if not isinstance(value, dict):
             raise _fail()
         encode(value)
@@ -158,6 +168,14 @@ class ResponseProducer:
         self._key = _key(private, self.envelope["recipient"], self.request_sha256)
 
     def finish(self, status: int, body: dict[str, Any]) -> dict[str, Any]:
+        if (
+            type(status) is not int
+            or not (status == 200 or 400 <= status <= 599)
+            or not isinstance(body, dict)
+            or (status == 200 and body.get("accepted") is not True)
+            or (status != 200 and not isinstance(body.get("error"), dict))
+        ):
+            raise _fail()
         statement = {
             "profile": PROFILE,
             "request_sha256": self.request_sha256,
@@ -186,7 +204,12 @@ class PendingResponse:
         timeout: float = 30.0,
         clock: Callable[[], float] = time.monotonic,
     ) -> None:
-        if not math.isfinite(timeout) or not 0 < timeout <= 300:
+        if (
+            isinstance(timeout, bool)
+            or not isinstance(timeout, (int, float))
+            or not math.isfinite(timeout)
+            or not 0 < timeout <= 300
+        ):
             raise ValueError("response timeout must be finite and in (0, 300]")
         private = X25519PrivateKey.generate()
         self._request = encode(
