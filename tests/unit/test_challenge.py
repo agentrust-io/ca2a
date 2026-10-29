@@ -124,3 +124,77 @@ def test_a_malformed_mac_is_refused_as_attestation_failure(mac: str) -> None:
     prefix, expiry, rand, _ = issue_challenge(secret).split(".")
     with pytest.raises(AttestationFailed, match="malformed"):
         verify_challenge(secret, f"{prefix}.{expiry}.{rand}.{mac}")
+
+
+@pytest.mark.parametrize("bad_ttl", [True, False, -5, 1.5, "60"])
+def test_issue_challenge_rejects_boolean_or_non_int_ttl(bad_ttl) -> None:
+    with pytest.raises(ValueError):
+        issue_challenge(generate_secret(), ttl_seconds=bad_ttl)
+
+
+@pytest.mark.parametrize("bad_secret", [b"", b"short", "32-char-string------------------", None])
+def test_challenge_rejects_invalid_secret(bad_secret) -> None:
+    with pytest.raises(ValueError, match="secret"):
+        issue_challenge(bad_secret)
+    with pytest.raises(ValueError, match="secret"):
+        verify_challenge(bad_secret, "v1.1.aa.bb")
+
+
+@pytest.mark.parametrize("bad_now", [True, False, 1.5, "100"])
+def test_verify_challenge_rejects_boolean_or_non_int_now(bad_now) -> None:
+    secret = generate_secret()
+    ch = issue_challenge(secret)
+    with pytest.raises(ValueError, match="now"):
+        verify_challenge(secret, ch, now=bad_now)
+
+
+@pytest.mark.parametrize(
+    "bad_challenge",
+    [
+        123,
+        None,
+        ["v1"],
+        f"v1.+100.{'a' * 32}.{'0' * 64}",
+        f"v1. 100 .{'a' * 32}.{'0' * 64}",
+        f"v1.{'9' * 4301}.{'a' * 32}.{'0' * 64}",
+    ],
+)
+def test_verify_challenge_rejects_non_str_and_non_decimal_expiry(bad_challenge) -> None:
+    with pytest.raises(AttestationFailed):
+        verify_challenge(generate_secret(), bad_challenge)
+
+
+@pytest.mark.parametrize("bad_iat", [True, False, 0, -1, 1.5, 2**53])
+def test_build_trace_record_and_emit_dag_validate_inputs(bad_iat) -> None:
+    from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+    from ca2a_runtime.trace_binding import HopContext, HopSpec, build_trace_record, emit_dag
+
+    ctx = HopContext.software(
+        model_provider="p",
+        model_id="m",
+        image_label="img",
+        policy_bundle_hash="sha256:" + "a" * 64,
+    )
+    with pytest.raises(ValueError):
+        build_trace_record(subject="spiffe://example/a", iat=bad_iat, context=ctx)
+    with pytest.raises(ValueError):
+        build_trace_record(subject="", iat=1000, context=ctx)
+    with pytest.raises(ValueError):
+        build_trace_record(
+            subject="spiffe://example/a",
+            iat=1000,
+            context=ctx,
+            credential_id="",
+            parent_record_hash="sha256:" + "b" * 64,
+        )
+    with pytest.raises(ValueError):
+        emit_dag([])
+    key = Ed25519PrivateKey.generate()
+    with pytest.raises(ValueError, match="non-root hop"):
+        emit_dag(
+            [
+                HopSpec(subject="spiffe://example/0", signing_key=key, context=ctx, iat=1000),
+                HopSpec(subject="spiffe://example/1", signing_key=key, context=ctx, iat=1000),
+            ]
+        )
