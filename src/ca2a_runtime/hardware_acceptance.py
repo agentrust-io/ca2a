@@ -101,6 +101,21 @@ def _nonce_hash(nonce: str) -> str:
     return hashlib.sha256(nonce.encode()).hexdigest()
 
 
+def _loads_strict(text: str) -> Any:
+    def _no_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+        out: dict[str, Any] = {}
+        for key, value in pairs:
+            if key in out:
+                raise ValueError(f"duplicate JSON object key: {key!r}")
+            out[key] = value
+        return out
+
+    def _no_nonfinite(token: str) -> Any:
+        raise ValueError(f"non-finite JSON constant is not allowed: {token}")
+
+    return json.loads(text, object_pairs_hook=_no_duplicate_keys, parse_constant=_no_nonfinite)
+
+
 def real_provider() -> SevSnpProvider:
     if not SevSnpProvider.detect():
         raise AttestationUnsupported("acceptance run requires a real non-paravisor SNP guest")
@@ -207,10 +222,10 @@ def run(config: dict[str, Any], base: Path, mode: str, log: ReceiptLog) -> None:
             log.write("receiver_ready", provider="sev-snp")
             service.serve_forever()
         return
-    chain = [
-        DelegationCredential.from_dict(item)
-        for item in json.loads((base / config["chain"]).read_text(encoding="utf-8"))
-    ]
+    raw_chain = _loads_strict((base / config["chain"]).read_text(encoding="utf-8"))
+    if not isinstance(raw_chain, list):
+        raise ValueError("chain file must contain a JSON array")
+    chain = [DelegationCredential.from_dict(item) for item in raw_chain]
     key = Ed25519PrivateKey.from_private_bytes(
         bytes.fromhex((base / config["holder_key"]).read_text(encoding="utf-8").strip())
     )
@@ -257,7 +272,9 @@ def main() -> int:
     args = parser.parse_args()
     log = ReceiptLog(args.receipt, args.run_id)
     try:
-        config = json.loads(args.config.read_text(encoding="utf-8"))
+        config = _loads_strict(args.config.read_text(encoding="utf-8"))
+        if not isinstance(config, dict):
+            raise ValueError("config must be a JSON object")
         run(config, args.config.resolve().parent, args.mode, log)
     except (CA2AError, ValueError, KeyError, OSError) as exc:
         log.write("run_failed", error_type=type(exc).__name__)
