@@ -49,9 +49,15 @@ def _mac(secret: bytes, expiry: int, rand: str) -> str:
     return hmac.new(secret, f"{_PREFIX}.{expiry}.{rand}".encode(), sha256).hexdigest()
 
 
+def _validate_secret(secret: bytes) -> None:
+    if type(secret) is not bytes or len(secret) < 16:
+        raise ValueError("secret must be bytes of length at least 16")
+
+
 def issue_challenge(secret: bytes, *, ttl_seconds: int = DEFAULT_TTL_SECONDS) -> str:
     """Issue a challenge that expires ``ttl_seconds`` from now."""
-    if ttl_seconds <= 0:
+    _validate_secret(secret)
+    if type(ttl_seconds) is not int or ttl_seconds <= 0:
         raise ValueError(
             "ttl_seconds must be positive; a challenge that never validates is not a challenge"
         )
@@ -68,7 +74,15 @@ def verify_challenge(secret: bytes, challenge: str, *, now: int | None = None) -
     arithmetic, and reporting "expired" for a forged challenge tells the sender
     their forgery was well-formed.
     """
-    parts = (challenge or "").split(".")
+    _validate_secret(secret)
+    if now is not None and type(now) is not int:
+        raise ValueError("now must be an integer timestamp")
+    if not isinstance(challenge, str):
+        raise AttestationFailed(
+            "challenge is malformed",
+            detail="expected v1.<expiry>.<random>.<mac>",
+        )
+    parts = challenge.split(".")
     if len(parts) != 4 or parts[0] != _PREFIX:
         raise AttestationFailed(
             "challenge is malformed",
@@ -83,6 +97,8 @@ def verify_challenge(secret: bytes, challenge: str, *, now: int | None = None) -
             "challenge is malformed",
             detail="the MAC is not 64 lowercase hex characters",
         )
+    if not expiry_str.isascii() or not expiry_str.isdecimal():
+        raise AttestationFailed("challenge expiry is not an integer")
     try:
         expiry = int(expiry_str)
     except ValueError as exc:
