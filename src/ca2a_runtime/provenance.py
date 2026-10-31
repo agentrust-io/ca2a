@@ -70,6 +70,8 @@ class DelegationRecord:
     caller_attestation: str = CALLER_NOT_OFFERED
 
     def __post_init__(self) -> None:
+        if self.decision not in {"allow", "deny"}:
+            raise ValueError(f"decision must be 'allow' or 'deny', got {self.decision!r}")
         if self.caller_attestation not in CALLER_ATTESTATION_VALUES:
             raise ValueError(
                 f"caller_attestation must be one of {sorted(CALLER_ATTESTATION_VALUES)}, "
