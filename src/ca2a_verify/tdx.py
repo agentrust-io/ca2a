@@ -54,8 +54,21 @@ def verify_tdx_quote(
     expected_report_data: bytes | None = None,
 ) -> TdxQuote:
     """Appraise a TDX quote offline. Raises AttestationFailed on any failure."""
+    if expected_mrtd is not None and (
+        not isinstance(expected_mrtd, (bytes, bytearray, memoryview)) or len(expected_mrtd) != 48
+    ):
+        raise ValueError("expected_mrtd must be a 48-byte TDX MRTD")
+    if expected_report_data is not None and (
+        not isinstance(expected_report_data, (bytes, bytearray, memoryview))
+        or len(expected_report_data) != 64
+    ):
+        raise ValueError("expected_report_data must be a 64-byte TDX report_data value")
     quote = TdxQuote.parse(quote_bytes)
 
+    if quote.version != 4:
+        raise AttestationFailed(
+            "unsupported TDX quote version", detail=f"version={quote.version}, expected 4"
+        )
     if quote.tee_type != TEE_TYPE_TDX:
         raise AttestationFailed("quote is not a TDX quote", detail=f"tee_type={quote.tee_type:#x}")
 

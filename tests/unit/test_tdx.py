@@ -260,3 +260,54 @@ def test_trailing_padding_after_the_signature_section_is_ignored(quote_and_root)
         expected_mrtd=quote_and_root["mrtd"],
         expected_report_data=quote_and_root["rd"],
     )
+
+
+@pytest.mark.parametrize("bad_version", [3, 5, 0])
+def test_verify_tdx_quote_rejects_non_v4_version(quote_and_root, bad_version: int) -> None:
+    q = bytearray(quote_and_root["quote"])
+    struct.pack_into("<H", q, 0, bad_version)
+    with pytest.raises(AttestationFailed, match="unsupported TDX quote version"):
+        verify_tdx_quote(bytes(q), trusted_roots=[quote_and_root["root"]])
+
+
+@pytest.mark.parametrize(
+    ("bad_mrtd", "bad_rd"),
+    [
+        (b"\x11" * 47, None),
+        (b"\x11" * 49, None),
+        ("not-bytes", None),
+        (None, b"\x22" * 63),
+        (None, b"\x22" * 65),
+        (None, "not-bytes"),
+    ],
+)
+def test_verify_tdx_quote_and_sev_snp_reject_malformed_expected_digests(
+    quote_and_root, bad_mrtd, bad_rd
+) -> None:
+    from ca2a_verify.sev_snp import sev_snp_verifier, verify_sev_snp_report
+
+    with pytest.raises(ValueError):
+        verify_tdx_quote(
+            quote_and_root["quote"],
+            trusted_roots=[quote_and_root["root"]],
+            expected_mrtd=bad_mrtd,
+            expected_report_data=bad_rd,
+        )
+    with pytest.raises(ValueError):
+        verify_sev_snp_report(
+            b"\x00" * 1184,
+            [],
+            trusted_roots=[],
+            expected_measurement=bad_mrtd,
+            expected_report_data=bad_rd,
+        )
+    with pytest.raises(ValueError, match="reject_unrecognized_platform_bits"):
+        sev_snp_verifier(
+            trusted_roots=[],
+            vcek_chain=[],
+            expected_measurement=b"\x11" * 48,
+            min_guest_svn=1,
+            require_platform=set(),
+            forbid_platform=set(),
+            reject_unrecognized_platform_bits="yes",  # type: ignore[arg-type]
+        )
