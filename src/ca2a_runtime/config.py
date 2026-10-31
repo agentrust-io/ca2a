@@ -83,7 +83,10 @@ class Ca2aConfig:
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> Ca2aConfig:
-        attestation = data.get("attestation", {}) or {}
+        raw_attestation = data.get("attestation")
+        if raw_attestation is not None and not isinstance(raw_attestation, dict):
+            raise ConfigError("attestation must be a mapping")
+        attestation = raw_attestation or {}
         provider = attestation.get("provider", "auto")
         enforcement = attestation.get("enforcement_mode", "enforcing")
 
@@ -137,7 +140,7 @@ class Ca2aConfig:
             raise ConfigError("attestation.challenge_ttl_seconds must be a positive integer")
 
         depth = data.get("max_delegation_depth", 8)
-        if not isinstance(depth, int) or depth < 1:
+        if not isinstance(depth, int) or isinstance(depth, bool) or depth < 1:
             raise ConfigError("max_delegation_depth must be a positive integer")
 
         raw_local = data.get("local_policy")
