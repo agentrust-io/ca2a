@@ -69,7 +69,10 @@ class SealedChannel:
         eph_priv = X25519PrivateKey.generate()
         eph_pub = eph_priv.public_key().public_bytes_raw()
         peer_pub_raw = self._peer_pub.public_bytes_raw()
-        shared = eph_priv.exchange(self._peer_pub)
+        try:
+            shared = eph_priv.exchange(self._peer_pub)
+        except ValueError as exc:
+            raise SealedChannelError("invalid peer public key", detail=str(exc)) from exc
         key = _derive_key(shared, eph_pub, peer_pub_raw)
         nonce = os.urandom(_NONCE_LEN)
         ct = ChaCha20Poly1305(key).encrypt(nonce, payload, aad)

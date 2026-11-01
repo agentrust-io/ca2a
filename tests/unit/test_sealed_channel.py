@@ -58,3 +58,12 @@ def test_malformed_blob_rejected() -> None:
 def test_invalid_peer_key_rejected() -> None:
     with pytest.raises(SealedChannelError):
         SealedChannel("not-hex-zz")
+
+
+@pytest.mark.parametrize("peer_key", ["00" * 32, "01" + "00" * 31, "ec" + "ff" * 30 + "7f"])
+def test_low_order_peer_key_has_channel_error(peer_key: str) -> None:
+    # These keys parse as X25519 keys but cannot produce a nonzero shared secret.
+    channel = SealedChannel(peer_key)
+    with pytest.raises(SealedChannelError, match="invalid peer public key") as caught:
+        channel.seal(b"secret", aad=b"session-A")
+    assert isinstance(caught.value.__cause__, ValueError)
