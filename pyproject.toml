@@ -49,6 +49,7 @@ tpm = [
 a2a-sdk = [
     "a2a-sdk>=1.1,<2",
     "aiohttp>=3.14.3",
+    "pyasn1>=0.6.5",
 ]
 dev = [
     "pytest>=8.0",
@@ -66,6 +67,7 @@ dev = [
     "a2a-sdk[http-server]==1.2.2",
     "uvicorn==0.54.0",
     "aiohttp>=3.14.3",
+    "pyasn1>=0.6.5",
 ]
 
 [project.scripts]
