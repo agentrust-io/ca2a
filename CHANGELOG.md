@@ -9,9 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Raise the A2A SDK and development extras' `pyasn1` security floor to 0.6.5,
+  alongside the development/CI hash lock, clearing four dependency-audit
+  findings for 0.6.4.
+
 - Sealing to a low-order X25519 peer key raises `SealedChannelError`, consistent
   with other invalid channel keys, instead of leaking a backend `ValueError`.
   These keys were already refused; no ciphertext format or acceptance rule changes.
+- A future-dated revocation snapshot no longer satisfies an explicit
+  `max_revocation_staleness` policy. Effective signed revocations still take
+  precedence; callers receive `REVOCATION_STATUS_UNKNOWN` when freshness cannot
+  be established.
 
 ### Removed
 
