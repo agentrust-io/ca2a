@@ -5,6 +5,9 @@ on:
     paths:
       - 'experiments/a2a-tck/**'
       - 'examples/a2a-sdk/**'
+      - 'src/**'
+      - 'requirements/**'
+      - 'pyproject.toml'
       - '.github/workflows/a2a-tck.yml'
 permissions:
   contents: read

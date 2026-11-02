@@ -32,6 +32,12 @@ def compare(baseline, extension):
     for key in ('ca2a_commit', 'tck_commit', 'tck_lock_sha256', 'runner_sha256', 'sdk'):
         if left[key] != right[key]:
             raise ValueError('mismatched provenance: ' + key)
+    for manifest in (left, right):
+        count = manifest.get('protected_handler_invocations')
+        if type(count) is not int or count != 0:
+            raise ValueError('protected-handler count must be integer zero')
+        if manifest.get('ca2a_tracked_changes') != '':
+            raise ValueError('cA2A tracked files must be unchanged')
     if a != b:
         raise ValueError('per-test outcomes differ')
     return {'identical_test_outcomes': True, 'counts': dict(Counter(a.values())),

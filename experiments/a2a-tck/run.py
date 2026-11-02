@@ -27,8 +27,8 @@ async def run(args: argparse.Namespace) -> int:
     tck = args.tck.resolve()
     if git(tck, "rev-parse", "HEAD") != TCK_SHA:
         raise SystemExit(f"TCK must be checked out at {TCK_SHA}")
-    if git(tck, "status", "--porcelain", "--untracked-files=no"):
-        raise SystemExit("TCK tracked files must be unchanged")
+    if git(tck, "status", "--porcelain", "--untracked-files=all"):
+        raise SystemExit("TCK checkout must have no tracked or untracked changes")
     out = args.output.resolve()
     out.mkdir(parents=True, exist_ok=False)
     spec = importlib.util.spec_from_file_location("sdk_demo", ROOT / "examples/a2a-sdk/loopback.py")
@@ -69,7 +69,8 @@ async def run(args: argparse.Namespace) -> int:
     chain, _ = demo.demo_credentials()
     node = demo.PeerNode(demo.LocalPolicy.of({demo.READ}), trusted_root_issuers={chain[0].issuer})
     env = {key: value for key, value in os.environ.items()
-           if key.lower() not in {"http_proxy", "https_proxy", "all_proxy"}}
+           if key.lower() not in {"http_proxy", "https_proxy", "all_proxy"}
+           and not key.startswith("PYTEST_")}
     env["NO_PROXY"] = env["no_proxy"] = "127.0.0.1,localhost"
     command = ["uv", "run", "--frozen", "python", "run_tck.py"]
     async with demo.serve(node) as (url, executor):

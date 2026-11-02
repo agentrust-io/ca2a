@@ -2,8 +2,8 @@
 
 The runner serves the existing cA2A SDK loopback adapter with the official TCK's
 scenario executor for ordinary messages. Protected messages retain the existing
-cA2A executor. Both modes are cA2A-aware: `baseline` only removes the extension
-advertisement. This isolates advertisement compatibility; it is not a comparison
+cA2A executor. Both modes are cA2A-aware, and both enable streaming for the pinned scenario executor.
+The differential between the two modes is only the extension advertisement. This isolates advertisement compatibility; it is not a comparison
 against a separate, unmodified SDK server or a protected-path TCK certification.
 
 Test dependencies and upstream scenario code are isolated from runtime packages.
@@ -25,8 +25,12 @@ PYTHONPATH=src ../ca2a-tck-sut/bin/python -m pytest tests/unit/test_a2a_sdk_brid
 Output directories must be new. Each run retains logs, JUnit, HTML, compatibility
 report, dependency/source identifiers, timeout status and protected-handler count.
 The comparison rejects unsuccessful runs, changed test identities/outcomes and
-mismatched provenance. Skips remain skips. Inherited proxies are cleared only for
-the local TCK child. Timeout cleanup terminates its process group.
+mismatched provenance, modified tracked cA2A source, and any protected-handler
+count other than integer zero on either side. The counter measures successful
+protected `_lookup()` invocations after authentication and payload checks; it
+does not count early protected-path refusals or prove that path was never entered.
+Skips remain skips. The TCK checkout must have no tracked or untracked changes.
+Inherited proxies and `PYTEST_*` settings are cleared for the local TCK child. Timeout cleanup terminates its process group.
 
 ## Observed result
 
@@ -49,3 +53,8 @@ fixture coverage gaps; this change makes no production compatibility fix.
 This does not cover HTTP+JSON, gRPC, SHOULD/MAY, real hardware attestation,
 independent Go/JavaScript SDKs or cross-language cryptographic interoperability.
 The existing signed loopback tests are separate evidence, not TCK coverage.
+
+The environment and action pins remain the historical experiment's fixed inputs;
+they are not claims to track the latest dependency or action versions. Updating
+those pins and remeasuring is a separate comparison. Current comparator controls
+do not re-date the historical observed TCK results below.
