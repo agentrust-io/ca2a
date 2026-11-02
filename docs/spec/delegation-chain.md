@@ -58,7 +58,7 @@ without invalidating the signature.
 | Each hop's validity window, when present, contains the evaluation time | `CREDENTIAL_NOT_YET_VALID` / `CREDENTIAL_EXPIRED` |
 | The root issuer is pinned by the callee for runtime authorization | `UNTRUSTED_DELEGATION_ROOT` |
 | No hop is revoked by its issuer or by an issuer above it (checked only when a revocation snapshot is supplied) | `CREDENTIAL_REVOKED` |
-| A snapshot no older than `max_revocation_staleness` was supplied (only when that bound is set) | `REVOCATION_STATUS_UNKNOWN` |
+| A snapshot with `evaluation_time - max_revocation_staleness <= as_of <= evaluation_time` was supplied (only when that bound is set) | `REVOCATION_STATUS_UNKNOWN` |
 
 Signature validity establishes who issued a chain; it does not establish that
 the issuer is trusted. A live callee therefore supplies its local
@@ -148,12 +148,15 @@ snapshot's `as_of` (`not_revoked`). `ChainResult`, `PeerResult` and the
 successful verification.
 
 `max_revocation_staleness` (seconds, default unset) makes revocation checking
-mandatory. With it set, a missing snapshot, or one whose `as_of` is more than
-that many seconds before the evaluation time, raises
-`REVOCATION_STATUS_UNKNOWN`. It is unset by default so that offline verification
-with no revocation data keeps working. A stale snapshot can still prove a hop
+mandatory. With it set, a missing snapshot, or one whose `as_of` is outside
+`[evaluation_time - max_revocation_staleness, evaluation_time]`, raises
+`REVOCATION_STATUS_UNKNOWN`. Here `evaluation_time` is `at_time` when supplied,
+or the current Unix time for live verification. Future-dated snapshots are
+unknown, with zero clock-skew tolerance; both interval endpoints are accepted.
+The freshness policy is unset by default so that offline verification
+with no revocation data keeps working. A stale or future-dated snapshot can still prove a hop
 revoked, since revocation is monotonic, so a revoked hop is reported as
-`CREDENTIAL_REVOKED` before staleness is judged.
+`CREDENTIAL_REVOKED` before freshness is judged.
 
 When `at_time` is supplied, only statements with `issued_at` at or before it
 count, so an audit of a past decision is not rewritten by a revocation issued
