@@ -300,9 +300,10 @@ def test_live_clock_rejects_future_snapshot_without_at_time() -> None:
     with pytest.raises(RevocationStatusUnknown, match="future") as exc:
         _verify(chain, _snapshot(as_of=now + 3600), max_revocation_staleness=300)
     assert exc.value.code == "REVOCATION_STATUS_UNKNOWN"
-    assert _verify(
-        chain, _snapshot(as_of=int(time.time()) - 10), max_revocation_staleness=300
-    ).checked is True
+    assert (
+        _verify(chain, _snapshot(as_of=int(time.time()) - 10), max_revocation_staleness=300).checked
+        is True
+    )
 
 
 def test_snapshot_at_evaluation_time_satisfies_zero_staleness() -> None:
