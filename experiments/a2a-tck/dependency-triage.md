@@ -55,4 +55,28 @@ must retain their own source revision and dependency provenance. This change
 does not establish protected-path certification, Windows execution, a full
 hash lock, or an audit of the separately installed upstream TCK environment.
 
+## Validation on the updated environment
+
+At local source `29d0d5087ed46ecd17dafd5a945bd76a7386b7f1`, a newly created SUT
+virtual environment installed all 97 pinned packages. `pip check` passed and
+`pip-audit` reported zero known findings. The 15 comparator and 55 bridge/loopback
+tests passed. Both fresh official TCK JSON-RPC MUST runs produced 79 passed,
+156 skipped and 30 deselected. The comparator accepted identical per-test
+outcomes and integer-zero protected-handler counts on both sides. Neither run
+timed out; both recorded clean tracked cA2A source.
+
+The published equivalent source commit is
+`98f4fd69d789509ea81be8aa2a43870d586d91cb`; its tree
+`71ae1b78eacbb3f74b0e680ed1948ab876c136b5` exactly matches the locally
+tested tree. The retained manifests identify the local commit. In a separate
+hash-locked development environment, 796 unit tests passed and two skipped;
+Ruff, mypy (47 files) and configured Bandit passed.
+
+The SDK emitted context-detach and pending-task cleanup diagnostics during the
+runs. This is a passing test/comparator result, not a warning-free execution or
+proof those diagnostics are harmless. Structured revision, environment digest,
+audit and result observations are retained in
+[dependency-validation-2026-11-03.json](dependency-validation-2026-11-03.json).
+These observations do not replace the original historical table.
+
 Prepared with OpenAI Codex.
