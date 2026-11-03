@@ -62,7 +62,7 @@ propcache==0.5.2
 proto-plus==1.28.4
 protobuf==7.36.2
 py-serializable==2.1.0
-pyasn1==0.6.4
+pyasn1==0.6.5
 pyasn1-modules==0.4.2
 pycparser==3.0
 pydantic==2.13.5

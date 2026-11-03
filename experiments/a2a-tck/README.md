@@ -54,7 +54,13 @@ This does not cover HTTP+JSON, gRPC, SHOULD/MAY, real hardware attestation,
 independent Go/JavaScript SDKs or cross-language cryptographic interoperability.
 The existing signed loopback tests are separate evidence, not TCK coverage.
 
-The environment and action pins remain the historical experiment's fixed inputs;
-they are not claims to track the latest dependency or action versions. Updating
-those pins and remeasuring is a separate comparison. Current comparator controls
-do not re-date the historical observed TCK results below.
+The environment and action pins remain the historical experiment's fixed inputs,
+except that `environment.txt` now pins `pyasn1==0.6.5` to carry the security fix
+into the SUT interpreter installed by the TCK workflow. The #303 dependency-floor
+update did not cover this experimental installation path. Other pins, including
+`cedarpy` and action SHAs, are unchanged; updating them and remeasuring remains a
+separate comparison. These pins are not claims to track the latest versions.
+This security update and the current comparator controls do not re-date the
+historical observed TCK results above, measured at cA2A
+`806d1147c0bc834ee8aabb698b341c926cd8531e`; they are not results for the updated
+environment.
