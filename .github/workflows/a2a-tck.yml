@@ -25,6 +25,8 @@ jobs:
           python -m pip install uv==0.12.23
           uv venv --python 3.12 ../ca2a-tck-sut
           uv pip install --python ../ca2a-tck-sut/bin/python -r experiments/a2a-tck/environment.txt
+          ../ca2a-tck-sut/bin/python -m pip check
+          ../ca2a-tck-sut/bin/python -m pip_audit
           git clone https://github.com/a2aproject/a2a-tck.git ../a2a-tck
           git -C ../a2a-tck checkout 5daf0144b4a4adbdefb62180739b13c5bd7d8196
           cd ../a2a-tck

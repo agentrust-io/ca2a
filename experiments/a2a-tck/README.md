@@ -54,13 +54,15 @@ This does not cover HTTP+JSON, gRPC, SHOULD/MAY, real hardware attestation,
 independent Go/JavaScript SDKs or cross-language cryptographic interoperability.
 The existing signed loopback tests are separate evidence, not TCK coverage.
 
-The environment and action pins remain the historical experiment's fixed inputs,
-except that `environment.txt` now pins `pyasn1==0.6.5` to carry the security fix
-into the SUT interpreter installed by the TCK workflow. The #303 dependency-floor
-update did not cover this experimental installation path. Other pins, including
-`cedarpy` and action SHAs, are unchanged; updating them and remeasuring remains a
-separate comparison. These pins are not claims to track the latest versions.
-This security update and the current comparator controls do not re-date the
-historical observed TCK results above, measured at cA2A
-`806d1147c0bc834ee8aabb698b341c926cd8531e`; they are not results for the updated
-environment.
+The table above is historical evidence at
+`806d1147c0bc834ee8aabb698b341c926cd8531e`, not a result for the current
+environment. The experimental SUT now uses `pyasn1==0.6.5`; #303 did not cover
+this installation path. The [dependency triage](dependency-triage.md) records
+four further security pin updates. Other pins, including `cedarpy` and action
+SHAs, are unchanged. These pins are not claims to track the latest versions.
+
+The workflow checks installed dependency consistency and runs `pip-audit` on
+the SUT environment before executing the experiment. An audit failure stops
+the job; no advisory is ignored. This check does not audit the separate upstream
+TCK environment or establish absence of unknown vulnerabilities. The SUT file
+contains version pins, not a hash lock.
