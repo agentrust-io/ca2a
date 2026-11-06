@@ -240,6 +240,7 @@ def cross_check_trace_dag(records: list[dict[str, Any]], chain: list[DelegationC
         raise ProvenanceLinkBroken(
             f"DAG length {len(records)} does not match chain length {len(chain)}"
         )
+    previous_iat: int | None = None
     for i, record in enumerate(records):
         if i > 0:
             delegation = record.get("delegation") or {}
@@ -250,3 +251,20 @@ def cross_check_trace_dag(records: list[dict[str, Any]], chain: list[DelegationC
             raise ProvenanceLinkBroken(
                 f"record {i} was signed by a key that is not chain[{i}].subject"
             )
+        iat = record.get("iat")
+        if isinstance(iat, bool) or not isinstance(iat, int):
+            raise ProvenanceLinkBroken(f"record {i} iat must be an integer")
+        credential = chain[i]
+        if credential.not_before is not None and iat < credential.not_before:
+            raise ProvenanceLinkBroken(
+                f"record {i} iat {iat} precedes credential not_before {credential.not_before}"
+            )
+        if credential.not_after is not None and iat > credential.not_after:
+            raise ProvenanceLinkBroken(
+                f"record {i} iat {iat} exceeds credential not_after {credential.not_after}"
+            )
+        if previous_iat is not None and iat < previous_iat:
+            raise ProvenanceLinkBroken(
+                f"record {i} iat {iat} precedes parent iat {previous_iat}"
+            )
+        previous_iat = iat

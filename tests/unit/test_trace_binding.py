@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import time
+from dataclasses import replace
 
 import pytest
 import rfc8785
@@ -157,6 +158,34 @@ def test_cross_check_ties_dag_to_chain() -> None:
     chain, keys = build_chain_with_keys(_THREE_HOP)
     records = emit_dag(_hops(chain, keys))
     cross_check_trace_dag(records, chain)  # does not raise
+
+
+@pytest.mark.parametrize(
+    ("times", "failure"),
+    [
+        ([1700000999, 1700001000, 1700001000], "not_before"),
+        ([1700001000, 1700001000, 1700002001], "not_after"),
+        ([1700001100, 1700001099, 1700001100], "parent iat"),
+    ],
+)
+def test_cross_check_rejects_invalid_hop_times(times, failure) -> None:
+    chain, keys = build_chain_with_keys(_THREE_HOP, not_before=1700001000, not_after=1700002000)
+    hops = [replace(hop, iat=timestamp) for hop, timestamp in zip(_hops(chain, keys), times, strict=True)]
+    records = emit_dag(hops)
+    verify_trace_dag(records, trusted_keys=_trusted(keys))
+    with pytest.raises(ProvenanceLinkBroken, match=failure):
+        cross_check_trace_dag(records, chain)
+
+
+def test_cross_check_accepts_inclusive_bounds_and_equal_times() -> None:
+    chain, keys = build_chain_with_keys(_THREE_HOP, not_before=1700001000, not_after=1700002000)
+    hops = [
+        replace(hop, iat=timestamp)
+        for hop, timestamp in zip(_hops(chain, keys), [1700001000, 1700002000, 1700002000], strict=True)
+    ]
+    records = emit_dag(hops)
+    verify_trace_dag(records, trusted_keys=_trusted(keys))
+    cross_check_trace_dag(records, chain)
 
 
 def test_cross_check_rejects_credential_mismatch() -> None:
