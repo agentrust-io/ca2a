@@ -1,0 +1,99 @@
+{
+  "date": "2026-11-03",
+  "python": "3.12.14",
+  "environment_sha256": "68014f5dcb26a0900549e044c94a76a94b05491583c246bbd7a448bc0237183c",
+  "audit_tool": "pip-audit 2.10.1",
+  "audit_before": [
+    {
+      "package": "filelock",
+      "version": "3.32.5",
+      "advisories": [
+        "CVE-2026-112940",
+        "CVE-2026-112913",
+        "CVE-2026-112907",
+        "CVE-2026-112938",
+        "CVE-2026-112936",
+        "CVE-2026-112910",
+        "CVE-2026-112909",
+        "CVE-2026-112911",
+        "CVE-2026-112939",
+        "CVE-2026-112915",
+        "CVE-2026-112935",
+        "CVE-2026-112908"
+      ]
+    },
+    {
+      "package": "msgpack",
+      "version": "1.2.2",
+      "advisories": [
+        "CVE-2026-114613"
+      ]
+    },
+    {
+      "package": "opentelemetry-api",
+      "version": "1.44.0",
+      "advisories": [
+        "CVE-2026-114603"
+      ]
+    },
+    {
+      "package": "setuptools",
+      "version": "84.0.0",
+      "advisories": [
+        "GHSA-xmj3-9gf7-h52w"
+      ]
+    }
+  ],
+  "audit_after": {
+    "packages": 97,
+    "findings": 0
+  },
+  "focused_tests_passed": 70,
+  "tck": {
+    "baseline": {
+      "ca2a_commit": "29d0d5087ed46ecd17dafd5a945bd76a7386b7f1",
+      "ca2a_tracked_changes": "",
+      "tck_commit": "5daf0144b4a4adbdefb62180739b13c5bd7d8196",
+      "tck_lock_sha256": "7650dafd015617312c49f87bfafaa17e96f6af5d7d73540ce0ef4a2f46dfe404",
+      "runner_sha256": "94c6c29bc669422fee9ca005ae64ee54d5e917bdb9d585c7df195f96c9db6750",
+      "sdk": "1.2.2",
+      "exit_code": 0,
+      "timed_out": false,
+      "protected_handler_invocations": 0,
+      "passed": 79,
+      "skipped": 156,
+      "deselected": 30
+    },
+    "extension": {
+      "ca2a_commit": "29d0d5087ed46ecd17dafd5a945bd76a7386b7f1",
+      "ca2a_tracked_changes": "",
+      "tck_commit": "5daf0144b4a4adbdefb62180739b13c5bd7d8196",
+      "tck_lock_sha256": "7650dafd015617312c49f87bfafaa17e96f6af5d7d73540ce0ef4a2f46dfe404",
+      "runner_sha256": "94c6c29bc669422fee9ca005ae64ee54d5e917bdb9d585c7df195f96c9db6750",
+      "sdk": "1.2.2",
+      "exit_code": 0,
+      "timed_out": false,
+      "protected_handler_invocations": 0,
+      "passed": 79,
+      "skipped": 156,
+      "deselected": 30
+    }
+  },
+  "limits": [
+    "Local Linux software experiment; no protected-path TCK certification",
+    "SUT audit only; upstream TCK environment is separate",
+    "SDK/OpenTelemetry context-detach and pending-task cleanup diagnostics occurred; not a warning-free run"
+  ],
+  "local_source_commit": "29d0d5087ed46ecd17dafd5a945bd76a7386b7f1",
+  "published_equivalent_source_commit": "98f4fd69d789509ea81be8aa2a43870d586d91cb",
+  "source_tree": "71ae1b78eacbb3f74b0e680ed1948ab876c136b5",
+  "publication_note": "The GitHub API-created commit has the identical tested source tree; retained TCK manifests identify the local commit.",
+  "repository_checks": {
+    "environment": "separate hash-locked requirements/dev.txt environment with editable checkout",
+    "unit_passed": 796,
+    "unit_skipped": 2,
+    "ruff": "pass",
+    "mypy": "47 source files pass",
+    "bandit": "pass"
+  }
+}
