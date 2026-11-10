@@ -83,6 +83,18 @@ def verify_sev_snp_report(
     ``agent_manifest.PLATFORM_INFO_BITS``. Both default to ``None``, which
     appraises nothing and leaves prior behaviour unchanged.
     """
+    if expected_measurement is not None and (
+        not isinstance(expected_measurement, (bytes, bytearray, memoryview))
+        or len(expected_measurement) != 48
+    ):
+        raise ValueError("expected_measurement must be a 48-byte SNP measurement")
+    if expected_report_data is not None and (
+        not isinstance(expected_report_data, (bytes, bytearray, memoryview))
+        or len(expected_report_data) != 64
+    ):
+        raise ValueError("expected_report_data must be a 64-byte SNP report_data value")
+    if not isinstance(reject_unrecognized_platform_bits, bool):
+        raise ValueError("reject_unrecognized_platform_bits must be a boolean")
     report = SevSnpReport.parse(report_bytes)
 
     if report.signature_algo != SIG_ALGO_ECDSA_P384_SHA384:
@@ -155,6 +167,8 @@ def sev_snp_verifier(
         raise ValueError("expected_measurement must be a 48-byte SNP measurement")
     if type(min_guest_svn) is not int or not 0 <= min_guest_svn <= 0xFFFFFFFF:
         raise ValueError("min_guest_svn must be an unsigned 32-bit integer")
+    if not isinstance(reject_unrecognized_platform_bits, bool):
+        raise ValueError("reject_unrecognized_platform_bits must be a boolean")
     roots, chain = list(trusted_roots), list(vcek_chain)
     required, forbidden = set(require_platform), set(forbid_platform)
 
