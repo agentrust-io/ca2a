@@ -62,6 +62,21 @@ def test_signed_path_authenticates(evidence, capsys):
     assert out["revocation"] == "not_checked"
 
 
+def test_backdated_signed_hop_is_not_authenticated(evidence, capsys):
+    chain, keys = evidence[:2]
+    context = HopContext.software(
+        model_provider="test", model_id="test", image_label="test", policy_bundle_hash=digest(b"policy")
+    )
+    records = emit_dag([
+        HopSpec(f"did:web:peer{i}", keys[i], context, timestamp, c.credential_id)
+        for i, (c, timestamp) in enumerate(zip(chain, [1750000000, 1749999999, 1750000000], strict=True))
+    ])
+    rc, out = run(evidence, capsys, records)
+    assert rc == 1
+    assert out["verified"] is False
+    assert out["code"] == "PROVENANCE_LINK_BROKEN"
+
+
 def test_native_default_is_not_a_verification_success(evidence, capsys):
     rc, out = run(evidence, capsys, [r.body() for r in evidence[3]], "verify-dag")
     assert rc == 1
