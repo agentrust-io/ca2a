@@ -188,3 +188,34 @@ def test_real_tpm_quote_parses_and_verifies() -> None:
     tampered[100] ^= 0x01
     with pytest.raises(InvalidSignature):
         ak_pub.verify(signature, bytes(tampered), padding.PKCS1v15(), hashes.SHA256())
+
+
+@pytest.mark.parametrize(
+    "bad_blob",
+    [
+        build_attest(qualifying_data=b"n", pcr_digest=b"\x11" * 32) + b"\x00",
+        build_attest(qualifying_data=b"n", pcr_digest=b"\x11" * 32) + b"trailing",
+        "not-bytes",  # type: ignore[list-item]
+    ],
+)
+def test_tpm_quote_parse_rejects_trailing_bytes_and_non_bytes(bad_blob: bytes) -> None:
+    with pytest.raises(AttestationFailed):
+        TpmQuote.parse(bad_blob)
+
+
+@pytest.mark.parametrize("wrong_platform", ["tdx", "sev-snp", "software-only", ""])
+def test_verify_tpm_report_rejects_non_tpm_platform(wrong_platform: str) -> None:
+    from ca2a_runtime.tee.base import AttestationReport
+    from ca2a_verify.tpm import verify_tpm_report
+
+    report = AttestationReport(
+        platform=wrong_platform,
+        measurement="sha256:" + "11" * 32,
+        public_key="aa" * 32,
+        nonce="fresh",
+        raw_evidence=build_attest(qualifying_data=b"n", pcr_digest=b"\x11" * 32),
+        quote_signature=b"\x00" * 64,
+        attestation_key_chain_pem=b"-----BEGIN CERTIFICATE-----\n",
+    )
+    with pytest.raises(AttestationFailed, match="expected a 'tpm' attestation report"):
+        verify_tpm_report(report, "fresh", trusted_roots_pem=b"-----BEGIN CERTIFICATE-----\n")

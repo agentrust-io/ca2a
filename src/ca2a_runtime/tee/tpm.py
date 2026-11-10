@@ -79,6 +79,7 @@ _TPM2_PT_NV_BUFFER_MAX = 0x0000012B
 # party verify offline later: the chain travels with the evidence.
 _AIA_FETCH_TIMEOUT_SECONDS = 5
 _AIA_MAX_DEPTH = 4
+_AIA_MAX_CERT_BYTES = 64 * 1024
 _AIA_CA_ISSUERS_OID = "1.3.6.1.5.5.7.48.2"
 
 
@@ -123,6 +124,9 @@ class TpmQuote:
 
     @classmethod
     def parse(cls, blob: bytes) -> TpmQuote:
+        if not isinstance(blob, (bytes, bytearray, memoryview)):
+            raise AttestationFailed("TPM quote must be bytes", detail=f"got {type(blob).__name__}")
+        blob = bytes(blob)
         if len(blob) < 6:
             raise AttestationFailed("TPM quote too short")
         magic = int.from_bytes(blob[0:4], "big")
@@ -141,12 +145,17 @@ class TpmQuote:
             size_of_select = blob[pos + 2]
             pos += 3 + size_of_select
         pcr_digest, pos = _read_2b(blob, pos)
+        if pos != len(blob):
+            raise AttestationFailed(
+                "TPM quote carries trailing bytes after PCR digest",
+                detail=f"parsed {pos} bytes, got {len(blob)} bytes",
+            )
         return cls(
             magic=magic,
             attest_type=attest_type,
             qualifying_data=qualifying_data,
             pcr_digest=pcr_digest,
-            raw=bytes(blob),
+            raw=blob,
         )
 
 
@@ -495,7 +504,13 @@ class TpmProvider(BaseProvider):
                     with urllib.request.urlopen(  # noqa: S310  # nosec B310
                         url, timeout=_AIA_FETCH_TIMEOUT_SECONDS
                     ) as response:
-                        found = load_any(response.read())
+                        raw = response.read(_AIA_MAX_CERT_BYTES + 1)
+                    if len(raw) > _AIA_MAX_CERT_BYTES:
+                        logger.debug(
+                            "AIA response exceeded %d bytes for %s", _AIA_MAX_CERT_BYTES, url
+                        )
+                        continue
+                    found = load_any(raw)
                 except Exception as exc:  # noqa: BLE001
                     logger.debug("AIA fetch failed for %s: %s", url, exc)
                     continue
