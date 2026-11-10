@@ -145,6 +145,10 @@ class TdxQuote:
             )
         if pos + outer_len > len(sig):
             raise AttestationFailed("QE certification data is truncated")
+        if pos + outer_len != len(sig):
+            raise AttestationFailed(
+                "TDX signature section carries trailing bytes after QE certification data"
+            )
         cert_data = sig[pos : pos + outer_len]
         if len(cert_data) < QE_REPORT_LEN + QUOTE_SIG_LEN + 2 + CERT_DATA_HEADER_LEN:
             raise AttestationFailed("QE certification data is truncated")
@@ -164,6 +168,10 @@ class TdxQuote:
         inner += CERT_DATA_HEADER_LEN
         if inner + cert_len > len(cert_data):
             raise AttestationFailed("PCK certificate chain is truncated")
+        if inner + cert_len != len(cert_data):
+            raise AttestationFailed(
+                "QE certification data carries trailing bytes after PCK certificate chain"
+            )
         cert_bytes = cert_data[inner : inner + cert_len]
         if cert_type != CERT_TYPE_PCK_CHAIN:
             raise AttestationFailed(
@@ -176,6 +184,12 @@ class TdxQuote:
             raise AttestationFailed(
                 "could not parse PCK certificate chain", detail=str(exc)
             ) from exc
+        if not chain:
+            raise AttestationFailed("PCK certificate chain is empty")
+        if any(blob[end:]):
+            raise AttestationFailed(
+                "TDX quote carries non-zero trailing bytes after signature section"
+            )
 
         return cls(
             version=version,
