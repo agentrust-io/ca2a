@@ -29,6 +29,7 @@ Install with the extra::
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
@@ -231,7 +232,12 @@ def metadata_from_sdk_message(message: Any) -> dict[str, Any]:
                 continue
             for field in ("depth", "not_before", "not_after"):
                 value = credential.get(field)
-                if isinstance(value, float) and value.is_integer():
+                if (
+                    isinstance(value, float)
+                    and math.isfinite(value)
+                    and value.is_integer()
+                    and abs(int(value)) <= 9_007_199_254_740_991
+                ):
                     credential[field] = int(value)
     return result
 
