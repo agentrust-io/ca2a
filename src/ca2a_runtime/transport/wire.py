@@ -114,19 +114,36 @@ def parse_channel_offer(data: dict[str, Any]) -> ChannelOffer:
             "malformed channel offer", detail=f"expected an object, got {type(data).__name__}"
         )
     try:
-        public_key = str(data["channel_public_key"])
+        public_key = data["channel_public_key"]
+        if not isinstance(public_key, str) or not public_key:
+            raise TransportError(
+                "malformed channel offer",
+                detail="channel_public_key must be a non-empty string",
+            )
         att = data["attestation"]
+        if not isinstance(att, dict):
+            raise TransportError(
+                "malformed channel offer",
+                detail=f"attestation must be an object, got {type(att).__name__}",
+            )
+        for claim_field in _CLAIM_FIELDS:
+            val = att[claim_field]
+            if not isinstance(val, str) or not val:
+                raise TransportError(
+                    "malformed channel offer",
+                    detail=f"attestation.{claim_field} must be a non-empty string",
+                )
         evidence = {
             field: b64url_decode(field, att[field]) for field in _EVIDENCE_FIELDS if field in att
         }
         role = att.get("role", ROLE_CALLEE)
-        if role not in ROLES:
+        if not isinstance(role, str) or role not in ROLES:
             raise TransportError("malformed channel offer", detail=f"unknown offer role {role!r}")
         report = AttestationReport(
-            platform=str(att["platform"]),
-            measurement=str(att["measurement"]),
-            public_key=str(att["public_key"]),
-            nonce=str(att["nonce"]),
+            platform=att["platform"],
+            measurement=att["measurement"],
+            public_key=att["public_key"],
+            nonce=att["nonce"],
             role=role,
             **evidence,
         )
