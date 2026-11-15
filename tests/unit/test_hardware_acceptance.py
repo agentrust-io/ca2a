@@ -204,6 +204,7 @@ def test_real_http_quote_timeout_is_incomplete_work_not_security_rejection(tmp_p
     [
         '{"a": 1, "a": 2}',
         '{"a": NaN}',
+        '{"a": 1e400}',
         "[1, 2]",
     ],
 )
@@ -226,9 +227,46 @@ def test_harness_rejects_duplicate_keys_nonfinite_and_non_dict_config(
 def test_adapter_rejects_non_dict_inputs_empty_parent_hash_and_sdk_unsafe_float():
     from ca2a_runtime.errors import TransportError
     from ca2a_runtime.transport import a2a_adapter
+    from ca2a_runtime.transport.a2a_sdk import _coerce_sdk_credential_integers
+    from ca2a_runtime.transport.constants import (
+        KEY_DELEGATION_CHAIN,
+        KEY_PARENT_RECORD_HASH,
+        KEY_RECORD_ID,
+        KEY_REQUESTED_CAPABILITY,
+    )
 
     for bad_msg in ([1, 2], "str", None):
         with pytest.raises(TransportError):
             a2a_adapter.collect_metadata(bad_msg)  # type: ignore[arg-type]
     with pytest.raises(TransportError):
         a2a_adapter.collect_metadata({}, metadata=["not-a-dict"])  # type: ignore[arg-type]
+
+    with pytest.raises(TransportError, match="non-empty string or null"):
+        a2a_adapter.parse_peer_request(
+            {
+                "metadata": {
+                    KEY_DELEGATION_CHAIN: [{"credential_id": "c"}],
+                    KEY_REQUESTED_CAPABILITY: "read",
+                    KEY_RECORD_ID: "rec",
+                    KEY_PARENT_RECORD_HASH: "",
+                }
+            }
+        )
+    with pytest.raises(ValueError, match="non-finite JSON number"):
+        harness._loads_strict('{"overflow": 1e400}')
+
+    safe = 2**53 - 1
+    converted = _coerce_sdk_credential_integers(
+        {
+            KEY_DELEGATION_CHAIN: [
+                {"depth": float(safe), "not_before": float(-safe), "not_after": 1.5},
+                {"depth": float(safe + 1), "not_before": "1e400"},
+            ]
+        }
+    )
+    chain = converted[KEY_DELEGATION_CHAIN]
+    assert chain[0]["depth"] == safe and type(chain[0]["depth"]) is int
+    assert chain[0]["not_before"] == -safe and type(chain[0]["not_before"]) is int
+    assert chain[0]["not_after"] == 1.5
+    assert type(chain[1]["depth"]) is float and chain[1]["depth"] == float(safe + 1)
+    assert chain[1]["not_before"] == "1e400"

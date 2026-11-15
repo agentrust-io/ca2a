@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import math
 import secrets
 import threading
 import time
@@ -113,7 +114,21 @@ def _loads_strict(text: str) -> Any:
     def _no_nonfinite(token: str) -> Any:
         raise ValueError(f"non-finite JSON constant is not allowed: {token}")
 
-    return json.loads(text, object_pairs_hook=_no_duplicate_keys, parse_constant=_no_nonfinite)
+    def _finite_float(token: str) -> float:
+        try:
+            number = float(token)
+        except OverflowError as exc:
+            raise ValueError(f"non-finite JSON number is not allowed: {token}") from exc
+        if not math.isfinite(number):
+            raise ValueError(f"non-finite JSON number is not allowed: {token}")
+        return number
+
+    return json.loads(
+        text,
+        object_pairs_hook=_no_duplicate_keys,
+        parse_constant=_no_nonfinite,
+        parse_float=_finite_float,
+    )
 
 
 def real_provider() -> SevSnpProvider:

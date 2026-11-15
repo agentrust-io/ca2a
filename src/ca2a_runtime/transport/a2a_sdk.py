@@ -224,7 +224,19 @@ def metadata_from_sdk_message(message: Any) -> dict[str, Any]:
     metadata = getattr(message, "metadata", None)
     if metadata is None:
         return {}
-    result = dict(json_format.MessageToDict(metadata))
+    return _coerce_sdk_credential_integers(dict(json_format.MessageToDict(metadata)))
+
+
+_SDK_SAFE_INT_MAX = 2**53 - 1
+
+
+def _coerce_sdk_credential_integers(result: dict[str, Any]) -> dict[str, Any]:
+    """Restore Struct doubles that are safe integers; leave overflow alone.
+
+    Protobuf Struct stores every number as a double. ``2**53 - 1`` is the last
+    integer that round-trips exactly, so larger values, non-integers, and
+    non-finite numbers stay unchanged and fail closed in credential parsing.
+    """
     chain = result.get(KEY_DELEGATION_CHAIN)
     if isinstance(chain, list):
         for credential in chain:
@@ -236,7 +248,7 @@ def metadata_from_sdk_message(message: Any) -> dict[str, Any]:
                     isinstance(value, float)
                     and math.isfinite(value)
                     and value.is_integer()
-                    and abs(int(value)) <= 9_007_199_254_740_991
+                    and abs(int(value)) <= _SDK_SAFE_INT_MAX
                 ):
                     credential[field] = int(value)
     return result
