@@ -14,6 +14,7 @@ from agent_manifest import _cose as sdk_cose
 from ca2a_runtime.agent_manifest import (
     load_agent_manifest_document,
     load_agent_manifest_trust_anchor,
+    load_agent_manifest_trust_policy,
     verify_agent_manifest_binding,
 )
 from ca2a_runtime.bootstrap import build_peer_node
@@ -66,16 +67,16 @@ def _v01() -> tuple[dict, str, bytes]:
     return manifest, keypair.key_id, keypair.public_bytes
 
 
-def _trust_file(path: Path, key_id: str, public_key: bytes) -> Path:
-    path.write_text(
-        json.dumps(
-            {
-                "key_id": key_id,
-                "public_key_base64url": base64.urlsafe_b64encode(public_key).rstrip(b"=").decode(),
-            }
-        ),
-        encoding="utf-8",
-    )
+def _trust_file(
+    path: Path, key_id: str, public_key: bytes, issuers: list[str] | None = None
+) -> Path:
+    entry = {
+        "key_id": key_id,
+        "public_key_base64url": base64.urlsafe_b64encode(public_key).rstrip(b"=").decode(),
+    }
+    if issuers is not None:
+        entry["issuers"] = issuers
+    path.write_text(json.dumps(entry), encoding="utf-8")
     return path
 
 
@@ -86,7 +87,10 @@ def test_v02_cose_binds_end_to_end(tmp_path: Path) -> None:
 
     loaded = load_agent_manifest_document(path)
     binding = verify_agent_manifest_binding(
-        loaded, {key_id: public_key}, authenticated_subject=AGENT_ID
+        loaded,
+        {key_id: public_key},
+        authenticated_subject=AGENT_ID,
+        trusted_key_issuers={key_id: [ISSUER]},
     )
 
     assert loaded.envelope == envelope
@@ -105,6 +109,7 @@ def test_v01_json_still_binds(tmp_path: Path) -> None:
         load_agent_manifest_document(path),
         {key_id: public_key},
         authenticated_subject=AGENT_ID,
+        trusted_key_issuers={key_id: [ISSUER]},
     )
     assert binding.version == "0.1"
 
@@ -146,7 +151,12 @@ def test_tampered_cose_is_rejected(tmp_path: Path) -> None:
     except ConfigError:
         return
     with pytest.raises(ConfigError, match="verification failed"):
-        verify_agent_manifest_binding(loaded, {key_id: public_key}, authenticated_subject=AGENT_ID)
+        verify_agent_manifest_binding(
+            loaded,
+            {key_id: public_key},
+            authenticated_subject=AGENT_ID,
+            trusted_key_issuers={key_id: [ISSUER]},
+        )
 
 
 def test_untrusted_cose_is_rejected(tmp_path: Path) -> None:
@@ -159,6 +169,7 @@ def test_untrusted_cose_is_rejected(tmp_path: Path) -> None:
             load_agent_manifest_document(path),
             {other.key_id: other.public_bytes},
             authenticated_subject=AGENT_ID,
+            trusted_key_issuers={other.key_id: [ISSUER]},
         )
 
 
@@ -171,6 +182,7 @@ def test_subject_mismatch_is_rejected(tmp_path: Path) -> None:
             load_agent_manifest_document(path),
             {key_id: public_key},
             authenticated_subject="spiffe://factory.example/agent/other/dev",
+            trusted_key_issuers={key_id: [ISSUER]},
         )
 
 
@@ -178,7 +190,7 @@ def test_startup_carries_verified_manifest_binding(tmp_path: Path) -> None:
     envelope, manifest, key_id, public_key = _cose()
     manifest_path = tmp_path / "manifest.cose"
     manifest_path.write_bytes(envelope)
-    trust_path = _trust_file(tmp_path / "manifest-key.json", key_id, public_key)
+    trust_path = _trust_file(tmp_path / "manifest-key.json", key_id, public_key, [ISSUER])
     config = Ca2aConfig(
         provider="software-only",
         local_policy=frozenset({"read"}),
@@ -200,3 +212,88 @@ def test_trust_anchor_key_id_must_match_key(tmp_path: Path) -> None:
     path = _trust_file(tmp_path / "manifest-key.json", "0" * 64, keypair.public_bytes)
     with pytest.raises(ConfigError, match="key_id does not match"):
         load_agent_manifest_trust_anchor(path)
+
+
+def _cose_file(tmp_path: Path) -> tuple[Path, str, bytes]:
+    envelope, _manifest_doc, key_id, public_key = _cose()
+    path = tmp_path / "manifest.cose"
+    path.write_bytes(envelope)
+    return path, key_id, public_key
+
+
+def test_binding_without_issuer_policy_is_refused(tmp_path: Path) -> None:
+    path, key_id, public_key = _cose_file(tmp_path)
+    with pytest.raises(ConfigError, match="issuers each key may sign for"):
+        verify_agent_manifest_binding(
+            load_agent_manifest_document(path),
+            {key_id: public_key},
+            authenticated_subject=AGENT_ID,
+        )
+
+
+def test_key_authorized_for_another_issuer_is_refused(tmp_path: Path) -> None:
+    path, key_id, public_key = _cose_file(tmp_path)
+    with pytest.raises(ConfigError, match="verification failed"):
+        verify_agent_manifest_binding(
+            load_agent_manifest_document(path),
+            {key_id: public_key},
+            authenticated_subject=AGENT_ID,
+            trusted_key_issuers={key_id: ["spiffe://factory.example/signing-authority/other"]},
+        )
+
+
+def test_startup_refuses_an_anchor_without_issuers(tmp_path: Path) -> None:
+    path, key_id, public_key = _cose_file(tmp_path)
+    trust_path = _trust_file(tmp_path / "manifest-key.json", key_id, public_key)
+    config = Ca2aConfig(
+        provider="software-only",
+        local_policy=frozenset({"read"}),
+        trusted_root_issuers=frozenset({"delegation-root"}),
+        agent_manifest_path=path.name,
+        agent_manifest_trust_anchor_path=trust_path.name,
+        agent_manifest_authenticated_subject=AGENT_ID,
+    )
+    with pytest.raises(ConfigError, match="issuers each key may sign for"):
+        build_peer_node(config, config_dir=tmp_path)
+
+
+def test_trust_policy_reads_issuers_per_key(tmp_path: Path) -> None:
+    keypair = sdk.generate_ed25519()
+    path = _trust_file(tmp_path / "k.json", keypair.key_id, keypair.public_bytes, [ISSUER])
+    keys, policy = load_agent_manifest_trust_policy(path)
+    assert keys == {keypair.key_id: keypair.public_bytes}
+    assert policy == {keypair.key_id: [ISSUER]}
+    assert load_agent_manifest_trust_anchor(path) == keys
+
+
+@pytest.mark.parametrize(
+    "mutate, message",
+    [
+        (lambda e: {**e, "issuers": ["not-a-spiffe-id"]}, "list of SPIFFE IDs"),
+        (lambda e: {**e, "issuers": ISSUER}, "list of SPIFFE IDs"),
+        (lambda e: {**e, "d": "AAAA"}, "private keys"),
+        (lambda e: {"keys": [e, e]}, "repeats key_id"),
+    ],
+)
+def test_trust_policy_refuses_bad_entries(tmp_path: Path, mutate, message: str) -> None:
+    keypair = sdk.generate_ed25519()
+    entry = {
+        "key_id": keypair.key_id,
+        "public_key_base64url": base64.urlsafe_b64encode(keypair.public_bytes)
+        .rstrip(b"=")
+        .decode(),
+        "issuers": [ISSUER],
+    }
+    path = tmp_path / "k.json"
+    path.write_text(json.dumps(mutate(entry)), encoding="utf-8")
+    with pytest.raises(ConfigError, match=message):
+        load_agent_manifest_trust_policy(path)
+
+
+def test_trust_policy_refuses_duplicate_json_keys(tmp_path: Path) -> None:
+    path = tmp_path / "k.json"
+    path.write_text(
+        '{"public_key_base64url": "AA", "public_key_base64url": "BB"}', encoding="utf-8"
+    )
+    with pytest.raises(ConfigError, match="duplicate JSON key"):
+        load_agent_manifest_trust_policy(path)

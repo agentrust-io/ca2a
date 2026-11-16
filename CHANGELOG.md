@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Agent Manifest binding now checks which issuer a key may sign for**
+  (Agent Manifest spec 5.3.3). The trust anchor lists `issuers` per key, in the
+  same format as cMCP, and startup fails when no key lists any. Before, any
+  trusted key could vouch for a manifest from any issuer, and with
+  agent-manifest 0.16 every binding failed as `UNVERIFIABLE`. Existing trust
+  anchor files need an `issuers` array added to each key.
+
 - Raise the A2A SDK and development extras' `pyasn1` security floor to 0.6.5,
   alongside the development/CI hash lock, clearing four dependency-audit
   findings for 0.6.4.

@@ -23,7 +23,7 @@ from pathlib import Path
 
 from ca2a_runtime.agent_manifest import (
     load_agent_manifest_document,
-    load_agent_manifest_trust_anchor,
+    load_agent_manifest_trust_policy,
     verify_agent_manifest_binding,
 )
 from ca2a_runtime.attestation import Verifier
@@ -178,11 +178,12 @@ def build_peer_node(config: Ca2aConfig, *, config_dir: Path | None = None) -> Pe
             if not trust_path.is_absolute():
                 trust_path = config_dir / trust_path
         loaded = load_agent_manifest_document(manifest_path)
-        trusted_keys = load_agent_manifest_trust_anchor(trust_path)
+        trusted_keys, issuers = load_agent_manifest_trust_policy(trust_path)
         manifest_binding = verify_agent_manifest_binding(
             loaded,
             trusted_keys,
             authenticated_subject=config.agent_manifest_authenticated_subject,
+            trusted_key_issuers=issuers,
         )
 
     return PeerNode(
