@@ -57,8 +57,39 @@ proof).
 | `local_policy` | none | Capability allow set for `LocalPolicy`. Required for `ca2a start` unless `policy_bundle_path` is set. |
 | `policy_bundle_path` | none | Path to a Cedar policy file, resolved relative to the config file. When set, used instead of `local_policy`. |
 | `agent_manifest.path` | none | Optional signed Agent Manifest. Content is sniffed: v0.1 JSON and v0.2 COSE are accepted; a bare v0.2 JSON payload is rejected because its COSE envelope is the signature. |
-| `agent_manifest.trust_anchor_path` | none | JSON trust anchor containing one key or a `keys` array. Each key has `public_key_base64url`, an optional `key_id`, and `issuers`: the SPIFFE IDs of the manifest issuers it may sign for (Agent Manifest spec 5.3.3). Startup fails if no key lists `issuers`; a key without them signs for no issuer. Same format as cMCP. Relative paths resolve against the config file. |
+| `agent_manifest.trust_anchor_path` | none | JSON trust anchor containing one key or a `keys` array. Each key has `public_key_base64url`, an optional `key_id`, and `issuers`: the SPIFFE IDs of the manifest issuers it may sign for (Agent Manifest spec 5.3.3). Startup fails if no key has an `issuers` member, and the binding fails unless the key that signed the manifest lists its issuer. See [Agent Manifest trust anchor](#agent-manifest-trust-anchor). Same format and rules as cMCP. Relative paths resolve against the config file. |
 | `agent_manifest.authenticated_subject` | none | SPIFFE URI independently configured for this peer. Startup fails unless it equals the verified manifest's `agent_id`. All three `agent_manifest` fields must be configured together. |
+
+### Agent Manifest trust anchor
+
+Two keys, each allowed to sign for its own issuer:
+
+```json
+{
+  "keys": [
+    {
+      "key_id": "<sha256 hex of the raw public key>",
+      "public_key_base64url": "<32-byte Ed25519 public key, unpadded base64url>",
+      "issuers": ["spiffe://factory.example/signing-authority/production"]
+    },
+    {
+      "public_key_base64url": "<another Ed25519 public key>",
+      "issuers": ["spiffe://factory.example/signing-authority/staging"]
+    }
+  ]
+}
+```
+
+A manifest binds only when the key that signed it lists the manifest's
+`issuer`. A key with no `issuers` member, or with `"issuers": []`, signs for no
+issuer. `key_id` defaults to the SHA-256 of the key. The file is refused if a
+key is not canonical unpadded base64url, an issuer is not a SPIFFE ID, a JSON
+member or `key_id` repeats, it contains `NaN` or `Infinity`, or any key carries
+private material.
+
+This file is the relying party's own policy. Fill it from a channel you trust,
+not from material the manifest's producer sent alongside it: a key and issuer
+copied from the producer prove only that the producer signed its own manifest.
 
 There is no key field: a `PeerNode` generates its own X25519 channel keypair at
 startup and publishes the public half through the attestation handshake, so a

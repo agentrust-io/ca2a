@@ -72,13 +72,14 @@ class AgentManifestBinding:
 
 
 def _b64url_decode(value: str) -> bytes:
-    if not _B64URL_RE.fullmatch(value):
+    """Decode canonical unpadded base64url, as cMCP does: a length of 1 mod 4 is
+    never valid, and a value whose unused bits are set re-encodes differently."""
+    if len(value) % 4 == 1 or not _B64URL_RE.fullmatch(value):
         raise ConfigError("Agent Manifest signature/key must use base64url encoding")
-    padding = (-len(value)) % 4
-    try:
-        return base64.urlsafe_b64decode(value + "=" * padding)
-    except ValueError as exc:
-        raise ConfigError("Agent Manifest signature/key is not valid base64url") from exc
+    raw = base64.urlsafe_b64decode(value + "=" * ((-len(value)) % 4))
+    if _b64url_encode(raw) != value:
+        raise ConfigError("Agent Manifest signature/key must use base64url encoding")
+    return raw
 
 
 def _b64url_encode(value: bytes) -> str:
@@ -123,7 +124,11 @@ def load_agent_manifest_document(path: str | Path) -> LoadedAgentManifest:
 
 
 def load_agent_manifest_trust_anchor(path: str | Path) -> dict[str, bytes]:
-    """Load the keys of a JSON trust-anchor file. See load_agent_manifest_trust_policy."""
+    """Load only the keys of a JSON trust-anchor file, without the issuer policy.
+
+    Not for verification: a binding needs the policy too, so use
+    load_agent_manifest_trust_policy there.
+    """
     return load_agent_manifest_trust_policy(path)[0]
 
 
@@ -199,12 +204,14 @@ def verify_agent_manifest_binding(
     trusted_keys: dict[str, bytes],
     *,
     authenticated_subject: str,
-    trusted_key_issuers: dict[str, list[str]] | None = None,
+    trusted_key_issuers: dict[str, list[str]] | None,
 ) -> AgentManifestBinding:
     """Verify the supplied artifact, then bind its identity to the configured subject.
 
-    *trusted_key_issuers* maps each key_id to the issuers it may sign for. It is
-    required: without it nothing says which issuer a key speaks for (spec 5.3.3).
+    *trusted_key_issuers* maps each key_id to the issuers it may sign for, as
+    load_agent_manifest_trust_policy returns it. It has no default, so no caller
+    can leave it out by accident. None, an anchor that declares no issuers, is
+    refused: without it nothing says which issuer a key speaks for (spec 5.3.3).
     """
     if trusted_key_issuers is None:
         raise ConfigError(
