@@ -273,6 +273,24 @@ def test_trust_policy_reads_issuers_per_key(tmp_path: Path) -> None:
         (lambda e: {**e, "issuers": ISSUER}, "list of SPIFFE IDs"),
         (lambda e: {**e, "d": "AAAA"}, "private keys"),
         (lambda e: {"keys": [e, e]}, "repeats key_id"),
+    ]
+    + [
+        (lambda e, m=member: {**e, m: "AAAA"}, "private keys")
+        for member in ("p", "q", "dp", "dq", "qi", "oth", "k", "private_key")
+    ]
+    + [
+        (lambda e, i=bad: {**e, "issuers": [i]}, "list of SPIFFE IDs")
+        for bad in (
+            "spiffe://Example.org/issuer",  # trust domain must be lowercase
+            "spiffe://example.org/../issuer",
+            "spiffe://example.org/a//b",
+            "spiffe://example.org/issuer/",
+            "spiffe://example.org:443/issuer",
+            "spiffe://user@example.org/issuer",
+            "spiffe://example.org/is suer",
+            "spiffe://example.org/" + "a" * 2048,
+            "spiffe://",
+        )
     ],
 )
 def test_trust_policy_refuses_bad_entries(tmp_path: Path, mutate, message: str) -> None:
@@ -287,6 +305,22 @@ def test_trust_policy_refuses_bad_entries(tmp_path: Path, mutate, message: str) 
     path = tmp_path / "k.json"
     path.write_text(json.dumps(mutate(entry)), encoding="utf-8")
     with pytest.raises(ConfigError, match=message):
+        load_agent_manifest_trust_policy(path)
+
+
+def test_trust_policy_accepts_a_trust_domain_issuer(tmp_path: Path) -> None:
+    keypair = sdk.generate_ed25519()
+    path = _trust_file(
+        tmp_path / "k.json", keypair.key_id, keypair.public_bytes, ["spiffe://example.org"]
+    )
+    assert load_agent_manifest_trust_policy(path)[1] == {keypair.key_id: ["spiffe://example.org"]}
+
+
+@pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
+def test_trust_policy_refuses_non_standard_constants(tmp_path: Path, constant: str) -> None:
+    path = tmp_path / "k.json"
+    path.write_text(f'{{"public_key_base64url": "AA", "x": {constant}}}', encoding="utf-8")
+    with pytest.raises(ConfigError, match="non-standard JSON constant"):
         load_agent_manifest_trust_policy(path)
 
 

@@ -15,8 +15,38 @@ import agent_manifest as agent_manifest_sdk
 from ca2a_runtime.errors import ConfigError
 
 _B64URL_RE = re.compile(r"^[A-Za-z0-9\-_]*$")
-_SPIFFE_ID_RE = re.compile(r"^spiffe://[^/\s]+/\S+$")
-_PRIVATE_KEY_MEMBERS = frozenset({"d", "private_key", "private_key_base64url"})
+# Private JWK members (RFC 7517/7518) and the raw-key spellings, as cMCP refuses.
+_PRIVATE_KEY_MEMBERS = frozenset(
+    {"d", "p", "q", "dp", "dq", "qi", "oth", "k", "private_key", "private_key_base64url"}
+)
+
+# SPIFFE ID grammar (SPIFFE ID specification, section 2), as cMCP checks it: a
+# trust domain of lowercase letters, digits, ".", "-" and "_", then optional
+# path segments of letters, digits, ".", "-" and "_", none empty, "." or "..".
+_SPIFFE_SCHEME = "spiffe://"
+_SPIFFE_TRUST_DOMAIN = re.compile(r"[a-z0-9._-]{1,255}")
+_SPIFFE_PATH_SEGMENT = re.compile(r"[A-Za-z0-9._-]+")
+_MAX_SPIFFE_ID_BYTES = 2048
+
+
+def _is_spiffe_id(value: object) -> bool:
+    if not isinstance(value, str) or not value.startswith(_SPIFFE_SCHEME):
+        return False
+    try:
+        encoded = value.encode("utf-8")
+    except UnicodeEncodeError:  # a lone surrogate survives json.loads
+        return False
+    if len(encoded) > _MAX_SPIFFE_ID_BYTES:
+        return False
+    trust_domain, has_path, path = value[len(_SPIFFE_SCHEME) :].partition("/")
+    if not _SPIFFE_TRUST_DOMAIN.fullmatch(trust_domain):
+        return False
+    if not has_path:
+        return True
+    return all(
+        _SPIFFE_PATH_SEGMENT.fullmatch(segment) and segment not in {".", ".."}
+        for segment in path.split("/")
+    )
 
 
 @dataclass(frozen=True)
@@ -97,6 +127,10 @@ def load_agent_manifest_trust_anchor(path: str | Path) -> dict[str, bytes]:
     return load_agent_manifest_trust_policy(path)[0]
 
 
+def _no_constant(text: str) -> Any:
+    raise ValueError(f"non-standard JSON constant not allowed: {text}")
+
+
 def _no_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     out: dict[str, Any] = {}
     for key, value in pairs:
@@ -118,7 +152,9 @@ def load_agent_manifest_trust_policy(
     """
     try:
         raw = json.loads(
-            Path(path).read_text(encoding="utf-8"), object_pairs_hook=_no_duplicate_keys
+            Path(path).read_text(encoding="utf-8"),
+            object_pairs_hook=_no_duplicate_keys,
+            parse_constant=_no_constant,
         )
     except (OSError, ValueError) as exc:
         raise ConfigError(f"cannot read Agent Manifest trust anchor: {exc}") from exc
@@ -152,9 +188,7 @@ def load_agent_manifest_trust_policy(
             continue
         declared = True
         issuers = item["issuers"]
-        if not isinstance(issuers, list) or not all(
-            isinstance(i, str) and _SPIFFE_ID_RE.fullmatch(i) for i in issuers
-        ):
+        if not isinstance(issuers, list) or not all(_is_spiffe_id(i) for i in issuers):
             raise ConfigError("Agent Manifest trust anchor issuers must be a list of SPIFFE IDs")
         policy[key_id] = list(issuers)
     return anchors, (policy if declared else None)
