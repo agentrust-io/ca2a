@@ -249,11 +249,16 @@ def _b64(raw: bytes) -> str:
     return base64.urlsafe_b64encode(raw).rstrip(b"=").decode()
 
 
-def _signed_by(tmp_path: Path, keypair, issuer: str, name: str) -> Path:
-    manifest = _manifest("0.2")
+def _signed_by(tmp_path: Path, keypair, issuer: str, name: str, version: str = "0.2") -> Path:
+    manifest = _manifest(version)
     manifest["issuer"] = issuer
     path = tmp_path / name
-    path.write_bytes(sdk.sign_manifest_cose(manifest, keypair))
+    if version == "0.2":
+        path.write_bytes(sdk.sign_manifest_cose(manifest, keypair))
+    else:
+        manifest["@context"] = "https://agentmanifest.agentrust-io.com/v0.1/context.json"
+        manifest["signature"] = sdk.Ed25519Signer(keypair).sign(manifest)
+        path.write_text(json.dumps(manifest), encoding="utf-8")
     return path
 
 
@@ -281,13 +286,14 @@ _B_POLICIES = {
 }
 
 
+@pytest.mark.parametrize("version", ["0.1", "0.2"])
 @pytest.mark.parametrize("b_policy", list(_B_POLICIES))
 @pytest.mark.parametrize(
     "signer, claimed",
     [("a", ISSUER), ("a", ISSUER_B), ("b", ISSUER), ("b", ISSUER_B)],
 )
 def test_each_key_binds_only_for_issuers_listed_against_it(
-    tmp_path: Path, b_policy: str, signer: str, claimed: str
+    tmp_path: Path, b_policy: str, signer: str, claimed: str, version: str
 ) -> None:
     a, b = sdk.generate_ed25519(), sdk.generate_ed25519()
     anchor = _anchor(
@@ -301,7 +307,7 @@ def test_each_key_binds_only_for_issuers_listed_against_it(
             },
         ],
     )
-    manifest = _signed_by(tmp_path, a if signer == "a" else b, claimed, "m.cose")
+    manifest = _signed_by(tmp_path, a if signer == "a" else b, claimed, "m", version)
     allowed = {"a": [ISSUER], "b": _B_POLICIES[b_policy].get("issuers", [])}[signer]
     if claimed in allowed:
         assert _bind(manifest, anchor).agent_id == AGENT_ID
@@ -534,3 +540,89 @@ def test_trust_policy_refuses_duplicate_json_keys(tmp_path: Path) -> None:
     )
     with pytest.raises(ConfigError, match="duplicate JSON key"):
         load_agent_manifest_trust_policy(path)
+
+
+# ── Review round 2 ───────────────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize(
+    "text, message",
+    [
+        ('{"version": "0.1", "issuer": "a", "issuer": "b"}', "duplicate JSON key"),
+        ('{"version": "0.1", "n": NaN}', "non-standard JSON constant"),
+    ],
+    ids=["duplicate-member", "nan"],
+)
+def test_a_manifest_that_is_not_one_json_document_is_refused(
+    tmp_path: Path, text: str, message: str
+) -> None:
+    """Two readers must not see two documents behind one signature."""
+    path = tmp_path / "manifest.json"
+    path.write_text(text, encoding="utf-8")
+    with pytest.raises(ConfigError, match=message):
+        load_agent_manifest_document(path)
+
+
+@pytest.mark.parametrize(
+    "edit, message",
+    [
+        ({"public_key_base64url": None}, "must be a string"),
+        ({"public_key_base64url": 123}, "must be a string"),
+        ({"key_id": None}, "non-empty string"),
+        ({"key_id": ""}, "non-empty string"),
+        ({"key_id": False}, "non-empty string"),
+        ({"key_id": 7}, "non-empty string"),
+    ],
+    ids=["key-null", "key-number", "id-null", "id-empty", "id-false", "id-number"],
+)
+def test_trust_anchor_members_keep_their_types(tmp_path: Path, edit: dict, message: str) -> None:
+    keypair = sdk.generate_ed25519()
+    entry = {
+        "key_id": keypair.key_id,
+        "public_key_base64url": _b64(keypair.public_bytes),
+        "issuers": [ISSUER],
+        **edit,
+    }
+    path = _anchor(tmp_path, [entry])
+    with pytest.raises(ConfigError, match=message):
+        load_agent_manifest_trust_policy(path)
+
+
+def test_a_duplicate_member_inside_a_key_entry_is_refused(tmp_path: Path) -> None:
+    path = tmp_path / "k.json"
+    path.write_text(
+        '{"keys": [{"public_key_base64url": "AA", "issuers": [], "issuers": []}]}',
+        encoding="utf-8",
+    )
+    with pytest.raises(ConfigError, match="duplicate JSON key"):
+        load_agent_manifest_trust_policy(path)
+
+
+@pytest.mark.parametrize(
+    "policy",
+    [["spiffe://x.example/i"], {"k": "spiffe://x.example/i"}, {"k": ["not-spiffe"]}, {1: []}],
+    ids=["list", "issuers-not-list", "issuer-not-spiffe", "key-not-string"],
+)
+def test_a_policy_passed_directly_is_held_to_the_loaders_shape(tmp_path: Path, policy) -> None:
+    path, key_id, public_key = _cose_file(tmp_path)
+    with pytest.raises(ConfigError, match="trusted_key_issuers must map"):
+        verify_agent_manifest_binding(
+            load_agent_manifest_document(path),
+            {key_id: public_key},
+            authenticated_subject=AGENT_ID,
+            trusted_key_issuers=policy,
+        )
+
+
+def test_startup_binds_with_a_single_key_anchor(tmp_path: Path) -> None:
+    path, key_id, public_key = _cose_file(tmp_path)
+    anchor = _trust_file(tmp_path / "manifest-key.json", key_id, public_key, [ISSUER])
+    config = Ca2aConfig(
+        provider="software-only",
+        local_policy=frozenset({"read"}),
+        trusted_root_issuers=frozenset({"delegation-root"}),
+        agent_manifest_path=path.name,
+        agent_manifest_trust_anchor_path=anchor.name,
+        agent_manifest_authenticated_subject=AGENT_ID,
+    )
+    assert build_peer_node(config, config_dir=tmp_path) is not None

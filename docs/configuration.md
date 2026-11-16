@@ -87,6 +87,27 @@ key is not canonical unpadded base64url, an issuer is not a SPIFFE ID, a JSON
 member or `key_id` repeats, it contains `NaN` or `Infinity`, or any key carries
 private material.
 
+Upgrading an anchor written before issuer authorization means adding, to each
+key, the issuer you have decided it may sign for. Before, which startup now
+refuses:
+
+```json
+{ "public_key_base64url": "<32-byte Ed25519 public key, unpadded base64url>" }
+```
+
+After:
+
+```json
+{
+  "public_key_base64url": "<the same key>",
+  "issuers": ["spiffe://factory.example/signing-authority/production"]
+}
+```
+
+`issuers` must name the `issuer` your manifests carry. A SPIFFE ID is taken
+exactly: the `spiffe://` scheme and the trust domain in lowercase, as the
+reference implementation (go-spiffe) requires.
+
 This file is the relying party's own policy. Fill it from a channel you trust,
 not from material the manifest's producer sent alongside it: a key and issuer
 copied from the producer prove only that the producer signed its own manifest.

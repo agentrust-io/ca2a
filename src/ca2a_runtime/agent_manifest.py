@@ -98,7 +98,11 @@ def load_agent_manifest_document(path: str | Path) -> LoadedAgentManifest:
         raise ConfigError(f"cannot read Agent Manifest: {exc}") from exc
 
     try:
-        manifest = json.loads(raw)
+        # Strict, as cMCP reads a manifest: a repeated member would let two
+        # readers see different documents behind one signature.
+        manifest = json.loads(
+            raw, object_pairs_hook=_no_duplicate_keys, parse_constant=_no_constant
+        )
     except (json.JSONDecodeError, UnicodeDecodeError):
         try:
             decoded = agent_manifest_sdk.decode_cose_manifest(raw)
@@ -110,6 +114,8 @@ def load_agent_manifest_document(path: str | Path) -> LoadedAgentManifest:
             raise ConfigError("Agent Manifest COSE payload must be a JSON object") from None
         return LoadedAgentManifest(manifest=decoded.manifest, envelope=raw)
 
+    except ValueError as exc:  # a repeated member or NaN/Infinity: JSON, but not one document
+        raise ConfigError(f"cannot read Agent Manifest: {exc}") from exc
     if not isinstance(manifest, dict):
         raise ConfigError("Agent Manifest must be a JSON object")
     if manifest.get("version") == agent_manifest_sdk.COSE_MANIFEST_VERSION and (
@@ -180,10 +186,17 @@ def load_agent_manifest_trust_policy(
             raise ConfigError("Agent Manifest trust anchor keys must be objects")
         if _PRIVATE_KEY_MEMBERS.intersection(item):
             raise ConfigError("Agent Manifest trust anchor must not contain private keys")
-        public_key = _b64url_decode(str(item.get("public_key_base64url", "")))
+        encoded = item.get("public_key_base64url")
+        if not isinstance(encoded, str):
+            raise ConfigError("Agent Manifest trust anchor public_key_base64url must be a string")
+        public_key = _b64url_decode(encoded)
         if len(public_key) != 32:
             raise ConfigError("Agent Manifest trust anchor contains an invalid Ed25519 key")
-        key_id = str(item.get("key_id") or _key_id(public_key))
+        # key_id is optional, but when given it must be a string: false, null or
+        # "" are configuration errors, not a request for the default.
+        if "key_id" in item and not (isinstance(item["key_id"], str) and item["key_id"]):
+            raise ConfigError("Agent Manifest trust anchor key_id must be a non-empty string")
+        key_id = item.get("key_id", _key_id(public_key))
         if key_id != _key_id(public_key):
             raise ConfigError("Agent Manifest trust anchor key_id does not match public key")
         if key_id in anchors:
@@ -218,6 +231,14 @@ def verify_agent_manifest_binding(
             "Agent Manifest trust anchor must list the issuers each key may sign for "
             "(an 'issuers' array per key, spec 5.3.3)"
         )
+    # A caller may build the policy itself; hold it to what the loader produces.
+    if not isinstance(trusted_key_issuers, dict) or not all(
+        isinstance(key_id, str)
+        and isinstance(issuers, list)
+        and all(_is_spiffe_id(issuer) for issuer in issuers)
+        for key_id, issuers in trusted_key_issuers.items()
+    ):
+        raise ConfigError("trusted_key_issuers must map each key_id to a list of SPIFFE IDs")
     sdk_keys = {key_id: _b64url_encode(key) for key_id, key in trusted_keys.items()}
     result = agent_manifest_sdk.verify_manifest(
         loaded.envelope if loaded.envelope is not None else loaded.manifest,

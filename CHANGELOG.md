@@ -21,7 +21,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   member or `"issuers": []` signs for no issuer.
   `verify_agent_manifest_binding` now takes `trusted_key_issuers` as a required
   keyword argument (pass the policy `load_agent_manifest_trust_policy`
-  returns), so no caller can leave it out by accident.
+  returns), so no caller can leave it out by accident, and refuses a policy
+  that is not a map of key ids to SPIFFE ID lists. Trust-anchor members keep
+  their types: `public_key_base64url` must be a string, and `key_id`, when
+  given, a non-empty string; before, `false` or `null` silently meant "use the
+  default". A manifest is now read as cMCP reads one: a repeated JSON member or
+  `NaN`/`Infinity` is refused, since two readers could otherwise see two
+  documents behind one signature.
 
 - Raise the A2A SDK and development extras' `pyasn1` security floor to 0.6.5,
   alongside the development/CI hash lock, clearing four dependency-audit
