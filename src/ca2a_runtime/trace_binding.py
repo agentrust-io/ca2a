@@ -134,11 +134,22 @@ def build_trace_record(
     The returned dict has no ``cnf`` or ``signature`` yet; pass it to
     :func:`sign_trace_record` to get a schema-valid, signed record.
     """
+    if not isinstance(subject, str) or not subject:
+        raise ValueError("subject must be a non-empty string")
+    if type(iat) is not int or not 0 < iat <= 9_007_199_254_740_991:
+        raise ValueError("iat must be a positive RFC 8785 safe integer")
     if (parent_record_hash is None) != (credential_id is None):
         raise ValueError(
             "the delegation block needs both parent_record_hash and credential_id; "
             "a root hop supplies neither"
         )
+    if parent_record_hash is not None and (
+        not isinstance(parent_record_hash, str)
+        or not parent_record_hash
+        or not isinstance(credential_id, str)
+        or not credential_id
+    ):
+        raise ValueError("parent_record_hash and credential_id must be non-empty strings")
 
     runtime: dict[str, Any] = {
         "platform": context.runtime_platform,
@@ -238,9 +249,13 @@ def emit_dag(hops: list[HopSpec]) -> list[dict[str, Any]]:
     ``delegation`` block referencing its parent's ``trace_record_hash`` and its
     own ``credential_id``. Returns the signed records in root-to-leaf order.
     """
+    if not isinstance(hops, list) or not hops:
+        raise ValueError("hops must be a non-empty list of HopSpec entries")
     records: list[dict[str, Any]] = []
     parent_hash: str | None = None
     for i, hop in enumerate(hops):
+        if i > 0 and (not isinstance(hop.credential_id, str) or not hop.credential_id):
+            raise ValueError(f"non-root hop {i} must supply a non-empty credential_id")
         credential_id = None if i == 0 else hop.credential_id
         record = build_trace_record(
             subject=hop.subject,
