@@ -115,10 +115,7 @@ def _loads_strict(text: str) -> Any:
         raise ValueError(f"non-finite JSON constant is not allowed: {token}")
 
     def _finite_float(token: str) -> float:
-        try:
-            number = float(token)
-        except OverflowError as exc:
-            raise ValueError(f"non-finite JSON number is not allowed: {token}") from exc
+        number = float(token)
         if not math.isfinite(number):
             raise ValueError(f"non-finite JSON number is not allowed: {token}")
         return number
