@@ -197,6 +197,11 @@ def verify_tpm_report(
     report's ``measurement`` field, so what the caller acts on is the value the TPM
     signed. A mismatch between the two is itself a failure.
     """
+    if report.platform != "tpm":
+        raise AttestationFailed(
+            "expected a 'tpm' attestation report",
+            detail=f"got platform={report.platform!r}",
+        )
     if report.nonce != expected_nonce:
         raise AttestationFailed(
             "the report nonce does not match the expected nonce",

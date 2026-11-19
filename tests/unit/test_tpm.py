@@ -188,3 +188,112 @@ def test_real_tpm_quote_parses_and_verifies() -> None:
     tampered[100] ^= 0x01
     with pytest.raises(InvalidSignature):
         ak_pub.verify(signature, bytes(tampered), padding.PKCS1v15(), hashes.SHA256())
+
+
+@pytest.mark.parametrize(
+    "bad_blob",
+    [
+        build_attest(qualifying_data=b"n", pcr_digest=b"\x11" * 32) + b"\x00",
+        build_attest(qualifying_data=b"n", pcr_digest=b"\x11" * 32) + b"trailing",
+        "not-bytes",  # type: ignore[list-item]
+    ],
+)
+def test_tpm_quote_parse_rejects_trailing_bytes_and_non_bytes(bad_blob: bytes) -> None:
+    with pytest.raises(AttestationFailed):
+        TpmQuote.parse(bad_blob)
+
+
+@pytest.mark.parametrize("wrong_platform", ["tdx", "sev-snp", "software-only", ""])
+def test_verify_tpm_report_rejects_non_tpm_platform(wrong_platform: str) -> None:
+    from ca2a_runtime.tee.base import AttestationReport
+    from ca2a_verify.tpm import verify_tpm_report
+
+    report = AttestationReport(
+        platform=wrong_platform,
+        measurement="sha256:" + "11" * 32,
+        public_key="aa" * 32,
+        nonce="fresh",
+        raw_evidence=build_attest(qualifying_data=b"n", pcr_digest=b"\x11" * 32),
+        quote_signature=b"\x00" * 64,
+        attestation_key_chain_pem=b"-----BEGIN CERTIFICATE-----\n",
+    )
+    with pytest.raises(AttestationFailed, match="expected a 'tpm' attestation report"):
+        verify_tpm_report(report, "fresh", trusted_roots_pem=b"-----BEGIN CERTIFICATE-----\n")
+
+
+def test_tpm_provider_chain_from_leaf_bounds_aia_fetch(monkeypatch: pytest.MonkeyPatch) -> None:
+    import datetime
+    import urllib.request
+
+    from cryptography import x509
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
+    from cryptography.x509.oid import AuthorityInformationAccessOID, NameOID
+
+    from ca2a_runtime.tee.tpm import _AIA_MAX_CERT_BYTES, TpmProvider
+
+    now = datetime.datetime.now(datetime.UTC)
+    ca_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    ca_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Test TPM Root")])
+    ca_cert = (
+        x509.CertificateBuilder()
+        .subject_name(ca_name)
+        .issuer_name(ca_name)
+        .public_key(ca_key.public_key())
+        .serial_number(1)
+        .not_valid_before(now - datetime.timedelta(days=1))
+        .not_valid_after(now + datetime.timedelta(days=1))
+        .sign(ca_key, hashes.SHA256())
+    )
+    ca_der = ca_cert.public_bytes(serialization.Encoding.DER)
+
+    leaf_key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    leaf_name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "Test TPM AK")])
+    aia = x509.AuthorityInformationAccess(
+        [
+            x509.AccessDescription(
+                AuthorityInformationAccessOID.CA_ISSUERS,
+                x509.UniformResourceIdentifier("http://ca.example/oversized.cer"),
+            ),
+            x509.AccessDescription(
+                AuthorityInformationAccessOID.CA_ISSUERS,
+                x509.UniformResourceIdentifier("http://ca.example/issuer.cer"),
+            ),
+        ]
+    )
+    leaf_cert = (
+        x509.CertificateBuilder()
+        .subject_name(leaf_name)
+        .issuer_name(ca_name)
+        .public_key(leaf_key.public_key())
+        .serial_number(2)
+        .not_valid_before(now - datetime.timedelta(days=1))
+        .not_valid_after(now + datetime.timedelta(days=1))
+        .add_extension(aia, critical=False)
+        .sign(ca_key, hashes.SHA256())
+    )
+    leaf_der = leaf_cert.public_bytes(serialization.Encoding.DER)
+
+    class _FakeResp:
+        def __init__(self, payload: bytes) -> None:
+            self._payload = payload
+
+        def __enter__(self) -> _FakeResp:
+            return self
+
+        def __exit__(self, *args: object) -> bool:
+            return False
+
+        def read(self, n: int = -1) -> bytes:
+            return self._payload[:n] if n >= 0 else self._payload
+
+    def fake_urlopen(url: str, timeout: float = 5) -> _FakeResp:
+        if "oversized" in url:
+            return _FakeResp(b"x" * (_AIA_MAX_CERT_BYTES + 10))
+        return _FakeResp(ca_der)
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    pem_chain = TpmProvider._chain_from_leaf(leaf_der)
+    loaded = x509.load_pem_x509_certificates(pem_chain)
+    assert len(loaded) == 2
+    assert loaded[1].subject == ca_name
