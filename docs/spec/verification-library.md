@@ -54,4 +54,11 @@ record's free-text `subject` field (a SPIFFE/DID URI) to the credential subject,
 and does not prove task completion. Those are different namespaces; `cnf.jwk` is
 already a raw key and is what the hop "acted under."
 
+It also requires each signed hop `iat` to fall within that hop's inclusive
+credential validity window and not precede the previous hop's `iat`. The
+separate `verify_chain` `at_time` checks the whole chain at one evaluation
+instant; for historical checks, choose the action's decision time. Signed
+timestamps are assertions by the signer, not independent proof of when a
+record was created.
+
 The API name uses DAG terminology, but the input is one ordered path, not an arbitrary branching tree. The unsigned `DelegationRecord` helper has a separate `verify_dag` consistency check; it is not a substitute for signature verification. See [provenance DAG](provenance-dag.md) and [TRACE A2A profile](trace-a2a-profile.md).
