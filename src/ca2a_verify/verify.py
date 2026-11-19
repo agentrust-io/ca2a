@@ -79,6 +79,19 @@ def verify_delegation_chain(
     )
 
 
+def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    obj: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in obj:
+            raise ValueError(f"duplicate JSON object key: {key!r}")
+        obj[key] = value
+    return obj
+
+
+def _loads_no_duplicate_keys(raw: str) -> Any:
+    return json.loads(raw, object_pairs_hook=_reject_duplicate_keys)
+
+
 def _parse_chain(data: Any) -> list[DelegationCredential]:
     if isinstance(data, dict) and "chain" in data:
         data = data["chain"]
@@ -101,8 +114,8 @@ def verify_chain_file(
     if not p.is_file():
         raise InvalidCredential(f"chain file not found: {p}")
     try:
-        data = json.loads(p.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
+        data = _loads_no_duplicate_keys(p.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, ValueError) as exc:
         raise InvalidCredential(f"invalid JSON in {p}", detail=str(exc)) from exc
     return verify_delegation_chain(
         _parse_chain(data),
@@ -124,7 +137,7 @@ def load_revocation_snapshot(path: str | Path) -> RevocationSnapshot:
     if not p.is_file():
         raise InvalidRevocation(f"revocation file not found: {p}")
     try:
-        data = json.loads(p.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
+        data = _loads_no_duplicate_keys(p.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, ValueError) as exc:
         raise InvalidRevocation(f"invalid JSON in {p}", detail=str(exc)) from exc
     return RevocationSnapshot.from_dict(data)
