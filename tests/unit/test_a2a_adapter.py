@@ -130,6 +130,11 @@ def test_parent_record_hash_null_is_root() -> None:
     assert req.parent_record_hash is None
 
 
+def test_empty_parent_record_hash_is_rejected() -> None:
+    with pytest.raises(TransportError, match="non-empty string or null"):
+        parse_peer_request({"metadata": _ca2a_meta(parent_record_hash="")})
+
+
 def test_unknown_non_ca2a_metadata_preserved_and_ignored() -> None:
     foreign = "https://example.com/ext/other/v1/trace"
     meta = _ca2a_meta()

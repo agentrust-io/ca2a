@@ -197,3 +197,85 @@ def test_real_http_quote_timeout_is_incomplete_work_not_security_rejection(tmp_p
     receiver = [json.loads(line) for line in receiver_log.path.read_text().splitlines()]
     assert receiver[-1]["event"] == "operation_completed"
     assert receiver[-1]["stage"] == "receiver_offer"
+
+
+@pytest.mark.parametrize(
+    "bad_cfg",
+    [
+        '{"a": 1, "a": 2}',
+        '{"a": NaN}',
+        '{"a": 1e400}',
+        "[1, 2]",
+    ],
+)
+def test_harness_rejects_duplicate_keys_nonfinite_and_non_dict_config(
+    tmp_path, monkeypatch, bad_cfg
+):
+    config = tmp_path / "config.json"
+    config.write_text(bad_cfg, encoding="utf-8")
+    receipt = tmp_path / "receipt.jsonl"
+    monkeypatch.setattr(
+        "sys.argv",
+        ["hardware_acceptance", "call", str(config), "--receipt", str(receipt), "--run-id", "r1"],
+    )
+    assert harness.main() == 1
+    entry = json.loads(receipt.read_text())
+    assert entry["event"] == "run_failed"
+    assert entry["error_type"] == "ValueError"
+
+
+def test_harness_rejects_non_list_chain_file(tmp_path, monkeypatch):
+    monkeypatch.setattr(harness, "real_provider", object)
+    monkeypatch.setattr(harness, "build_verifier", lambda *args: object())
+    (tmp_path / "chain.json").write_text("{}", encoding="utf-8")
+    with pytest.raises(ValueError, match="chain file must contain a JSON array"):
+        harness.run(
+            {"peer": {}, "chain": "chain.json"},
+            tmp_path,
+            "call",
+            harness.ReceiptLog(tmp_path / "receipt.jsonl", "r1"),
+        )
+
+
+def test_adapter_rejects_non_dict_inputs_empty_parent_hash_and_sdk_unsafe_float():
+    from google.protobuf import struct_pb2
+
+    from ca2a_runtime.errors import TransportError
+    from ca2a_runtime.transport import a2a_adapter
+    from ca2a_runtime.transport.a2a_sdk import (
+        _coerce_sdk_credential_integers,
+        metadata_from_sdk_message,
+    )
+    from ca2a_runtime.transport.constants import KEY_DELEGATION_CHAIN
+
+    for bad_msg in ([1, 2], "str", None):
+        with pytest.raises(TransportError):
+            a2a_adapter.collect_metadata(bad_msg)  # type: ignore[arg-type]
+    with pytest.raises(TransportError):
+        a2a_adapter.collect_metadata({}, metadata=["not-a-dict"])  # type: ignore[arg-type]
+
+    with pytest.raises(ValueError, match="non-finite JSON number"):
+        harness._loads_strict('{"overflow": 1e400}')
+    assert harness._loads_strict('{"timeout": 1.5}') == {"timeout": 1.5}
+
+    safe = 2**53 - 1
+    meta_struct = struct_pb2.Struct()
+    meta_struct.update({KEY_DELEGATION_CHAIN: [{"depth": float(safe)}]})
+    msg = type("Msg", (), {"metadata": meta_struct})()
+    extracted = metadata_from_sdk_message(msg)
+    assert extracted[KEY_DELEGATION_CHAIN][0]["depth"] == safe
+    assert type(extracted[KEY_DELEGATION_CHAIN][0]["depth"]) is int
+    converted = _coerce_sdk_credential_integers(
+        {
+            KEY_DELEGATION_CHAIN: [
+                {"depth": float(safe), "not_before": float(-safe), "not_after": 1.5},
+                {"depth": float(safe + 1), "not_before": "1e400"},
+            ]
+        }
+    )
+    chain = converted[KEY_DELEGATION_CHAIN]
+    assert chain[0]["depth"] == safe and type(chain[0]["depth"]) is int
+    assert chain[0]["not_before"] == -safe and type(chain[0]["not_before"]) is int
+    assert chain[0]["not_after"] == 1.5
+    assert type(chain[1]["depth"]) is float and chain[1]["depth"] == float(safe + 1)
+    assert chain[1]["not_before"] == "1e400"
