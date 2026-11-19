@@ -41,6 +41,10 @@ def _escape_string(s: str) -> str:
     out: list[str] = ['"']
     for ch in s:
         code = ord(ch)
+        if 0xD800 <= code <= 0xDFFF:
+            raise ValueError(
+                f"lone UTF-16 surrogate U+{code:04X} is not valid in RFC 8785 canonical JSON"
+            )
         if code in _SHORT_ESCAPES:
             out.append(_SHORT_ESCAPES[code])
         elif code < 0x20:
@@ -82,6 +86,12 @@ def _serialize(value: Any) -> str:
         for key in value:
             if not isinstance(key, str):
                 raise TypeError(f"object keys must be strings, got {type(key).__name__}")
+            for ch in key:
+                code = ord(ch)
+                if 0xD800 <= code <= 0xDFFF:
+                    raise ValueError(
+                        f"lone UTF-16 surrogate U+{code:04X} is not valid in RFC 8785 canonical JSON"
+                    )
         items = sorted(value.items(), key=lambda kv: kv[0].encode("utf-16-be"))
         return "{" + ",".join(f"{_escape_string(k)}:{_serialize(v)}" for k, v in items) + "}"
     raise TypeError(f"unsupported type for canonicalization: {type(value).__name__}")

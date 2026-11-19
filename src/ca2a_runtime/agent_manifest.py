@@ -14,7 +14,8 @@ import agent_manifest as agent_manifest_sdk
 
 from ca2a_runtime.errors import ConfigError
 
-_B64URL_RE = re.compile(r"^[A-Za-z0-9\-_]*$")
+_B64URL_RE = re.compile(r"^[A-Za-z0-9_-]+\Z")
+_PRIVATE_JWK_PARAMS = frozenset({"d", "p", "q", "dp", "dq", "qi", "oth", "k"})
 
 
 @dataclass(frozen=True)
@@ -40,13 +41,16 @@ class AgentManifestBinding:
 
 
 def _b64url_decode(value: str) -> bytes:
-    if not _B64URL_RE.fullmatch(value):
+    if not isinstance(value, str) or not _B64URL_RE.fullmatch(value) or len(value) % 4 == 1:
         raise ConfigError("Agent Manifest signature/key must use base64url encoding")
     padding = (-len(value)) % 4
     try:
-        return base64.urlsafe_b64decode(value + "=" * padding)
+        raw = base64.urlsafe_b64decode((value + "=" * padding).encode("ascii"))
     except ValueError as exc:
         raise ConfigError("Agent Manifest signature/key is not valid base64url") from exc
+    if base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii") != value:
+        raise ConfigError("Agent Manifest signature/key must use canonical base64url encoding")
+    return raw
 
 
 def _b64url_encode(value: bytes) -> str:
@@ -97,6 +101,11 @@ def load_agent_manifest_trust_anchor(path: str | Path) -> dict[str, bytes]:
     except (OSError, json.JSONDecodeError) as exc:
         raise ConfigError(f"cannot read Agent Manifest trust anchor: {exc}") from exc
 
+    if isinstance(raw, dict) and _PRIVATE_JWK_PARAMS.intersection(raw):
+        raise ConfigError(
+            "Agent Manifest trust anchor must not contain private or symmetric key parameters"
+        )
+
     items: list[Any]
     if isinstance(raw, dict) and "public_key_base64url" in raw:
         items = [raw]
@@ -109,7 +118,14 @@ def load_agent_manifest_trust_anchor(path: str | Path) -> dict[str, bytes]:
     for item in items:
         if not isinstance(item, dict):
             raise ConfigError("Agent Manifest trust anchor keys must be objects")
-        public_key = _b64url_decode(str(item.get("public_key_base64url", "")))
+        if _PRIVATE_JWK_PARAMS.intersection(item):
+            raise ConfigError(
+                "Agent Manifest trust anchor must not contain private or symmetric key parameters"
+            )
+        raw_pub = item.get("public_key_base64url")
+        if not isinstance(raw_pub, str):
+            raise ConfigError("Agent Manifest trust anchor public_key_base64url must be a string")
+        public_key = _b64url_decode(raw_pub)
         if len(public_key) != 32:
             raise ConfigError("Agent Manifest trust anchor contains an invalid Ed25519 key")
         key_id = str(item.get("key_id") or _key_id(public_key))
