@@ -75,6 +75,14 @@ class PeerNode:
                 detail="a hardware report cannot be appraised without one, so every "
                 "call would be refused",
             )
+        if not isinstance(max_depth, int) or isinstance(max_depth, bool) or max_depth < 1:
+            raise ConfigError("max_depth must be a positive integer")
+        if (
+            not isinstance(challenge_ttl_seconds, int)
+            or isinstance(challenge_ttl_seconds, bool)
+            or challenge_ttl_seconds < 1
+        ):
+            raise ConfigError("challenge_ttl_seconds must be a positive integer")
         self.policy = policy
         self.provider: BaseProvider = provider if provider is not None else SoftwareProvider()
         self.max_depth = max_depth
