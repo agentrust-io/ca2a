@@ -34,6 +34,19 @@ _MAX_NONCE = 256
 _READ_TIMEOUT_SECONDS = 10.0
 
 
+def _no_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in out:
+            raise ValueError(f"duplicate JSON object key: {key!r}")
+        out[key] = value
+    return out
+
+
+def _no_nonfinite_constant(value: str) -> Any:
+    raise ValueError(f"non-finite JSON constant is not allowed: {value}")
+
+
 class PeerHTTPServer(ThreadingHTTPServer):
     """A threading HTTP server carrying the PeerNode its handler serves."""
 
@@ -122,7 +135,15 @@ class _PeerHandler(BaseHTTPRequestHandler):
             return
         try:
             raw = self.rfile.read(length)
-            message = decode(raw) if path == AUTHENTICATED_TASK_PATH else json.loads(raw)
+            message = (
+                decode(raw)
+                if path == AUTHENTICATED_TASK_PATH
+                else json.loads(
+                    raw.decode("utf-8"),
+                    object_pairs_hook=_no_duplicate_keys,
+                    parse_constant=_no_nonfinite_constant,
+                )
+            )
         # ValueError covers JSONDecodeError and UnicodeDecodeError, and also the
         # integer-digit limit json.loads enforces on a long number literal;
         # RecursionError is deeply nested arrays or objects. Both are reachable
