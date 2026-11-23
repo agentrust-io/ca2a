@@ -60,6 +60,8 @@ class TraceDagResult:
 
 # The TRACE digest form (sha256:/sha384: + lowercase hex), same as the schema.
 _DIGEST_RE = re.compile(r"^sha(256:[0-9a-f]{64}|384:[0-9a-f]{96})$")
+_B64URL_RE = re.compile(r"^[A-Za-z0-9_-]+\Z")
+_PRIVATE_JWK_PARAMS = frozenset({"d", "p", "q", "dp", "dq", "qi", "oth", "k"})
 
 
 def _validate_delegation_block(block: Any, index: int) -> None:
@@ -88,12 +90,25 @@ def _validate_delegation_block(block: Any, index: int) -> None:
 
 
 def _b64url_decode(value: str) -> bytes:
+    if not isinstance(value, str) or not _B64URL_RE.match(value) or len(value) % 4 == 1:
+        raise ValueError("value must be canonical unpadded base64url")
     padded = value + "=" * (-len(value) % 4)
-    return base64.urlsafe_b64decode(padded)
+    raw = base64.urlsafe_b64decode(padded.encode("ascii"))
+    if base64.urlsafe_b64encode(raw).rstrip(b"=").decode("ascii") != value:
+        raise ValueError("base64url value has non-canonical trailing bits")
+    return raw
 
 
 def _jwk_raw(jwk: dict[str, Any]) -> bytes:
     """Raw Ed25519 public-key bytes from an OKP JWK, or raise TraceRecordInvalid."""
+    if not isinstance(jwk, dict):
+        raise TraceRecordInvalid("cnf.jwk must be a JSON object")
+    private_params = sorted(_PRIVATE_JWK_PARAMS.intersection(jwk))
+    if private_params:
+        raise TraceRecordInvalid(
+            "cnf.jwk must not contain private or symmetric key parameters",
+            detail=f"forbidden parameters: {private_params}",
+        )
     if jwk.get("kty") != "OKP" or jwk.get("crv") != "Ed25519":
         raise TraceRecordInvalid(
             "unsupported cnf.jwk key type", detail="expected an OKP/Ed25519 key"
@@ -102,9 +117,15 @@ def _jwk_raw(jwk: dict[str, Any]) -> bytes:
     if not isinstance(x, str):
         raise TraceRecordInvalid("cnf.jwk is missing its 'x' parameter")
     try:
-        return _b64url_decode(x)
+        raw = _b64url_decode(x)
     except (binascii.Error, ValueError) as exc:
         raise TraceRecordInvalid("cnf.jwk 'x' is not valid base64url", detail=str(exc)) from exc
+    if len(raw) != 32:
+        raise TraceRecordInvalid(
+            "cnf.jwk 'x' must decode to 32 Ed25519 public-key bytes",
+            detail=f"got {len(raw)} bytes",
+        )
+    return raw
 
 
 def _trusted_raw_keys(trusted_keys: Iterable[Any]) -> set[bytes]:
