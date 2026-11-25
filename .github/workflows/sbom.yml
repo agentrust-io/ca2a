@@ -15,17 +15,42 @@ permissions:
 jobs:
   sbom:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # anchore/sbom-action downloads the pinned Syft release binary from
+      # github.com's release-asset CDN on every run. That endpoint
+      # occasionally answers with a transient 504 (seen on run 42567010406:
+      # "received HTTP status=504 for url=...syft_1.54.0_checksums.txt"),
+      # which is a GitHub-side blip unrelated to our code or to the pinned
+      # action/syft versions. Wrap the step in a retry so a single flaky
+      # download doesn't fail the whole workflow.
       - name: Generate SBOM
-        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+        id: sbom
+        continue-on-error: true
+        uses: Wandalen/wretry.action@6feedb7dedadeb826de0f45ff482b53b379a7844 # v3.5.0
         with:
-          format: spdx-json
-          output-file: sbom.spdx.json
+          action: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+          attempt_limit: 3
+          attempt_delay: 15000
+          with: |
+            format: spdx-json
+            output-file: sbom.spdx.json
+
       - name: Upload SBOM artifact
+        if: steps.sbom.outcome == 'success'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: sbom
           path: sbom.spdx.json
+
+      # SBOM generation is supply-chain metadata, not a functional gate.
+      # If GitHub's release CDN is still down after 3 attempts, don't fail
+      # the push-to-main workflow over it -- just make the miss visible.
+      - name: Warn if SBOM generation failed
+        if: steps.sbom.outcome != 'success'
+        run: |
+          echo "::warning::SBOM generation failed after retries (likely a transient GitHub release-asset CDN issue). See the 'Generate SBOM' step logs. Not failing the build since SBOM output is non-blocking metadata."
