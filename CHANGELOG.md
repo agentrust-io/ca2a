@@ -18,6 +18,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   leaking `UnicodeEncodeError` (#267).
 - Reject duplicate JSON object member names when loading chain and revocation
   files in `ca2a_verify.verify` (#267).
+- **Agent Manifest binding now checks which issuer a key may sign for**
+  (Agent Manifest spec 5.3.3). The trust anchor lists `issuers` per key, in the
+  same format as cMCP, and startup fails when no key lists any. Before, any
+  trusted key could vouch for a manifest from any issuer, and with
+  agent-manifest 0.16 every binding failed as `UNVERIFIABLE`. Existing trust
+  anchor files need an `issuers` array added to each key. The file is read with
+  cMCP's rules: issuers must be valid SPIFFE IDs; a repeated JSON key or
+  `key_id`, a `NaN` or `Infinity` is refused; and `private_key` and
+  `private_key_base64url` join the private members refused since #267. A key
+  with no `issuers` member or `"issuers": []` signs for no issuer.
+  `verify_agent_manifest_binding` now takes `trusted_key_issuers` as a required
+  keyword argument (pass the policy `load_agent_manifest_trust_policy`
+  returns), so no caller can leave it out by accident, and refuses a policy
+  that is not a map of key ids to SPIFFE ID lists, or that grants no issuer to
+  any key. CI now also runs the Agent Manifest tests on agent-manifest 0.11.1,
+  the oldest supported SDK. A trust anchor's `key_id`, when given, must be a
+  non-empty string; before, `false` or `null` silently meant "use the default".
+  A manifest is now read as cMCP reads one: a repeated JSON member or
+  `NaN`/`Infinity` is refused, since two readers could otherwise see two
+  documents behind one signature.
 - Raise the A2A SDK and development extras' `pyasn1` security floor to 0.6.5,
   alongside the development/CI hash lock, clearing four dependency-audit
   findings for 0.6.4.

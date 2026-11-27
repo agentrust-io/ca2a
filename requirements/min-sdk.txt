@@ -1,0 +1,6 @@
+# The oldest agent-manifest that pyproject.toml allows. CI runs the Agent
+# Manifest tests on it, so behaviour that differs across supported SDKs is
+# caught. Installed over requirements/dev.txt with --no-deps.
+agent-manifest==0.11.1 \
+    --hash=sha256:7584ca894d7cfbdbf6f22b1d93b067d7af969c7b62b93f183d94c72dc906a882 \
+    --hash=sha256:d9b32729bae0bb62a9ce13e0aaf36290ba6da6dcda22be36926f7660471360af

@@ -19,6 +19,13 @@ def test_agent_manifest_floor_includes_v02_cose_verification() -> None:
     assert "agent-manifest>=0.11.1" in _project()["dependencies"]
 
 
+def test_ci_tests_the_agent_manifest_floor() -> None:
+    """requirements/min-sdk.txt, which CI runs the Agent Manifest tests on, pins
+    the floor itself, so raising one without the other fails here."""
+    pinned = Path("requirements/min-sdk.txt").read_text(encoding="utf-8")
+    assert "agent-manifest==0.11.1 " in pinned
+
+
 def test_a2a_sdk_extra_cannot_resolve_vulnerable_aiohttp() -> None:
     extras = _project()["optional-dependencies"]
     assert "aiohttp>=3.14.3" in extras["a2a-sdk"]
